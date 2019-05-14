@@ -6,30 +6,30 @@ import yaml
 class RefGenomeConfiguration(attmap.PathExAttMap):
 
     def get_index(self, genome_name, index_name):
-        if not genome_name in self.refgenomes:
+        if not genome_name in self.genomes:
             msg = "Your genomes do not include {}".format(genome_name)
             raise MissingGenomeError(msg)
 
-        if not index_name in self.refgenomes[genome_name]:
+        if not index_name in self.genomes[genome_name]:
             msg = "Genome {} exists, but index {} is missing".format(genome_name, index_name)
             raise MissingIndexError(msg)
 
-            return self.refgenomes[genome_name][index_name]
+            return self.genomes[genome_name][index_name]
 
     def list_genomes(self):
-        return list(self.refgenomes.keys())
+        return list(self.genomes.keys())
 
 
-    def list_indexes(self):
+    def list_assets(self):
         string = ""
-        for genome, value in self.refgenomes.items():
-            string += "  {}: {}\n".format(genome, "; ".join(list(value.indexes)))
+        for genome, values in self.genomes.items():
+            string += "  {}: {}\n".format(genome, "; ".join(list(values)))
         return string
 
     def idx(self):
         retval = {}
-        for genome, value in self.refgenomes.items():
-            retval[genome] = list(value.indexes)
+        for genome, values in self.genomes.items():
+            retval[genome] = list(values)
 
         return retval
 

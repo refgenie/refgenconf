@@ -21,7 +21,7 @@ extra["install_requires"] = DEPENDENCIES
 if sys.version_info >= (3, ):
     extra["use_2to3"] = True
 
-with open("refgenie/_version.py", 'r') as versionfile:
+with open("refgenconf/_version.py", 'r') as versionfile:
     version = versionfile.readline().split()[-1].strip("\"'\n")
 
 # Handle the pypi README formatting.

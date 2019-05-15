@@ -6,7 +6,7 @@ import yaml
 CONFIG_ENV_VARS = ["REFGENIE"]
 CONFIG_NAME = "genome configuration"
 
-class RefGenomeConfiguration(attmap.PathExAttMap):
+class RefGenomeConfiguration(attmap.OrdPathExAttMap):
 
     def get_index(self, genome_name, index_name):
         if not genome_name in self.genomes:
@@ -46,7 +46,7 @@ class RefGenomeConfiguration(attmap.PathExAttMap):
 
 
 def load_genome_config(filename):
-    return find_config(filename, CONFIG_ENV_VARS, CONFIG_NAME)
+    return select_load_config(filename, CONFIG_ENV_VARS, CONFIG_NAME)
 
 
 

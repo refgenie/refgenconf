@@ -1,8 +1,8 @@
 import pytest
 
-from refgenconf import load_yaml, RefGenomeConfiguration
+import refgenconf
 
 def test_rgc():
-	rgc = RefGenomeConfiguration(load_yaml("refgenie.yaml"))
+	rgc = refgenconf.RefGenomeConfiguration("refgenie.yaml")
 	print(rgc.genomes)
 

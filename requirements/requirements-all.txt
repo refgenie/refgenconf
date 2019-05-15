@@ -1,2 +1,2 @@
-attmap>=0.7
+attmap>=0.10
 pyyaml

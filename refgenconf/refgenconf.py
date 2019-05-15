@@ -38,6 +38,6 @@ class RefGenomeConfiguration(yacman.YacAttMap):
 
 
 def load_genome_config(filename):
-    return select_load_config(filename, CONFIG_ENV_VARS, CONFIG_NAME)
+    return yacman.select_load_config(filename, CONFIG_ENV_VARS, CONFIG_NAME)
 
 

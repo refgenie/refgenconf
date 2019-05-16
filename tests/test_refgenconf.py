@@ -1,5 +1,5 @@
 import pytest
-
+import logging
 import refgenconf
 
 def test_rgc():

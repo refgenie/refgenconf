@@ -57,16 +57,37 @@ class RefGenomeConfiguration(yacman.YacAttMap):
         return ", ".join(self.genomes_list())
 
     def assets_dict(self):
-        return {i: self.genomes[i].keys() for i in [i for i in self.genomes]}
+        """
+        Map each assembly name to a list of available asset names.
+
+        :return Mapping[str, Iterable[str]]: mapping from assembly name to
+            collection of available asset names.
+        """
+        return {g: list(self.genomes[g].keys()) for g in self.genomes}
 
     def assets_str(self):
+        """
+
+        :return:
+        """
         string = ""
         for genome, values in self.genomes.items():
             string += "  {}: {}\n".format(genome, "; ".join(list(values)))
         return string
 
-    def list_assets_by_genome(self, genome):
-        return list(self["genome"].keys())
+    def list_assets_by_genome(self, genome=None):
+        return self.assets_dict() if genome is None else list(self.genomes[genome].keys())
+
+    def list_genomes_by_asset(self, asset=None):
+        return self._invert_genomes() \
+            if not asset else [g for g, am in self.genomes if asset in am]
+
+    def _invert_genomes(self):
+        genomes = {}
+        for g, am in self.genomes.items():
+            for a in am.keys():
+                genomes[a].setdefault(a, []).append(g)
+        return genomes
 
 
 def select_genome_config(filename, conf_env_vars=None, conf_name=CONFIG_NAME):

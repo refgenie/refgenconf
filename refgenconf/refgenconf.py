@@ -69,12 +69,16 @@ class RefGenomeConfiguration(yacman.YacAttMap):
         return list(self["genome"].keys())
 
 
-def select_genome_config(filename):
+def select_genome_config(filename, conf_env_vars=None, conf_name=CONFIG_NAME):
     """
-    Choose a
+    Get path to genome configuration file.
 
     :param str filename: name/path of genome configuration file
-    :return:
+    :param Iterable[str] conf_env_vars: names of environment variables to
+        consider; basically, a prioritized search list
+    :param str conf_name: name of the kind of configuration file to request
+    :return str: path to genome configuration file
     """
-    return yacman.select_config(filename, CONFIG_ENV_VARS, CONFIG_NAME)
+    return yacman.select_config(
+        filename, conf_env_vars or CONFIG_ENV_VARS, conf_name)
 

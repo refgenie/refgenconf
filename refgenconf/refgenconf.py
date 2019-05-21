@@ -126,7 +126,7 @@ class RefGenomeConfiguration(yacman.YacAttMap):
         genomes = {}
         for g, am in self.genomes.items():
             for a in am.keys():
-                genomes[a].setdefault(a, []).append(g)
+                genomes.setdefault(a, []).append(g)
         return genomes
 
 

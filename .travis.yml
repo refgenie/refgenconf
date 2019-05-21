@@ -1,0 +1,16 @@
+language: python
+python:
+  - "3.5"
+  - "3.6"
+  - "3.7"
+os:
+  - linux
+install:
+  - pip install .
+  - pip install -r requirements/requirements-dev.txt
+  - pip install -r requirements/requirements-test.txt
+script: pytest --cov=refgenconf
+branches:
+  only:
+    - dev
+    - master

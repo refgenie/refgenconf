@@ -108,7 +108,7 @@ class RefGenomeConfiguration(yacman.YacAttMap):
             will be returned.
         """
         return self._invert_genomes() \
-            if not asset else [g for g, am in self.genomes if asset in am]
+            if not asset else [g for g, am in self.genomes.items() if asset in am]
 
     def _invert_genomes(self):
         """ Map each asset type/kind/name to a collection of assemblies.

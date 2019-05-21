@@ -12,8 +12,6 @@ genomes:
   mm10:
     bowtie2: indexed_bowtie2
     blacklist: blacklist/mm10.bed
- 
   rCRSd:
     bowtie2: indexed_bowtie2
     bowtie: indexed_bowtie
-

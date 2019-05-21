@@ -63,7 +63,7 @@ class RefGenomeConfiguration(yacman.YacAttMap):
         :return Mapping[str, Iterable[str]]: mapping from assembly name to
             collection of available asset names.
         """
-        return {g: list(self.genomes[g].keys()) for g in self.genomes}
+        return {g: list(assets.keys()) for g, assets in self.genomes.items()}
 
     def assets_str(self, offset_text="  ", asset_sep="; ",
                    genome_assets_delim=": "):

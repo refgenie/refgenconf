@@ -1,3 +1,6 @@
 # refgenconf
 
+[![Build Status](https://travis-ci.org/databio/refgenconf.svg?branch=master)](https://travis-ci.org/databio/refgenconf)
+[![Coverage Status](https://coveralls.io/repos/github/databio/refgenconf/badge.svg?branch=master)](https://coveralls.io/github/vreuter/refgenconf?branch=master)
+
 Configuration object for refgenie *et al.*

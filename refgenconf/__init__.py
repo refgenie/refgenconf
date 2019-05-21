@@ -1,7 +1,7 @@
 from ._version import __version__
 
 from .refgenconf import *
+from .exceptions import *
 
-__classes__ = ["RefGenomeConfiguration"]
-__all__ = ["RefGenomeConfiguration",  "load_genome_config"]
+__all__ = ["RefGenomeConfiguration", "MissingAssetError", "MissingGenomeError"]
 

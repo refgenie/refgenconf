@@ -17,7 +17,7 @@ def test_get_asset_missing_genome(rgc, gname, aname):
     """ Request for asset on a missing genome raises appropriate error. """
     assert gname not in rgc
     with pytest.raises(MissingGenomeError):
-        rgc.get_asset(gname, aname)
+        _get_asset(rgc, gname, aname)
 
 
 @pytest.mark.parametrize("gname", get_conf_genomes())
@@ -25,7 +25,7 @@ def test_get_asset_missing_genome(rgc, gname, aname):
 def test_get_asset_missing_asset(rgc, gname, aname):
     assert gname in rgc.genomes
     with pytest.raises(MissingAssetError):
-        rgc.get_asset(gname, aname)
+        _get_asset(rgc, gname, aname)
 
 
 @pytest.mark.parametrize(
@@ -35,4 +35,8 @@ def test_get_asset_missing_asset(rgc, gname, aname):
      for k, v in data])
 def test_get_asset_accuracy(rgc, gname, aname, exp):
     """ Asset request for particular genome is accurate. """
-    assert exp == rgc.get_asset(gname, aname)
+    assert exp == _get_asset(rgc, gname, aname)
+
+
+def _get_asset(rgc, g, a):
+    return rgc.get_asset(g, a, strict_exists=None)

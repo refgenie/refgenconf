@@ -1,7 +1,15 @@
 #!/usr/bin/env python
 
+import os
+import sys
+if sys.version_info.major < 3:
+    from inspect import getargspec as finspect
+else:
+    from inspect import getfullargspec as finspect
+import warnings
 import yacman
 from .exceptions import *
+from ubiquerg import is_url
 
 CONFIG_ENV_VARS = ["REFGENIE"]
 CONFIG_NAME = "genome configuration"
@@ -13,18 +21,25 @@ __all__ = ["RefGenomeConfiguration", "select_genome_config",
 class RefGenomeConfiguration(yacman.YacAttMap):
     """ A sort of oracle of available reference genome assembly assets """
 
-    def get_asset(self, genome_name, asset_name):
+    def get_asset(self, genome_name, asset_name, strict_exists=True,
+                  check_exist=lambda p: os.path.exists(p) or is_url(p)):
         """
         Get an asset for a particular assembly.
 
         :param str genome_name: name of a reference genome assembly of interest
         :param str asset_name: name of the particular asset to fetch
+        :param bool | NoneType strict_exists: how to handle case in which
+            path doesn't exist; True to raise IOError, False to raise
+            RuntimeWarning, and None to do nothing at all
         :return str: path to the asset
+        :raise TypeError: if the existence check is not a one-arg function
         :raise refgenconf.MissingGenomeError: if the named assembly isn't known
             to this configuration instance
         :raise refgenconf.MissingAssetError: if the names assembly is known to
             this configuration instance, but the requested asset is unknown
         """
+        if not callable(check_exist) or len(finspect(check_exist).args) != 1:
+            raise TypeError("Asset existence check must be a one-arg function.")
         # is this even helpful? Just use RGC.genome_name.asset_name...
         try:
             genome = self.genomes[genome_name]
@@ -32,11 +47,23 @@ class RefGenomeConfiguration(yacman.YacAttMap):
             raise MissingGenomeError(
                 "Your genomes do not include {}".format(genome_name))
         try:
-            return genome[asset_name]
+            path = genome[asset_name]
         except KeyError:
             raise MissingAssetError(
                 "Genome {} exists, but index {} is missing".
                 format(genome_name, asset_name))
+        if strict_exists is not None and not check_exist(path):
+            msg = "Asset may not exist: {}".format(path)
+            for ext in [".tar.gz", ".tar"]:
+                p_prime = path + ext
+                if check_exist(p_prime):
+                    msg += "; {} does exist".format(p_prime)
+                    break
+            if strict_exists:
+                raise IOError(msg)
+            else:
+                warnings.warn(msg, RuntimeWarning)
+        return path
 
     def genomes_list(self):
         """

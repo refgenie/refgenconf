@@ -167,4 +167,3 @@ def select_genome_config(filename, conf_env_vars=None, conf_name=CONFIG_NAME):
     """
     return yacman.select_config(
         filename, conf_env_vars or CONFIG_ENV_VARS, conf_name)
-

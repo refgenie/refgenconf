@@ -168,13 +168,13 @@ class RefGenomeConfiguration(yacman.YacAttMap):
         :param Mapping data: data to be added/updated
         :return RefGenomeConfiguration: updated object
         """
-        if not hasattr(self, CONFIG_GENOMES_KEY) or not self[CONFIG_GENOMES_KEY]:
+        if not self.get(CONFIG_GENOMES_KEY):
             # if it's the first genome
             self[CONFIG_GENOMES_KEY] = attmap.PathExAttMap()
-        if not hasattr(self[CONFIG_GENOMES_KEY], genome):
+        if genome not in self[CONFIG_GENOMES_KEY]:
             self[CONFIG_GENOMES_KEY][genome] = attmap.PathExAttMap()
         if isinstance(asset, str):
-            if not hasattr(self[CONFIG_GENOMES_KEY][genome], asset):
+            if asset not in self[CONFIG_GENOMES_KEY][genome]:
                 # it's the first asset for this genome
                 self[CONFIG_GENOMES_KEY][genome][asset] = attmap.PathExAttMap()
             if data is not None:
@@ -183,6 +183,7 @@ class RefGenomeConfiguration(yacman.YacAttMap):
                 self[CONFIG_GENOMES_KEY][genome][asset].update(data)
         elif asset is not None:
             raise TypeError("asset has to be a string, got a {}".format(asset.__class__.__name__))
+
 
 def select_genome_config(filename, conf_env_vars=None, conf_name=CONFIG_NAME):
     """

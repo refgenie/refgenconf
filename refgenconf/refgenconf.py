@@ -183,6 +183,7 @@ class RefGenomeConfiguration(yacman.YacAttMap):
                 self[CONFIG_GENOMES_KEY][genome][asset].update(data)
         elif asset is not None:
             raise TypeError("asset has to be a string, got a {}".format(asset.__class__.__name__))
+        return self
 
 
 def select_genome_config(filename, conf_env_vars=None, conf_name=CONFIG_NAME):

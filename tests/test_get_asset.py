@@ -2,7 +2,8 @@
 
 import pytest
 from refgenconf import *
-from tests.conftest import get_conf_genomes, HG38_DATA, MM10_DATA, MITO_DATA
+from tests.conftest import get_conf_genomes, CONF_DATA, HG38_DATA, MM10_DATA, \
+    MITO_DATA
 
 __author__ = "Vince Reuter"
 __email__ = "vreuter@virginia.edu"
@@ -38,5 +39,25 @@ def test_get_asset_accuracy(rgc, gname, aname, exp):
     assert exp == _get_asset(rgc, gname, aname)
 
 
-def _get_asset(rgc, g, a):
-    return rgc.get_asset(g, a, strict_exists=None)
+@pytest.mark.parametrize("check_exist", [lambda: True, lambda _1, _2: True])
+@pytest.mark.parametrize(
+    ["gname", "aname"], [(g, a) for g, data in CONF_DATA for a in data])
+def test_check_exist_param_type(rgc, check_exist, gname, aname):
+    with pytest.raises(TypeError):
+        rgc.get_asset(gname, aname, check_exist=check_exist)
+
+
+@pytest.mark.skip("not implemented")
+def test_existence_check_strict():
+    pass
+
+
+@pytest.mark.skip("not implemented")
+def test_existence_check_non_strict():
+    pass
+
+
+def _get_asset(rgc, g, a, **kwargs):
+    kwds = {"strict_exists": None}
+    kwds.update(kwargs)
+    return rgc.get_asset(g, a, **kwds)

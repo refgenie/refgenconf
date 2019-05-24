@@ -1,5 +1,7 @@
 from setuptools import setup
 import sys
+if sys.version_info < (3, 5):
+    raise Exception("Minimum version is 3.5")
 
 PACKAGE_NAME = "refgenconf"
 
@@ -15,10 +17,6 @@ with open("requirements/requirements-all.txt", "r") as reqs_file:
 
 # Additional keyword arguments for setup().
 extra = {"install_requires": DEPENDENCIES}
-
-# 2to3
-if sys.version_info >= (3, ):
-    extra["use_2to3"] = True
 
 with open("refgenconf/_version.py", 'r') as versionfile:
     version = versionfile.readline().split()[-1].strip("\"'\n")

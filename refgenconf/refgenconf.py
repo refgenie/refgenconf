@@ -1,11 +1,7 @@
 #!/usr/bin/env python
 
+from inspect import getfullargspec as finspect
 import os
-import sys
-if sys.version_info.major < 3:
-    from inspect import getargspec as finspect
-else:
-    from inspect import getfullargspec as finspect
 import warnings
 import yacman
 from .exceptions import *

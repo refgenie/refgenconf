@@ -11,6 +11,15 @@ __author__ = "Vince Reuter"
 __email__ = "vreuter@virginia.edu"
 
 
+@pytest.fixture
+def temp_asset_spec(tmpdir):
+    """ Provide test case with a temp asset path. """
+    fn = "semaphore.txt"
+    fp = tmpdir.join(fn).strpath
+    assert not os.path.exists(fp)
+    return fp
+
+
 @pytest.mark.parametrize(
     "gname", ["not-a-genome", "this_should_fail", "YoUrCrazeeOrganism"])
 @pytest.mark.parametrize("aname", [
@@ -26,6 +35,7 @@ def test_get_asset_missing_genome(rgc, gname, aname):
 @pytest.mark.parametrize("gname", get_conf_genomes())
 @pytest.mark.parametrize("aname", ["not-an-asset", "asset_fails"])
 def test_get_asset_missing_asset(rgc, gname, aname):
+    """ Request for unknown asset raises appropriate error. """
     assert gname in rgc.genomes
     with pytest.raises(MissingAssetError):
         _get_asset(rgc, gname, aname)
@@ -48,14 +58,6 @@ def test_check_exist_param_type(rgc, check_exist, gname, aname):
     """ The asset existence check must be a one-arg function. """
     with pytest.raises(TypeError):
         rgc.get_asset(gname, aname, check_exist=check_exist)
-
-
-@pytest.fixture
-def temp_asset_spec(tmpdir):
-    fn = "semaphore.txt"
-    fp = tmpdir.join(fn).strpath
-    assert not os.path.exists(fp)
-    return fp
 
 
 @pytest.mark.parametrize(
@@ -89,6 +91,24 @@ def test_existence_check_function(
         pass
     with ExpectContext(get_exp_from_path(temp_asset_spec), _get_asset) as ctx:
         ctx(rgc, gname, aname, check_exist=check_exist, strict_exists=True)
+
+
+@pytest.mark.parametrize(["extension", "exp_in_msg"], [
+    (".tar", True), (".tar.gz", True), (".untar", False)])
+@pytest.mark.parametrize(["strict", "ctx", "err", "get_msg"], [
+    (False, pytest.warns, RuntimeWarning, lambda r: str(r[0])),
+    (True, pytest.raises, IOError, lambda r: str(r.value))])
+def test_tar_check(rgc, temp_asset_spec, extension, strict, ctx, err, get_msg,
+                   exp_in_msg):
+    """ Asset fetch checks for TAR variant of true asset path value. """
+    gname, aname = "tmpgen", "testasset"
+    rgc.genomes[gname] = {aname: temp_asset_spec}
+    tarpath = temp_asset_spec + extension
+    with open(tarpath, 'w'):
+        pass
+    with ctx(err) as rec:
+        _get_asset(rgc, gname, aname, strict_exists=strict)
+    assert (tarpath in get_msg(rec)) is exp_in_msg
 
 
 def _get_asset(rgc, g, a, **kwargs):

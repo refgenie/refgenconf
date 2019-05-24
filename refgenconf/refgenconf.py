@@ -8,14 +8,10 @@ from attmap import PathExAttMap as PXAM
 from collections import Mapping
 from .exceptions import *
 from ubiquerg import is_url
+from .const import *
 
-CONFIG_ENV_VARS = ["REFGENIE"]
-CONFIG_NAME = "genome configuration"
-CONFIG_GENOMES_KEY = "genomes"
-CONFIG_ASSET_PATH_KEY = "path"
 
-__all__ = ["RefGenomeConfiguration", "select_genome_config", "CONFIG_ENV_VARS", "CONFIG_NAME",
-           "CONFIG_GENOMES_KEY", "CONFIG_ASSET_PATH_KEY"]
+__all__ = ["RefGenomeConfiguration", "select_genome_config"]
 
 
 class RefGenomeConfiguration(yacman.YacAttMap):
@@ -173,19 +169,19 @@ class RefGenomeConfiguration(yacman.YacAttMap):
                 return False
             if not isinstance(obj, datatype):
                 raise TypeError("{} must be {}; got {}".format(
-                    name, datatype.__class__.__name__, type(obj).__name__))
+                    name, datatype.__name__, type(obj).__name__))
             return True
 
-        self.setdefault(CONFIG_GENOMES_KEY, PXAM())
-        self[CONFIG_GENOMES_KEY].setdefault(genome, PXAM())
+        self.setdefault(CFG_GENOMES_KEY, PXAM())
+        self[CFG_GENOMES_KEY].setdefault(genome, PXAM())
         if check(asset, str, "asset"):
-            self[CONFIG_GENOMES_KEY][genome].setdefault(asset, PXAM())
+            self[CFG_GENOMES_KEY][genome].setdefault(asset, PXAM())
             if check(data, Mapping, "data"):
-                self[CONFIG_GENOMES_KEY][genome][asset].update(data)
+                self[CFG_GENOMES_KEY][genome][asset].update(data)
         return self
 
 
-def select_genome_config(filename, conf_env_vars=None, conf_name=CONFIG_NAME):
+def select_genome_config(filename, conf_env_vars=None, conf_name=CFG_NAME):
     """
     Get path to genome configuration file.
 
@@ -196,4 +192,4 @@ def select_genome_config(filename, conf_env_vars=None, conf_name=CONFIG_NAME):
     :return str: path to genome configuration file
     """
     return yacman.select_config(
-        filename, conf_env_vars or CONFIG_ENV_VARS, conf_name)
+        filename, conf_env_vars or CFG_ENV_VARS, conf_name)

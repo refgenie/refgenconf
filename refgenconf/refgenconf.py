@@ -31,6 +31,8 @@ class RefGenomeConfiguration(yacman.YacAttMap):
         :param bool | NoneType strict_exists: how to handle case in which
             path doesn't exist; True to raise IOError, False to raise
             RuntimeWarning, and None to do nothing at all
+        :param function(callable) -> bool check_exist: how to check for
+            asset/path existence
         :return str: path to the asset
         :raise TypeError: if the existence check is not a one-arg function
         :raise refgenconf.MissingGenomeError: if the named assembly isn't known

@@ -4,7 +4,7 @@ from inspect import getfullargspec as finspect
 import os
 import warnings
 import yacman
-import attmap
+from attmap import PathExAttMap as PXAM
 from collections import Mapping
 from .exceptions import *
 from ubiquerg import is_url
@@ -168,21 +168,20 @@ class RefGenomeConfiguration(yacman.YacAttMap):
         :param Mapping data: data to be added/updated
         :return RefGenomeConfiguration: updated object
         """
-        if not self.get(CONFIG_GENOMES_KEY):
-            # if it's the first genome
-            self[CONFIG_GENOMES_KEY] = attmap.PathExAttMap()
-        if genome not in self[CONFIG_GENOMES_KEY]:
-            self[CONFIG_GENOMES_KEY][genome] = attmap.PathExAttMap()
-        if isinstance(asset, str):
-            if asset not in self[CONFIG_GENOMES_KEY][genome]:
-                # it's the first asset for this genome
-                self[CONFIG_GENOMES_KEY][genome][asset] = attmap.PathExAttMap()
-            if data is not None:
-                if not isinstance(data, Mapping):
-                    raise TypeError("data has to be a Mapping, got a {}".format(data.__class__.__name__))
+        def check(obj, datatype, name):
+            if obj is None:
+                return False
+            if not isinstance(obj, datatype):
+                raise TypeError("{} must be {}; got {}".format(
+                    name, datatype.__class__.__name__, type(obj).__name__))
+            return True
+
+        self.setdefault(CONFIG_GENOMES_KEY, PXAM())
+        self[CONFIG_GENOMES_KEY].setdefault(genome, PXAM())
+        if check(asset, str, "asset"):
+            self[CONFIG_GENOMES_KEY][genome].setdefault(asset, PXAM())
+            if check(data, Mapping, "data"):
                 self[CONFIG_GENOMES_KEY][genome][asset].update(data)
-        elif asset is not None:
-            raise TypeError("asset has to be a string, got a {}".format(asset.__class__.__name__))
         return self
 
 

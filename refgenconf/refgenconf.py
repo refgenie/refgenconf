@@ -17,6 +17,10 @@ __all__ = ["RefGenomeConfiguration", "select_genome_config"]
 class RefGenomeConfiguration(yacman.YacAttMap):
     """ A sort of oracle of available reference genome assembly assets """
 
+    def __init__(self, entries=None):
+        super(RefGenomeConfiguration, self).__init__(entries)
+        self.setdefault(CFG_GENOMES_KEY, PXAM())
+
     def get_asset(self, genome_name, asset_name, strict_exists=True,
                   check_exist=lambda p: os.path.exists(p) or is_url(p)):
         """
@@ -172,24 +176,22 @@ class RefGenomeConfiguration(yacman.YacAttMap):
                     name, datatype.__name__, type(obj).__name__))
             return True
 
-        self.setdefault(CFG_GENOMES_KEY, PXAM())
-        self[CFG_GENOMES_KEY].setdefault(genome, PXAM())
-        if check(asset, str, "asset"):
-            self[CFG_GENOMES_KEY][genome].setdefault(asset, PXAM())
-            if check(data, Mapping, "data"):
-                self[CFG_GENOMES_KEY][genome][asset].update(data)
+        if check(genome, str, "genome"):
+            self[CFG_GENOMES_KEY].setdefault(genome, PXAM())
+            if check(asset, str, "asset"):
+                self[CFG_GENOMES_KEY][genome].setdefault(asset, PXAM())
+                if check(data, Mapping, "data"):
+                    self[CFG_GENOMES_KEY][genome][asset].update(data)
         return self
 
 
-def select_genome_config(filename, conf_env_vars=None, conf_name=CFG_NAME):
+def select_genome_config(filename, conf_env_vars=None):
     """
     Get path to genome configuration file.
 
     :param str filename: name/path of genome configuration file
     :param Iterable[str] conf_env_vars: names of environment variables to
         consider; basically, a prioritized search list
-    :param str conf_name: name of the kind of configuration file to request
     :return str: path to genome configuration file
     """
-    return yacman.select_config(
-        filename, conf_env_vars or CFG_ENV_VARS, conf_name)
+    return yacman.select_config(filename, conf_env_vars or CFG_ENV_VARS)

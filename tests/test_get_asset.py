@@ -1,5 +1,6 @@
 """ Tests for ReferenceGenomeConfiguration.get_asset """
 
+import os
 import pytest
 from refgenconf import *
 from tests.conftest import get_conf_genomes, CONF_DATA, HG38_DATA, MM10_DATA, \
@@ -43,17 +44,35 @@ def test_get_asset_accuracy(rgc, gname, aname, exp):
 @pytest.mark.parametrize(
     ["gname", "aname"], [(g, a) for g, data in CONF_DATA for a in data])
 def test_check_exist_param_type(rgc, check_exist, gname, aname):
+    """ The asset existence check must be a one-arg function. """
     with pytest.raises(TypeError):
         rgc.get_asset(gname, aname, check_exist=check_exist)
 
 
-@pytest.mark.skip("not implemented")
-def test_existence_check_strict():
-    pass
+@pytest.mark.parametrize(
+    ["strict", "ctxmgr", "error"], [(False, pytest.warns, RuntimeWarning), (True, pytest.raises, IOError)])
+def test_existence_check_strictness(rgc, tmpdir, strict, ctxmgr, error):
+    """ Strict asset existence check raises IOError iff path existence fails. """
+    fn = "semaphore.txt"
+    fp = tmpdir.join(fn).strpath
+    assert not os.path.exists(fp)
+    gname = "tmpgen"
+    aname = "testasset"
+    rgc.genomes[gname] = {aname: fp}
+    def fetch():
+        return _get_asset(rgc, gname, aname, strict_exists=strict)
+    with ctxmgr(error):
+        fetch()
+    with open(fp, 'w'):
+        pass
+    try:
+        fetch()
+    except Exception as e:
+        pytest.fail(str(e))
 
 
 @pytest.mark.skip("not implemented")
-def test_existence_check_non_strict():
+def test_existence_check_function():
     pass
 
 

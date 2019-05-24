@@ -164,7 +164,7 @@ class RefGenomeConfiguration(yacman.YacAttMap):
         If a requested genome-asset mapping is missing, it will be created
 
         :param str genome: genome to be added/updated
-        :param str asset: genome to be added/updated
+        :param str asset: asset to be added/updated
         :param Mapping data: data to be added/updated
         :return RefGenomeConfiguration: updated object
         """

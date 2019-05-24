@@ -4,14 +4,18 @@ from inspect import getfullargspec as finspect
 import os
 import warnings
 import yacman
+import attmap
+from collections import Mapping
 from .exceptions import *
 from ubiquerg import is_url
 
 CONFIG_ENV_VARS = ["REFGENIE"]
 CONFIG_NAME = "genome configuration"
+CONFIG_GENOMES_KEY = "genomes"
+CONFIG_ASSET_PATH_KEY = "path"
 
-__all__ = ["RefGenomeConfiguration", "select_genome_config",
-           "CONFIG_ENV_VARS", "CONFIG_NAME"]
+__all__ = ["RefGenomeConfiguration", "select_genome_config", "CONFIG_ENV_VARS", "CONFIG_NAME",
+           "CONFIG_GENOMES_KEY", "CONFIG_ASSET_PATH_KEY"]
 
 
 class RefGenomeConfiguration(yacman.YacAttMap):
@@ -154,6 +158,31 @@ class RefGenomeConfiguration(yacman.YacAttMap):
                 genomes.setdefault(a, []).append(g)
         return genomes
 
+    def update_genomes(self, genome, asset=None, data=None):
+        """
+        Updates the genomes in RefGenomeConfiguration object at any level.
+        If a requested genome-asset mapping is missing, it will be created
+
+        :param str genome: genome to be added/updated
+        :param str asset: asset to be added/updated
+        :param Mapping data: data to be added/updated
+        :return RefGenomeConfiguration: updated object
+        """
+        if not hasattr(self, CONFIG_GENOMES_KEY) or not self[CONFIG_GENOMES_KEY]:
+            # if it's the first genome
+            self[CONFIG_GENOMES_KEY] = attmap.PathExAttMap()
+        if not hasattr(self[CONFIG_GENOMES_KEY], genome):
+            self[CONFIG_GENOMES_KEY][genome] = attmap.PathExAttMap()
+        if isinstance(asset, str):
+            if not hasattr(self[CONFIG_GENOMES_KEY][genome], asset):
+                # it's the first asset for this genome
+                self[CONFIG_GENOMES_KEY][genome][asset] = attmap.PathExAttMap()
+            if data is not None:
+                if not isinstance(data, Mapping):
+                    raise TypeError("data has to be a Mapping, got a {}".format(data.__class__.__name__))
+                self[CONFIG_GENOMES_KEY][genome][asset].update(data)
+        elif asset is not None:
+            raise TypeError("asset has to be a string, got a {}".format(asset.__class__.__name__))
 
 def select_genome_config(filename, conf_env_vars=None, conf_name=CONFIG_NAME):
     """

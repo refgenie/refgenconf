@@ -12,6 +12,7 @@ __email__ = "vreuter@virginia.edu"
 
 
 def _touch(p):
+    """ Ensure path existence, whether file or folder. """
     if os.path.splitext(p)[1]:
         with open(p, 'w'):
             pass

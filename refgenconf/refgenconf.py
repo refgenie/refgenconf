@@ -11,14 +11,14 @@ from ubiquerg import is_url
 from .const import *
 
 
-__all__ = ["RefGenomeConfiguration", "select_genome_config"]
+__all__ = ["RefGenConf", "select_genome_config"]
 
 
-class RefGenomeConfiguration(yacman.YacAttMap):
+class RefGenConf(yacman.YacAttMap):
     """ A sort of oracle of available reference genome assembly assets """
 
     def __init__(self, entries=None):
-        super(RefGenomeConfiguration, self).__init__(entries)
+        super(RefGenConf, self).__init__(entries)
         self.setdefault(CFG_GENOMES_KEY, PXAM())
 
     def get_asset(self, genome_name, asset_name, strict_exists=True,
@@ -160,13 +160,13 @@ class RefGenomeConfiguration(yacman.YacAttMap):
 
     def update_genomes(self, genome, asset=None, data=None):
         """
-        Updates the genomes in RefGenomeConfiguration object at any level.
+        Updates the genomes in RefGenConf object at any level.
         If a requested genome-asset mapping is missing, it will be created
 
         :param str genome: genome to be added/updated
         :param str asset: asset to be added/updated
         :param Mapping data: data to be added/updated
-        :return RefGenomeConfiguration: updated object
+        :return RefGenConf: updated object
         """
         def check(obj, datatype, name):
             if obj is None:

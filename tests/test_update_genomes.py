@@ -2,7 +2,7 @@
 
 import pytest
 from attmap import PathExAttMap
-from refgenconf import CFG_GENOMES_KEY, RefGenomeConfiguration as RGC
+from refgenconf import CFG_GENOMES_KEY, RefGenConf as RGC
 from tests.conftest import get_conf_genomes, CONF_DATA
 
 __author__ = "Vince Reuter"

@@ -3,7 +3,7 @@
 import pytest
 import yaml
 from attmap import PathExAttMap
-from refgenconf import RefGenomeConfiguration
+from refgenconf import RefGenConf
 
 __author__ = "Vince Reuter"
 __email__ = "vreuter@virginia.edu"
@@ -40,4 +40,4 @@ def rgc(tmpdir_factory):
     with open(fp, 'w') as f:
         f.write("\n".join(extra_kv_lines + ["  " + l for l in gen_data_lines]))
     with open(fp, 'r') as f:
-        return RefGenomeConfiguration(yaml.load(f, yaml.SafeLoader))
+        return RefGenConf(yaml.load(f, yaml.SafeLoader))

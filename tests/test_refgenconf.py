@@ -2,5 +2,5 @@ import refgenconf
 
 
 def test_rgc():
-	rgc = refgenconf.RefGenomeConfiguration("refgenie.yaml")
+	rgc = refgenconf.RefGenConf("refgenie.yaml")
 	print(rgc.genomes)

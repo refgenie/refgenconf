@@ -4,5 +4,4 @@ from .refgenconf import *
 from .exceptions import *
 from .const import *
 
-__all__ = ["RefGenomeConfiguration", "MissingAssetError", "MissingGenomeError"] + CFG_KEY_NAMES
-
+__all__ = ["RefGenConf", "MissingAssetError", "MissingGenomeError"] + CFG_KEY_NAMES

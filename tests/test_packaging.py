@@ -10,7 +10,7 @@ __email__ = "vreuter@virginia.edu"
 
 @pytest.mark.parametrize(
     ["obj_name", "typecheck"],
-    [("RefGenomeConfiguration", isclass),
+    [("RefGenConf", isclass),
      ("MissingAssetError", lambda obj: issubclass(obj, RefgenconfError)),
      ("MissingGenomeError", lambda obj: issubclass(obj, RefgenconfError))])
 def test_top_level_exports(obj_name, typecheck):

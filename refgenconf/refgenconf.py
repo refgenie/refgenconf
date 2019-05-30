@@ -21,6 +21,52 @@ class RefGenConf(yacman.YacAttMap):
         super(RefGenConf, self).__init__(entries)
         self.setdefault(CFG_GENOMES_KEY, PXAM())
 
+
+    def assets_dict(self):
+        """
+        Map each assembly name to a list of available asset names.
+
+        :return Mapping[str, Iterable[str]]: mapping from assembly name to
+            collection of available asset names.
+        """
+        return {g: list(assets.keys()) for g, assets in self.genomes.items()}
+
+    def assets_str(self, offset_text="  ", asset_sep="; ",
+                   genome_assets_delim=": "):
+        """
+        Create a block of text representing genome-to-asset mapping.
+
+        :param str offset_text: text that begins each line of the text
+            representation that's produced
+        :param str asset_sep: the delimiter between names of types of assets,
+            within each genome line
+        :param str genome_assets_delim: the delimiter to place between
+            reference genome assembly name and its list of asset names
+        :return str: text representing genome-to-asset mapping
+        """
+        def make_line(gen, assets):
+            return offset_text + "{}{}{}".format(
+                gen, genome_assets_delim, asset_sep.join(list(assets)))
+        return "\n".join([make_line(g, am) for g, am in self.genomes.items()])
+
+    def genomes_list(self):
+        """
+        Get a list of this configuration's reference genome assembly IDs.
+
+        :return Iterable[str]: list of this configuration's reference genome
+            assembly IDs
+        """
+        return list(self.genomes.keys())
+
+    def genomes_str(self):
+        """
+        Get as single string this configuration's reference genome assembly IDs.
+
+        :return str: single string that lists this configuration's known
+            reference genome assembly IDs
+        """
+        return ", ".join(self.genomes_list())
+
     def get_asset(self, genome_name, asset_name, strict_exists=True,
                   check_exist=lambda p: os.path.exists(p) or is_url(p)):
         """
@@ -67,51 +113,6 @@ class RefGenConf(yacman.YacAttMap):
                 warnings.warn(msg, RuntimeWarning)
         return path
 
-    def genomes_list(self):
-        """
-        Get a list of this configuration's reference genome assembly IDs.
-
-        :return Iterable[str]: list of this configuration's reference genome
-            assembly IDs
-        """
-        return list(self.genomes.keys())
-
-    def genomes_str(self):
-        """
-        Get as single string this configuration's reference genome assembly IDs.
-
-        :return str: single string that lists this configuration's known
-            reference genome assembly IDs
-        """
-        return ", ".join(self.genomes_list())
-
-    def assets_dict(self):
-        """
-        Map each assembly name to a list of available asset names.
-
-        :return Mapping[str, Iterable[str]]: mapping from assembly name to
-            collection of available asset names.
-        """
-        return {g: list(assets.keys()) for g, assets in self.genomes.items()}
-
-    def assets_str(self, offset_text="  ", asset_sep="; ",
-                   genome_assets_delim=": "):
-        """
-        Create a block of text representing genome-to-asset mapping.
-
-        :param str offset_text: text that begins each line of the text
-            representation that's produced
-        :param str asset_sep: the delimiter between names of types of assets,
-            within each genome line
-        :param str genome_assets_delim: the delimiter to place between
-            reference genome assembly name and its list of asset names
-        :return str: text representing genome-to-asset mapping
-        """
-        def make_line(gen, assets):
-            return offset_text + "{}{}{}".format(
-                gen, genome_assets_delim, asset_sep.join(list(assets)))
-        return "\n".join([make_line(g, am) for g, am in self.genomes.items()])
-
     def list_assets_by_genome(self, genome=None):
         """
         List types/names of assets that are available for one--or all--genomes.
@@ -139,25 +140,6 @@ class RefGenConf(yacman.YacAttMap):
         return self._invert_genomes() \
             if not asset else [g for g, am in self.genomes.items() if asset in am]
 
-    def _invert_genomes(self):
-        """ Map each asset type/kind/name to a collection of assemblies.
-
-        A configuration file encodes assets by genome, but in some use cases
-        it's helpful to invert the direction of this mapping. The value of the
-        asset key/name may differ by genome, so that information is
-        necessarily lost in this inversion, but we can collect genome IDs by
-        asset ID.
-
-        :return Mapping[str, Iterable[str]] binding between asset kind/key/name
-            and collection of reference genome assembly names for which the
-            asset type is available
-        """
-        genomes = {}
-        for g, am in self.genomes.items():
-            for a in am.keys():
-                genomes.setdefault(a, []).append(g)
-        return genomes
-
     def update_genomes(self, genome, asset=None, data=None):
         """
         Updates the genomes in RefGenConf object at any level.
@@ -183,6 +165,25 @@ class RefGenConf(yacman.YacAttMap):
                 if check(data, Mapping, "data"):
                     self[CFG_GENOMES_KEY][genome][asset].update(data)
         return self
+
+    def _invert_genomes(self):
+        """ Map each asset type/kind/name to a collection of assemblies.
+
+        A configuration file encodes assets by genome, but in some use cases
+        it's helpful to invert the direction of this mapping. The value of the
+        asset key/name may differ by genome, so that information is
+        necessarily lost in this inversion, but we can collect genome IDs by
+        asset ID.
+
+        :return Mapping[str, Iterable[str]] binding between asset kind/key/name
+            and collection of reference genome assembly names for which the
+            asset type is available
+        """
+        genomes = {}
+        for g, am in self.genomes.items():
+            for a in am.keys():
+                genomes.setdefault(a, []).append(g)
+        return genomes
 
 
 def select_genome_config(filename, conf_env_vars=None):

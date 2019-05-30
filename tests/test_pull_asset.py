@@ -54,6 +54,7 @@ def test_no_unpack(rgc, genome, asset, temp_genome_config_file):
 @pytest.mark.parametrize("exp_file_ext", [".tar", ".txt"])
 def test_pull_asset_download(rgc, genome, asset, gencfg, exp_file_ext,
                              remove_genome_folder):
+    """ Verify download and unpacking of tarball asset. """
     exp_file = os.path.join(rgc.genome_folder, genome, asset + exp_file_ext)
     assert not os.path.exists(exp_file)
     rgc.pull_asset(genome, asset, gencfg, get_url=_build_url_fetch(genome, asset))
@@ -65,11 +66,13 @@ def test_pull_asset_download(rgc, genome, asset, gencfg, exp_file_ext,
 @pytest.mark.skip("not implemented")
 @pytest.mark.parametrize(["genome", "asset"], REQUESTS)
 def test_pull_asset_updates_genome_config(genome, asset):
+    """ Verify asset pull's side-effect of updating the genome config file. """
     pass
 
 
 @pytest.mark.remote_data
 @pytest.mark.skip("not implemented")
 @pytest.mark.parametrize(["genome", "asset"], REQUESTS)
-def test_pull_asset_updates_genome_config(genome, asset):
+def test_pull_asset_returns_key_value_pair(genome, asset):
+    """ Verify asset pull returns asset name, and value if pulled. """
     pass

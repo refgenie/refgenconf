@@ -17,6 +17,16 @@ REQUESTS = [(g, a) for g, ext_by_asset in REMOTE_ASSETS.items()
 
 
 @pytest.fixture
+def remove_genome_folder(request):
+    """ Remove a test case's folder for a particular genome. """
+    folder = request.getfixturevalue("rgc").genome_folder
+    genome = request.getfixturevalue("genome")
+    path = os.path.join(folder, genome)
+    yield
+    shutil.rmtree(path)
+
+
+@pytest.fixture
 def gencfg(temp_genome_config_file):
     fn = "".join(random.choice(string.ascii_letters) for _ in range(15)) + ".yaml"
     fp = os.path.join(os.path.dirname(temp_genome_config_file), fn)
@@ -41,18 +51,14 @@ def test_no_unpack(rgc, genome, asset, temp_genome_config_file):
 
 @pytest.mark.remote_data
 @pytest.mark.parametrize(["genome", "asset"], REQUESTS)
-def test_pull_asset_downloads_to_file(rgc, genome, asset, gencfg):
-    exp_tar = os.path.join(rgc.genome_folder, genome, asset + ".tar")
-    assert not os.path.exists(exp_tar)
+@pytest.mark.parametrize("exp_file_ext", [".tar", ".txt"])
+def test_pull_asset_download(rgc, genome, asset, gencfg, exp_file_ext,
+                             remove_genome_folder):
+    exp_file = os.path.join(rgc.genome_folder, genome, asset + exp_file_ext)
+    assert not os.path.exists(exp_file)
     rgc.pull_asset(genome, asset, gencfg, get_url=_build_url_fetch(genome, asset))
-    assert os.path.isfile(exp_tar)
-
-
-@pytest.mark.remote_data
-@pytest.mark.skip("not implemented")
-@pytest.mark.parametrize(["genome", "asset"], REQUESTS)
-def test_pull_asset_unpacks_tarball(genome, asset):
-    pass
+    assert os.path.isfile(exp_file)
+    os.unlink(exp_file)
 
 
 @pytest.mark.remote_data

@@ -147,7 +147,8 @@ class RefGenConf(yacman.YacAttMap):
         return self._invert_genomes() \
             if not asset else [g for g, am in self.genomes.items() if asset in am]
 
-    def pull_asset(self, genome, assets, genome_config, unpack=True):
+    def pull_asset(self, genome, assets, genome_config, unpack=True,
+                   get_url=lambda base, g, a: "{}/asset/{}/{}/archive".format(base, g, a)):
         """
         Download and possibly unpack one or more assets for a given ref gen.
 
@@ -155,6 +156,8 @@ class RefGenConf(yacman.YacAttMap):
         :param str assets: name(s) of particular asset(s) to fetch
         :param str genome_config: path to genome configuration file to update
         :param bool unpack: whether to unpack a tarball
+        :param function(str, str, str) -> str: how to build URL from genome
+            server URL base, genome, and asset
         :return Iterable[(str, str | NoneType)]: collection of pairs of asset
             name and folder name (key-value pair with which genome config file
             is updated) if pull succeeds, else asset key and a null value.
@@ -164,9 +167,9 @@ class RefGenConf(yacman.YacAttMap):
         elif not isinstance(assets, Iterable):
             raise TypeError("Assets to pull should be single name or collection "
                             "of names; got {} ({})".format(assets, type(assets)))
-        return [self._pull_asset(genome, a, genome_config, unpack) for a in assets]
+        return [self._pull_asset(genome, a, genome_config, unpack, get_url) for a in assets]
 
-    def _pull_asset(self, genome, asset, genome_config, unpack=True):
+    def _pull_asset(self, genome, asset, genome_config, unpack, get_url):
 
         _LOGGER.info("Starting pull for {}: {}".format(genome, asset))
 
@@ -188,8 +191,7 @@ class RefGenConf(yacman.YacAttMap):
             _LOGGER.error("Missing genomes folder? {}".format(self.genome_folder))
             return asset, None
 
-        url = "{base}/asset/{g}/{a}/archive".format(
-            base=self.genome_server, g=genome, a=asset)
+        url = get_url(self.genome_server, genome, asset)
         # Download the file from `url` and save it locally under `filepath`:
         _LOGGER.info("Downloading URL: {}".format(url))
         try:
@@ -212,7 +214,7 @@ class RefGenConf(yacman.YacAttMap):
                 import tarfile
                 with tarfile.open(filepath) as tf:
                     tf.extractall(path=outdir)
-            _LOGGER.debug("Unpackaged archive into: {}".format(outdir))
+            _LOGGER.debug("Unpacked archive into: {}".format(outdir))
 
             # Write to config file
             # TODO: Figure out how we want to handle the asset_key to folder_name
@@ -252,7 +254,11 @@ class RefGenConf(yacman.YacAttMap):
             if check(asset, str, "asset"):
                 self[CFG_GENOMES_KEY][genome].setdefault(asset, PXAM())
                 if check(data, Mapping, "data"):
-                    self[CFG_GENOMES_KEY][genome][asset].update(data)
+                    try:
+                        self[CFG_GENOMES_KEY][genome][asset].update(data)
+                    except AttributeError:
+                        print("ASSET: {}".format(self[CFG_GENOMES_KEY][genome][asset]))
+                        raise
         return self
 
     def _invert_genomes(self):

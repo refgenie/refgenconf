@@ -31,12 +31,17 @@ def get_conf_genomes():
 
 
 @pytest.fixture(scope="session")
-def rgc(tmpdir_factory):
+def temp_genome_config_file(tmpdir_factory):
+    return tmpdir_factory.mktemp("data").join("refgenie.yaml").strpath
+
+
+@pytest.fixture(scope="session")
+def rgc(temp_genome_config_file):
     extra_kv_lines = ["genome_folder: $GENOMES",
                       "genome_server: http://localhost",
                       "genomes:"]
     gen_data_lines = PathExAttMap(CONF_DATA).get_yaml_lines()
-    fp = tmpdir_factory.mktemp("data").join("refgenie.yaml").strpath
+    fp = temp_genome_config_file
     with open(fp, 'w') as f:
         f.write("\n".join(extra_kv_lines + ["  " + l for l in gen_data_lines]))
     with open(fp, 'r') as f:

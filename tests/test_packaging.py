@@ -1,7 +1,7 @@
 """ Validate what's available directly on the top-level import. """
 
 import pytest
-from inspect import isclass
+from inspect import isclass, isfunction
 from refgenconf.exceptions import RefgenconfError
 
 __author__ = "Vince Reuter"
@@ -10,7 +10,7 @@ __email__ = "vreuter@virginia.edu"
 
 @pytest.mark.parametrize(
     ["obj_name", "typecheck"],
-    [("RefGenConf", isclass),
+    [("RefGenConf", isclass), ("select_genome_config", isfunction),
      ("MissingAssetError", lambda obj: issubclass(obj, RefgenconfError)),
      ("MissingGenomeError", lambda obj: issubclass(obj, RefgenconfError))])
 def test_top_level_exports(obj_name, typecheck):

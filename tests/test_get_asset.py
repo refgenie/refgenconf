@@ -3,8 +3,8 @@
 import os
 import pytest
 from refgenconf import *
-from tests.conftest import get_conf_genomes, CONF_DATA, HG38_DATA, MM10_DATA, \
-    MITO_DATA
+from tests.conftest import get_conf_genomes, lift_into_path_pair, CONF_DATA, \
+    HG38_DATA, MM10_DATA, MITO_DATA
 from veracitools import ExpectContext
 
 __author__ = "Vince Reuter"
@@ -48,7 +48,7 @@ def test_get_asset_missing_asset(rgc, gname, aname):
      for k, v in data])
 def test_get_asset_accuracy(rgc, gname, aname, exp):
     """ Asset request for particular genome is accurate. """
-    assert exp == _get_asset(rgc, gname, aname)
+    assert lift_into_path_pair(exp) == _get_asset(rgc, gname, aname).to_dict()
 
 
 @pytest.mark.parametrize("check_exist", [lambda: True, lambda _1, _2: True])

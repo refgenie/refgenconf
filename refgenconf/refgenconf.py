@@ -1,17 +1,24 @@
 #!/usr/bin/env python
 
+from collections import Iterable, Mapping
 from inspect import getfullargspec as finspect
+import logging
 import os
+import shutil
+from urllib.error import HTTPError
+import urllib.request
 import warnings
-import yacman
 from attmap import PathExAttMap as PXAM
-from collections import Mapping
-from .exceptions import *
 from ubiquerg import is_url
+import yacman
 from .const import *
+from .exceptions import *
 
 
-__all__ = ["RefGenConf", "select_genome_config"]
+_LOGGER = logging.getLogger(__name__)
+
+
+__all__ = ["RefGenConf"]
 
 
 class RefGenConf(yacman.YacAttMap):
@@ -140,6 +147,85 @@ class RefGenConf(yacman.YacAttMap):
         return self._invert_genomes() \
             if not asset else [g for g, am in self.genomes.items() if asset in am]
 
+    def pull_asset(self, genome, assets, genome_config, unpack=True,
+                   get_url=lambda base, g, a: "{}/asset/{}/{}/archive".format(base, g, a)):
+        """
+        Download and possibly unpack one or more assets for a given ref gen.
+
+        :param str genome: name of a reference genome assembly of interest
+        :param str assets: name(s) of particular asset(s) to fetch
+        :param str genome_config: path to genome configuration file to update
+        :param bool unpack: whether to unpack a tarball
+        :param function(str, str, str) -> str: how to build URL from genome
+            server URL base, genome, and asset
+        :return Iterable[(str, str | NoneType)]: collection of pairs of asset
+            name and folder name (key-value pair with which genome config file
+            is updated) if pull succeeds, else asset key and a null value.
+        """
+        if isinstance(assets, str):
+            assets = [assets]
+        elif not isinstance(assets, Iterable):
+            raise TypeError("Assets to pull should be single name or collection "
+                            "of names; got {} ({})".format(assets, type(assets)))
+        return [self._pull_asset(genome, a, genome_config, unpack, get_url) for a in assets]
+
+    def _pull_asset(self, genome, asset, genome_config, unpack, get_url):
+
+        _LOGGER.info("Starting pull for {}: {}".format(genome, asset))
+
+        def raise_unpack_error():
+            raise NotImplementedError("Tarball preservation isn't yet supported.")
+
+        unpack or raise_unpack_error()
+
+        # local file to save as
+        outdir = os.path.join(self.genome_folder, genome)
+        filepath = os.path.join(outdir, asset + ".tar")
+
+        if not os.path.exists(outdir):
+            _LOGGER.debug("Creating directory: {}".format(outdir))
+            os.makedirs(outdir)
+
+        url = get_url(self.genome_server, genome, asset)
+        # Download the file from `url` and save it locally under `filepath`:
+        _LOGGER.info("Downloading URL: {}".format(url))
+        try:
+            _download_url_to_file(url, filepath)
+        except HTTPError as e:
+            _LOGGER.error("File not found on server: {}".format(e))
+            return asset, None
+        except ConnectionRefusedError as e:
+            _LOGGER.error(str(e))
+            _LOGGER.error("Server {} refused download. Check your internet settings".
+                          format(self.genome_server))
+            return asset, None
+        else:
+            _LOGGER.info("Download complete: {}".format(filepath))
+
+        # successfully downloaded and moved tarball; untar it
+        # TODO: Make this a CLI option.
+        if unpack:
+            if filepath.endswith(".tar") or filepath.endswith(".tgz"):
+                import tarfile
+                with tarfile.open(filepath) as tf:
+                    tf.extractall(path=outdir)
+            _LOGGER.debug("Unpacked archive into: {}".format(outdir))
+
+            # Write to config file
+            # TODO: Figure out how we want to handle the asset_key to folder_name
+            # mapping. Do we want to require that asset == folder_name?
+            # I guess we allow it to differ, but we keep it that way within refgenie?
+            # Right now they are identical:
+            folder_name = asset
+            _LOGGER.info("Writing genome config file: {}".format(genome_config))
+            # use the asset attribute 'path' instead of 'folder_name' here; the asset attributes need to be pulled first.
+            # see issue: https://github.com/databio/refgenie/issues/23
+            self.update_genomes(genome, asset, {CFG_ASSET_PATH_KEY: folder_name})
+            self.write(genome_config)
+            return asset, folder_name
+        else:
+            raise_unpack_error()
+
     def update_genomes(self, genome, asset=None, data=None):
         """
         Updates the genomes in RefGenConf object at any level.
@@ -163,7 +249,11 @@ class RefGenConf(yacman.YacAttMap):
             if check(asset, str, "asset"):
                 self[CFG_GENOMES_KEY][genome].setdefault(asset, PXAM())
                 if check(data, Mapping, "data"):
-                    self[CFG_GENOMES_KEY][genome][asset].update(data)
+                    try:
+                        self[CFG_GENOMES_KEY][genome][asset].update(data)
+                    except AttributeError:
+                        print("ASSET: {}".format(self[CFG_GENOMES_KEY][genome][asset]))
+                        raise
         return self
 
     def _invert_genomes(self):
@@ -186,13 +276,12 @@ class RefGenConf(yacman.YacAttMap):
         return genomes
 
 
-def select_genome_config(filename, conf_env_vars=None):
+def _download_url_to_file(url, filepath):
     """
-    Get path to genome configuration file.
+    Download asset at given URL to given filepath.
 
-    :param str filename: name/path of genome configuration file
-    :param Iterable[str] conf_env_vars: names of environment variables to
-        consider; basically, a prioritized search list
-    :return str: path to genome configuration file
+    :param str url: URL to download
+    :param str filepath: path to file to save download
     """
-    return yacman.select_config(filename, conf_env_vars or CFG_ENV_VARS)
+    with urllib.request.urlopen(url) as response, open(filepath, 'wb') as outf:
+        shutil.copyfileobj(response, outf)

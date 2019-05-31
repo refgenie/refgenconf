@@ -19,7 +19,7 @@ from .exceptions import *
 _LOGGER = logging.getLogger(__name__)
 
 
-__all__ = ["RefGenConf", "list_remote"]
+__all__ = ["RefGenConf"]
 
 
 class RefGenConf(yacman.YacAttMap):
@@ -158,9 +158,7 @@ class RefGenConf(yacman.YacAttMap):
         """
         url = get_url(self)
         _LOGGER.info("Querying available assets from server: {}".format(url))
-        genomes, assets = list_remote(url)
-        _LOGGER.info("Remote genomes: {}".format(genomes))
-        _LOGGER.info("Remote assets:\n{}".format(assets))
+        genomes, assets = _list_remote(url)
         return genomes, assets
 
     def pull_asset(self, genome, assets, genome_config, unpack=True,
@@ -288,7 +286,7 @@ class RefGenConf(yacman.YacAttMap):
         return genomes
 
 
-def list_remote(url):
+def _list_remote(url):
     """
     List genomes and assets available remotely.
 

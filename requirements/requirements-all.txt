@@ -1,4 +1,4 @@
 attmap>=0.12.4
 pyyaml
-ubiquerg>=0.2.1
+ubiquerg>=0.4
 yacman

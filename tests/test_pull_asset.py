@@ -65,7 +65,7 @@ def test_pull_asset_download(rgc, genome, asset, gencfg, exp_file_ext,
 @pytest.mark.remote_data
 @pytest.mark.skip("not implemented")
 @pytest.mark.parametrize(["genome", "asset"], REQUESTS)
-def test_pull_asset_updates_genome_config(genome, asset):
+def test_pull_asset_updates_genome_config(rgc, genome, asset):
     """ Verify asset pull's side-effect of updating the genome config file. """
     pass
 

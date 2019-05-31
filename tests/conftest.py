@@ -46,7 +46,8 @@ def temp_genome_config_file(tmpdir_factory):
 
 
 @pytest.fixture(scope="session")
-def rgc(temp_genome_config_file):
+def made_genome_config_file(temp_genome_config_file):
+    """ Make the test session's genome config file. """
     genome_folder = os.path.dirname(temp_genome_config_file)
     extra_kv_lines = ["genome_folder: {}".format(genome_folder),
                       "genome_server: http://localhost",
@@ -55,5 +56,11 @@ def rgc(temp_genome_config_file):
     fp = temp_genome_config_file
     with open(fp, 'w') as f:
         f.write("\n".join(extra_kv_lines + ["  " + l for l in gen_data_lines]))
-    with open(fp, 'r') as f:
+    return fp
+
+
+@pytest.fixture
+def rgc(made_genome_config_file):
+    """ Provide test case with a genome config instance. """
+    with open(made_genome_config_file, 'r') as f:
         return RefGenConf(yaml.load(f, yaml.SafeLoader))

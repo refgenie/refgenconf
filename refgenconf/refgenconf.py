@@ -1,14 +1,15 @@
 #!/usr/bin/env python
 
-from collections import Iterable, Mapping
+from collections import Iterable, Mapping, OrderedDict
 from inspect import getfullargspec as finspect
+import json
 import logging
 import os
 import shutil
 from urllib.error import HTTPError
 import urllib.request
 import warnings
-from attmap import PathExAttMap as PXAM
+from attmap import AttMap, PathExAttMap as PXAM
 from ubiquerg import is_url
 import yacman
 from .const import *
@@ -18,7 +19,7 @@ from .exceptions import *
 _LOGGER = logging.getLogger(__name__)
 
 
-__all__ = ["RefGenConf"]
+__all__ = ["RefGenConf", "list_remote"]
 
 
 class RefGenConf(yacman.YacAttMap):
@@ -146,6 +147,21 @@ class RefGenConf(yacman.YacAttMap):
         """
         return self._invert_genomes() \
             if not asset else [g for g, am in self.genomes.items() if asset in am]
+
+    def list_remote(self, get_url=lambda rgc: "{}/assets".format(rgc.genome_server)):
+        """
+        List genomes and assets available remotely.
+
+        :param function(refgenconf.RefGenConf) -> str get_url: how to determine
+            URL request, given RefGenConf instance
+        :return str, str: text reps of remotely available genomes and assets
+        """
+        url = get_url(self)
+        _LOGGER.info("Querying available assets from server: {}".format(url))
+        genomes, assets = list_remote(url)
+        _LOGGER.info("Remote genomes: {}".format(genomes))
+        _LOGGER.info("Remote assets:\n{}".format(assets))
+        return genomes, assets
 
     def pull_asset(self, genome, assets, genome_config, unpack=True,
                    get_url=lambda base, g, a: "{}/asset/{}/{}/archive".format(base, g, a)):
@@ -276,6 +292,20 @@ class RefGenConf(yacman.YacAttMap):
         return genomes
 
 
+def list_remote(url):
+    """
+    List genomes and assets available remotely.
+
+    :param url: location or ref genome config data
+    :return str, str: text reps of remotely available genomes and assets
+    """
+    data = _read_remote_data(url)
+    rem_rgc = RefGenConf(OrderedDict({CFG_GENOMES_KEY: AttMap(data)}))
+    genomes = rem_rgc.genomes_str()
+    assets = rem_rgc.assets_str()
+    return genomes, assets
+
+
 def _download_url_to_file(url, filepath):
     """
     Download asset at given URL to given filepath.
@@ -285,3 +315,15 @@ def _download_url_to_file(url, filepath):
     """
     with urllib.request.urlopen(url) as response, open(filepath, 'wb') as outf:
         shutil.copyfileobj(response, outf)
+
+
+def _read_remote_data(url):
+    """
+    Read as JSON data from a URL request response.
+
+    :param str url: data request
+    :return dict: JSON parsed from the response from given URL request
+    """
+    with urllib.request.urlopen(url) as response:
+        encoding = response.info().get_content_charset('utf8')
+        return json.loads(response.read().decode(encoding))

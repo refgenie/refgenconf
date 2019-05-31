@@ -182,14 +182,9 @@ class RefGenConf(yacman.YacAttMap):
         outdir = os.path.join(self.genome_folder, genome)
         filepath = os.path.join(outdir, asset + ".tar")
 
-        try:
-            if not os.path.exists(outdir):
-                _LOGGER.debug("Creating directory: {}".format(outdir))
-                os.makedirs(outdir)
-        except FileNotFoundError as e:
-            _LOGGER.error(str(e))
-            _LOGGER.error("Missing genomes folder? {}".format(self.genome_folder))
-            return asset, None
+        if not os.path.exists(outdir):
+            _LOGGER.debug("Creating directory: {}".format(outdir))
+            os.makedirs(outdir)
 
         url = get_url(self.genome_server, genome, asset)
         # Download the file from `url` and save it locally under `filepath`:

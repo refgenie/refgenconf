@@ -5,6 +5,7 @@ import random
 import shutil
 import string
 import pytest
+from yacman import YacAttMap
 from tests.conftest import CONF_DATA
 
 
@@ -23,11 +24,13 @@ def remove_genome_folder(request):
     genome = request.getfixturevalue("genome")
     path = os.path.join(folder, genome)
     yield
-    shutil.rmtree(path)
+    if os.path.exists(path):
+        shutil.rmtree(path)
 
 
 @pytest.fixture
 def gencfg(temp_genome_config_file):
+    """ Provide test case with copied version of test session's genome config. """
     fn = "".join(random.choice(string.ascii_letters) for _ in range(15)) + ".yaml"
     fp = os.path.join(os.path.dirname(temp_genome_config_file), fn)
     assert not os.path.exists(fp)
@@ -37,6 +40,7 @@ def gencfg(temp_genome_config_file):
 
 
 def _build_url_fetch(genome, asset):
+    """ Create 3-arg function that determines URL from genome and asset names. """
     return (lambda _, g, a: "{base}/{g}/{fn}".format(
         base=URL_BASE, g=genome, fn=a + REMOTE_ASSETS[g][asset]))
 
@@ -63,16 +67,31 @@ def test_pull_asset_download(rgc, genome, asset, gencfg, exp_file_ext,
 
 
 @pytest.mark.remote_data
-@pytest.mark.skip("not implemented")
 @pytest.mark.parametrize(["genome", "asset"], REQUESTS)
-def test_pull_asset_updates_genome_config(rgc, genome, asset):
+def test_pull_asset_updates_genome_config(
+        rgc, genome, asset, gencfg, remove_genome_folder):
     """ Verify asset pull's side-effect of updating the genome config file. """
-    pass
+    try:
+        del rgc.genomes[genome][asset]
+    except KeyError:
+        pass
+    rgc.write(gencfg)
+    old_data = YacAttMap(gencfg)
+    assert asset not in old_data.genomes[genome]
+    rgc.pull_asset(genome, asset, gencfg, get_url=_build_url_fetch(genome, asset))
+    new_data = YacAttMap(gencfg)
+    assert asset in new_data.genomes[genome]
+    assert asset == new_data.genomes[genome][asset].path
 
 
 @pytest.mark.remote_data
-@pytest.mark.skip("not implemented")
 @pytest.mark.parametrize(["genome", "asset"], REQUESTS)
-def test_pull_asset_returns_key_value_pair(genome, asset):
+def test_pull_asset_returns_key_value_pair(
+        rgc, genome, asset, gencfg, remove_genome_folder):
     """ Verify asset pull returns asset name, and value if pulled. """
-    pass
+    res = rgc.pull_asset(
+        genome, asset, gencfg, get_url=_build_url_fetch(genome, asset))
+    assert 1 == len(res)
+    key, val = res[0]
+    assert asset == key
+    assert asset == val

@@ -265,11 +265,7 @@ class RefGenConf(yacman.YacAttMap):
             if check(asset, str, "asset"):
                 self[CFG_GENOMES_KEY][genome].setdefault(asset, PXAM())
                 if check(data, Mapping, "data"):
-                    try:
-                        self[CFG_GENOMES_KEY][genome][asset].update(data)
-                    except AttributeError:
-                        print("ASSET: {}".format(self[CFG_GENOMES_KEY][genome][asset]))
-                        raise
+                    self[CFG_GENOMES_KEY][genome][asset].update(data)
         return self
 
     def _invert_genomes(self):

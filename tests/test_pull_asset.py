@@ -9,6 +9,7 @@ from urllib.error import HTTPError
 import pytest
 from yacman import YacAttMap
 from tests.conftest import CONF_DATA
+import refgenconf
 from refgenconf.refgenconf import _download_url_to_file
 
 
@@ -65,7 +66,10 @@ def test_pull_asset_download(rgc, genome, asset, gencfg, exp_file_ext,
     """ Verify download and unpacking of tarball asset. """
     exp_file = os.path.join(rgc.genome_folder, genome, asset + exp_file_ext)
     assert not os.path.exists(exp_file)
-    rgc.pull_asset(genome, asset, gencfg, get_url=_get_get_url(genome, asset))
+    with mock.patch.object(refgenconf.refgenconf, "_download_json", lambda _: None), \
+         mock.patch("refgenconf.refgenconf.query_yes_no", return_value=True):
+        rgc.pull_asset(genome, asset, gencfg,
+                       get_main_url=_get_get_url(genome, asset))
     assert os.path.isfile(exp_file)
     os.unlink(exp_file)
 
@@ -82,7 +86,7 @@ def test_pull_asset_updates_genome_config(
     rgc.write(gencfg)
     old_data = YacAttMap(gencfg)
     assert asset not in old_data.genomes[genome]
-    rgc.pull_asset(genome, asset, gencfg, get_url=_get_get_url(genome, asset))
+    rgc.pull_asset(genome, asset, gencfg, get_main_url=_get_get_url(genome, asset))
     new_data = YacAttMap(gencfg)
     assert asset in new_data.genomes[genome]
     assert asset == new_data.genomes[genome][asset].path
@@ -93,7 +97,7 @@ def test_pull_asset_updates_genome_config(
 def test_pull_asset_returns_key_value_pair(
         rgc, genome, asset, gencfg, remove_genome_folder):
     """ Verify asset pull returns asset name, and value if pulled. """
-    res = rgc.pull_asset(genome, asset, gencfg, get_url=_get_get_url(genome, asset))
+    res = rgc.pull_asset(genome, asset, gencfg, get_main_url=_get_get_url(genome, asset))
     key, val = _parse_single_pull(res)
     assert asset == key
     assert asset == val
@@ -112,7 +116,7 @@ def test_pull_asset_pull_error(
     def raise_error(*args, **kwargs):
         raise SubErr()
     with mock.patch(DOWNLOAD_FUNCTION, side_effect=raise_error):
-        res = rgc.pull_asset(genome, asset, gencfg, get_url=_get_get_url(genome, asset))
+        res = rgc.pull_asset(genome, asset, gencfg, get_main_url=_get_get_url(genome, asset))
     key, val = _parse_single_pull(res)
     assert asset == key
     assert val is None
@@ -124,7 +128,7 @@ def test_pull_asset_illegal_asset_name(
         rgc, genome, asset, gencfg, remove_genome_folder):
     """ TypeError occurs if asset argument is not iterable. """
     with pytest.raises(TypeError):
-        rgc.pull_asset(genome, asset, gencfg, get_url=_get_get_url(genome, asset))
+        rgc.pull_asset(genome, asset, gencfg, get_main_url=_get_get_url(genome, asset))
 
 
 def _parse_single_pull(result):

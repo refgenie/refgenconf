@@ -2,7 +2,6 @@
 
 from collections import Iterable, Mapping, OrderedDict
 from inspect import getfullargspec as finspect
-import json
 import logging
 import os
 import shutil
@@ -10,7 +9,7 @@ from urllib.error import HTTPError
 import urllib.request
 import warnings
 from attmap import AttMap, PathExAttMap as PXAM
-from ubiquerg import is_url
+from ubiquerg import checksum, is_url, query_yes_no
 import yacman
 from .const import *
 from .exceptions import *
@@ -162,7 +161,8 @@ class RefGenConf(yacman.YacAttMap):
         return genomes, assets
 
     def pull_asset(self, genome, assets, genome_config, unpack=True,
-                   get_url=lambda base, g, a: "{}/asset/{}/{}/archive".format(base, g, a)):
+                   get_json_url=lambda base, g, a: "{}/asset/{}/{}".format(base, g, a),
+                   get_main_url=None):
         """
         Download and possibly unpack one or more assets for a given ref gen.
 
@@ -170,8 +170,10 @@ class RefGenConf(yacman.YacAttMap):
         :param str assets: name(s) of particular asset(s) to fetch
         :param str genome_config: path to genome configuration file to update
         :param bool unpack: whether to unpack a tarball
-        :param function(str, str, str) -> str: how to build URL from genome
-            server URL base, genome, and asset
+        :param function(str, str, str) -> str get_json_url: how to build URL from
+            genome server URL base, genome, and asset
+        :param function(str) -> str get_main_url: how to get archive URL from
+            main URL
         :return Iterable[(str, str | NoneType)]: collection of pairs of asset
             name and folder name (key-value pair with which genome config file
             is updated) if pull succeeds, else asset key and a null value.
@@ -181,9 +183,10 @@ class RefGenConf(yacman.YacAttMap):
         elif not isinstance(assets, Iterable):
             raise TypeError("Assets to pull should be single name or collection "
                             "of names; got {} ({})".format(assets, type(assets)))
-        return [self._pull_asset(genome, a, genome_config, unpack, get_url) for a in assets]
+        return [self._pull_asset(
+            genome, a, genome_config, unpack, get_json_url, get_main_url) for a in assets]
 
-    def _pull_asset(self, genome, asset, genome_config, unpack, get_url):
+    def _pull_asset(self, genome, asset, genome_config, unpack, get_json_url, get_main_url):
 
         _LOGGER.info("Starting pull for {}: {}".format(genome, asset))
 
@@ -200,7 +203,19 @@ class RefGenConf(yacman.YacAttMap):
             _LOGGER.debug("Creating directory: {}".format(outdir))
             os.makedirs(outdir)
 
-        url = get_url(self.genome_server, genome, asset)
+        url_json = get_json_url(self.genome_server, genome, asset)
+        url = url_json + "/archive" if get_main_url is None \
+            else get_main_url(self.genome_server, genome, asset)
+
+        archive_data = _download_json(url_json)
+        if archive_data:
+            archsize = archive_data[CFG_ARCHIVE_SIZE_KEY]
+            _LOGGER.info("'{}/{}' archive size: {}".format(genome, asset, archsize))
+            if _is_large_archive(archsize) and not \
+                    query_yes_no("Are you sure you want to download this large archive?"):
+                _LOGGER.info("pull action aborted by user")
+                return asset, None
+
         # Download the file from `url` and save it locally under `filepath`:
         _LOGGER.info("Downloading URL: {}".format(url))
         try:
@@ -215,6 +230,15 @@ class RefGenConf(yacman.YacAttMap):
             return asset, None
         else:
             _LOGGER.info("Download complete: {}".format(filepath))
+
+        new_checksum = checksum(filepath)
+        old_checksum = archive_data and archive_data.get(CFG_CHECKSUM_KEY)
+        if old_checksum and new_checksum != old_checksum:
+            _LOGGER.error(
+                "Checksum mismatch: ({}, {})".format(new_checksum, old_checksum))
+            return asset, None
+        else:
+            _LOGGER.debug("Matched checksum: '{}'".format(old_checksum))
 
         # successfully downloaded and moved tarball; untar it
         # TODO: Make this a CLI option.
@@ -286,6 +310,49 @@ class RefGenConf(yacman.YacAttMap):
         return genomes
 
 
+def _download_json(url):
+    """
+    Safely connects to the provided API endpoint and downloads the JSON formatted data
+
+    :param str url: server API endpoint
+    :return dict: served data
+    """
+    import json, requests
+    _LOGGER.debug("Downloading JSON data; querying URL: '{}'".format(url))
+    try:
+        server_resp = requests.get(url)
+    except Exception as e:
+        reason = "{}: {}".format(e.__class__.__name__, e)
+    else:
+        if server_resp.ok:
+            return json.loads(server_resp.content)
+        reason = "Response status: {}".format(server_resp.status_code)
+    _LOGGER.warning("Error querying '{}' -- {}".format(url, reason))
+
+
+def _download_url_to_file(url, filepath):
+    """
+    Download asset at given URL to given filepath.
+
+    :param str url: URL to download
+    :param str filepath: path to file to save download
+    """
+    with urllib.request.urlopen(url) as response, open(filepath, 'wb') as outf:
+        shutil.copyfileobj(response, outf)
+
+
+def _is_large_archive(size):
+    """
+    Determines if the file is large based on a string formatted as follows: 15.4GB
+
+    :param str size:  size string
+    :return bool: the decision
+    """
+    _LOGGER.debug("Checking archive size: '{}'".format(size))
+    return size.endswith("TB") or (
+            size.endswith("GB") and float("".join(c for c in size if c in '0123456789.')) > 5)
+
+
 def _list_remote(url):
     """
     List genomes and assets available remotely.
@@ -300,17 +367,6 @@ def _list_remote(url):
     return genomes, assets
 
 
-def _download_url_to_file(url, filepath):
-    """
-    Download asset at given URL to given filepath.
-
-    :param str url: URL to download
-    :param str filepath: path to file to save download
-    """
-    with urllib.request.urlopen(url) as response, open(filepath, 'wb') as outf:
-        shutil.copyfileobj(response, outf)
-
-
 def _read_remote_data(url):
     """
     Read as JSON data from a URL request response.
@@ -318,6 +374,7 @@ def _read_remote_data(url):
     :param str url: data request
     :return dict: JSON parsed from the response from given URL request
     """
+    import json
     with urllib.request.urlopen(url) as response:
         encoding = response.info().get_content_charset('utf8')
         return json.loads(response.read().decode(encoding))

@@ -8,6 +8,7 @@ from yacman import YacAttMap
 from tests.conftest import CONF_DATA, REMOTE_ASSETS, REQUESTS, get_get_url
 import refgenconf
 from refgenconf.refgenconf import _download_url_to_file
+from refgenconf.const import *
 
 __author__ = "Vince Reuter"
 __email__ = "vreuter@virginia.edu"
@@ -90,11 +91,25 @@ def test_pull_asset_pull_error(
 
 @pytest.mark.parametrize(
     ["genome", "asset"], [(g, a) for g in REMOTE_ASSETS for a in [None, 1, -0.1]])
-def test_pull_asset_illegal_asset_name(
-        rgc, genome, asset, gencfg, remove_genome_folder):
+def test_pull_asset_illegal_asset_name(rgc, genome, asset, gencfg, remove_genome_folder):
     """ TypeError occurs if asset argument is not iterable. """
     with pytest.raises(TypeError):
         rgc.pull_asset(genome, asset, gencfg, get_main_url=get_get_url(genome, asset))
+
+
+@pytest.mark.parametrize(["genome", "asset"], REQUESTS)
+def test_pull_asset_checksum_mismatch(rgc, genome, asset, gencfg, remove_genome_folder):
+    """ Checksum mismatch short-circuits asset pull, returning null value. """
+    with mock.patch.object(
+            refgenconf.refgenconf, "_download_json",
+            return_value=YacAttMap({CFG_CHECKSUM_KEY: "not-a-checksum",
+                                    CFG_ARCHIVE_SIZE_KEY: "0 GB"})), \
+        mock.patch(DOWNLOAD_FUNCTION, side_effect=lambda _1, _2: None), \
+        mock.patch.object(refgenconf.refgenconf, "checksum", return_value="checksum2"):
+        res = rgc.pull_asset(genome, asset, gencfg, get_main_url=get_get_url(genome, asset))
+    key, val = _parse_single_pull(res)
+    assert asset == key
+    assert val is None
 
 
 def _parse_single_pull(result):

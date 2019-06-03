@@ -12,6 +12,7 @@ from attmap import AttMap, PathExAttMap as PXAM
 from ubiquerg import checksum, is_url, query_yes_no
 import yacman
 from .const import *
+from .helpers import unbound_env_vars
 from .exceptions import *
 
 
@@ -199,6 +200,10 @@ class RefGenConf(yacman.YacAttMap):
         outdir = os.path.join(self.genome_folder, genome)
         filepath = os.path.join(outdir, asset + ".tar")
 
+        missing_vars = unbound_env_vars(outdir)
+        if missing_vars:
+            raise Exception("Outdir contains unbound environment variables: {}".
+                            format(missing_vars))
         if not os.path.exists(outdir):
             _LOGGER.debug("Creating directory: {}".format(outdir))
             os.makedirs(outdir)

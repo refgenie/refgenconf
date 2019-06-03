@@ -2,52 +2,18 @@
 
 import mock
 import os
-import random
-import shutil
-import string
 from urllib.error import HTTPError
 import pytest
 from yacman import YacAttMap
-from tests.conftest import CONF_DATA
+from tests.conftest import CONF_DATA, REMOTE_ASSETS, REQUESTS, get_get_url
 import refgenconf
 from refgenconf.refgenconf import _download_url_to_file
 
+__author__ = "Vince Reuter"
+__email__ = "vreuter@virginia.edu"
+
 
 DOWNLOAD_FUNCTION = "refgenconf.refgenconf.{}".format(_download_url_to_file.__name__)
-URL_BASE = "https://raw.githubusercontent.com/databio/refgenieserver/master/files"
-REMOTE_ASSETS = {
-    "mm10": {"bowtie2": ".tar", "kallisto": ".tar"},
-    "hg38": {"bowtie2": ".tar", "epilog": ".tgz", "kallisto": ".tar"}}
-REQUESTS = [(g, a) for g, ext_by_asset in REMOTE_ASSETS.items()
-            for a in ext_by_asset]
-
-
-@pytest.fixture
-def remove_genome_folder(request):
-    """ Remove a test case's folder for a particular genome. """
-    folder = request.getfixturevalue("rgc").genome_folder
-    genome = request.getfixturevalue("genome")
-    path = os.path.join(folder, genome)
-    yield
-    if os.path.exists(path):
-        shutil.rmtree(path)
-
-
-@pytest.fixture
-def gencfg(temp_genome_config_file):
-    """ Provide test case with copied version of test session's genome config. """
-    fn = "".join(random.choice(string.ascii_letters) for _ in range(15)) + ".yaml"
-    fp = os.path.join(os.path.dirname(temp_genome_config_file), fn)
-    assert not os.path.exists(fp)
-    shutil.copy(temp_genome_config_file, fp)
-    assert os.path.isfile(fp)
-    return fp
-
-
-def _get_get_url(genome, asset):
-    """ Create 3-arg function that determines URL from genome and asset names. """
-    return (lambda _, g, a: "{base}/{g}/{fn}".format(
-        base=URL_BASE, g=genome, fn=a + REMOTE_ASSETS[g][asset]))
 
 
 @pytest.mark.parametrize(
@@ -69,7 +35,7 @@ def test_pull_asset_download(rgc, genome, asset, gencfg, exp_file_ext,
     with mock.patch.object(refgenconf.refgenconf, "_download_json", lambda _: None), \
          mock.patch("refgenconf.refgenconf.query_yes_no", return_value=True):
         rgc.pull_asset(genome, asset, gencfg,
-                       get_main_url=_get_get_url(genome, asset))
+                       get_main_url=get_get_url(genome, asset))
     assert os.path.isfile(exp_file)
     os.unlink(exp_file)
 
@@ -86,7 +52,7 @@ def test_pull_asset_updates_genome_config(
     rgc.write(gencfg)
     old_data = YacAttMap(gencfg)
     assert asset not in old_data.genomes[genome]
-    rgc.pull_asset(genome, asset, gencfg, get_main_url=_get_get_url(genome, asset))
+    rgc.pull_asset(genome, asset, gencfg, get_main_url=get_get_url(genome, asset))
     new_data = YacAttMap(gencfg)
     assert asset in new_data.genomes[genome]
     assert asset == new_data.genomes[genome][asset].path
@@ -97,7 +63,7 @@ def test_pull_asset_updates_genome_config(
 def test_pull_asset_returns_key_value_pair(
         rgc, genome, asset, gencfg, remove_genome_folder):
     """ Verify asset pull returns asset name, and value if pulled. """
-    res = rgc.pull_asset(genome, asset, gencfg, get_main_url=_get_get_url(genome, asset))
+    res = rgc.pull_asset(genome, asset, gencfg, get_main_url=get_get_url(genome, asset))
     key, val = _parse_single_pull(res)
     assert asset == key
     assert asset == val
@@ -116,7 +82,7 @@ def test_pull_asset_pull_error(
     def raise_error(*args, **kwargs):
         raise SubErr()
     with mock.patch(DOWNLOAD_FUNCTION, side_effect=raise_error):
-        res = rgc.pull_asset(genome, asset, gencfg, get_main_url=_get_get_url(genome, asset))
+        res = rgc.pull_asset(genome, asset, gencfg, get_main_url=get_get_url(genome, asset))
     key, val = _parse_single_pull(res)
     assert asset == key
     assert val is None
@@ -128,7 +94,7 @@ def test_pull_asset_illegal_asset_name(
         rgc, genome, asset, gencfg, remove_genome_folder):
     """ TypeError occurs if asset argument is not iterable. """
     with pytest.raises(TypeError):
-        rgc.pull_asset(genome, asset, gencfg, get_main_url=_get_get_url(genome, asset))
+        rgc.pull_asset(genome, asset, gencfg, get_main_url=get_get_url(genome, asset))
 
 
 def _parse_single_pull(result):

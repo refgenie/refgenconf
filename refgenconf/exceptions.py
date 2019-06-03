@@ -35,5 +35,4 @@ class UnboundEnvironmentVariablesError(RefgenconfError):
         if not isinstance(env_vars, Iterable):
             raise TypeError("Invalid env var names type: {}".
                             format(type(env_vars)))
-        msg = ""
-        super(UnboundEnvironmentVariablesError, self).__init__(msg)
+        super(UnboundEnvironmentVariablesError, self).__init__(", ".join(env_vars))

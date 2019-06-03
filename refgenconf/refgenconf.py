@@ -178,7 +178,14 @@ class RefGenConf(yacman.YacAttMap):
         :return Iterable[(str, str | NoneType)]: collection of pairs of asset
             name and folder name (key-value pair with which genome config file
             is updated) if pull succeeds, else asset key and a null value.
+        :raise TypeError: if the assets argument is neither string nor other
+            Iterable
+        :raise refgenconf.UnboundEnvironmentVariablesError: if genome folder
+            path contains any env. var. that's unbound
         """
+        missing_vars = unbound_env_vars(self.genome_folder)
+        if missing_vars:
+            raise UnboundEnvironmentVariablesError(missing_vars)
         if isinstance(assets, str):
             assets = [assets]
         elif not isinstance(assets, Iterable):
@@ -200,10 +207,6 @@ class RefGenConf(yacman.YacAttMap):
         outdir = os.path.join(self.genome_folder, genome)
         filepath = os.path.join(outdir, asset + ".tar")
 
-        missing_vars = unbound_env_vars(outdir)
-        if missing_vars:
-            raise Exception("Outdir contains unbound environment variables: {}".
-                            format(missing_vars))
         if not os.path.exists(outdir):
             _LOGGER.debug("Creating directory: {}".format(outdir))
             os.makedirs(outdir)

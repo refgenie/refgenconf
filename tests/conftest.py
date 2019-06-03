@@ -1,6 +1,9 @@
 """ Test suite shared objects and setup """
 
 import os
+import random
+import shutil
+import string
 import pytest
 import yaml
 from attmap import PathExAttMap
@@ -16,6 +19,14 @@ HG38_DATA = [
     ("tss_annotation", "TSS.bed.gz"), ("gtf", "blah.gtf")]
 MM10_DATA = [("bowtie2", "indexed_bowtie2"), ("blacklist", "blacklist/mm10.bed")]
 MITO_DATA = [("bowtie2", "indexed_bowtie2"), ("bowtie", "indexed_bowtie")]
+
+
+REMOTE_ASSETS = {
+    "mm10": {"bowtie2": ".tar", "kallisto": ".tar"},
+    "hg38": {"bowtie2": ".tar", "epilog": ".tgz", "kallisto": ".tar"}}
+REQUESTS = [(g, a) for g, ext_by_asset in REMOTE_ASSETS.items()
+            for a in ext_by_asset]
+URL_BASE = "https://raw.githubusercontent.com/databio/refgenieserver/master/files"
 
 
 def _bind_to_path(kvs):
@@ -39,10 +50,22 @@ def get_conf_genomes():
     return list(list(zip(*CONF_DATA))[0])
 
 
-@pytest.fixture(scope="session")
-def temp_genome_config_file(tmpdir_factory):
-    """ The genome configuration file for the test suite. """
-    return tmpdir_factory.mktemp("data").join("refgenie.yaml").strpath
+@pytest.fixture
+def gencfg(temp_genome_config_file):
+    """ Provide test case with copied version of test session's genome config. """
+    fn = "".join(random.choice(string.ascii_letters) for _ in range(15)) + ".yaml"
+    fp = os.path.join(os.path.dirname(temp_genome_config_file), fn)
+    assert not os.path.exists(fp)
+    shutil.copy(temp_genome_config_file, fp)
+    assert os.path.isfile(fp)
+    return fp
+
+
+
+def get_get_url(genome, asset):
+    """ Create 3-arg function that determines URL from genome and asset names. """
+    return (lambda _, g, a: "{base}/{g}/{fn}".format(
+        base=URL_BASE, g=genome, fn=a + REMOTE_ASSETS[g][asset]))
 
 
 @pytest.fixture(scope="session")
@@ -64,3 +87,20 @@ def rgc(made_genome_config_file):
     """ Provide test case with a genome config instance. """
     with open(made_genome_config_file, 'r') as f:
         return RefGenConf(yaml.load(f, yaml.SafeLoader))
+
+
+@pytest.fixture
+def remove_genome_folder(request):
+    """ Remove a test case's folder for a particular genome. """
+    folder = request.getfixturevalue("rgc").genome_folder
+    genome = request.getfixturevalue("genome")
+    path = os.path.join(folder, genome)
+    yield
+    if os.path.exists(path):
+        shutil.rmtree(path)
+
+
+@pytest.fixture(scope="session")
+def temp_genome_config_file(tmpdir_factory):
+    """ The genome configuration file for the test suite. """
+    return tmpdir_factory.mktemp("data").join("refgenie.yaml").strpath

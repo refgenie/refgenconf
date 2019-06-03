@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from collections import Iterable, Mapping, OrderedDict
+from functools import partial
 from inspect import getfullargspec as finspect
 import logging
 import os
@@ -26,8 +27,28 @@ class RefGenConf(yacman.YacAttMap):
     """ A sort of oracle of available reference genome assembly assets """
 
     def __init__(self, entries=None):
+        """
+        Create the config instance by with a filepath or key-value pairs.
+
+        :param str | Iterable[(str, object)] | Mapping[str, object] entries:
+            config filepath or collection of key-value pairs
+        :raise refgenconf.MissingConfigDataError: if a required configuration
+            item is missing
+        :raise ValueError: if entries is given as a string and is not a file
+        """
         super(RefGenConf, self).__init__(entries)
         self.setdefault(CFG_GENOMES_KEY, PXAM())
+        if CFG_FOLDER_KEY not in self:
+            if isinstance(entries, str):
+                if not os.path.isfile(entries):
+                    raise ValueError("To create config object, string should "
+                                     "be config filepath; got '{}'".format(entries))
+                folder = os.path.dirname(entries)
+            else:
+                folder = os.getcwd()
+            self[CFG_FOLDER_KEY] = folder
+        if CFG_SERVER_KEY not in self:
+            raise MissingConfigDataError(CFG_SERVER_KEY)
 
 
     def assets_dict(self):
@@ -52,9 +73,8 @@ class RefGenConf(yacman.YacAttMap):
             reference genome assembly name and its list of asset names
         :return str: text representing genome-to-asset mapping
         """
-        def make_line(gen, assets):
-            return offset_text + "{}{}{}".format(
-                gen, genome_assets_delim, asset_sep.join(list(assets)))
+        make_line = partial(_make_genome_assets_line, offset_text=offset_text,
+                            genome_assets_delim=genome_assets_delim, asset_sep=asset_sep)
         return "\n".join([make_line(g, am) for g, am in self.genomes.items()])
 
     def genomes_list(self):
@@ -185,7 +205,7 @@ class RefGenConf(yacman.YacAttMap):
         """
         missing_vars = unbound_env_vars(self.genome_folder)
         if missing_vars:
-            raise UnboundEnvironmentVariablesError(missing_vars)
+            raise UnboundEnvironmentVariablesError(", ".join(missing_vars))
         if isinstance(assets, str):
             assets = [assets]
         elif not isinstance(assets, Iterable):
@@ -368,11 +388,16 @@ def _list_remote(url):
     :param url: location or ref genome config data
     :return str, str: text reps of remotely available genomes and assets
     """
-    data = _read_remote_data(url)
-    rem_rgc = RefGenConf(OrderedDict({CFG_GENOMES_KEY: AttMap(data)}))
-    genomes = rem_rgc.genomes_str()
-    assets = rem_rgc.assets_str()
-    return genomes, assets
+    genomes_data = _read_remote_data(url)
+    return ", ".join(genomes_data.keys()), \
+           "\n".join([_make_genome_assets_line(g, am)
+                      for g, am in genomes_data.items()])
+
+
+def _make_genome_assets_line(
+        gen, assets, offset_text="  ", genome_assets_delim=": ", asset_sep="; "):
+    return offset_text + "{}{}{}".format(
+        gen, genome_assets_delim, asset_sep.join(list(assets)))
 
 
 def _read_remote_data(url):

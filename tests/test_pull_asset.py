@@ -112,6 +112,21 @@ def test_pull_asset_checksum_mismatch(rgc, genome, asset, gencfg, remove_genome_
     assert val is None
 
 
+@pytest.mark.parametrize(["genome", "asset"], REQUESTS)
+def test_abort_pull_asset(rgc, genome, asset, gencfg, remove_genome_folder):
+    """ Test responsiveness to user abortion of pull request. """
+    with mock.patch.object(
+            refgenconf.refgenconf, "_download_json",
+            return_value=YacAttMap({CFG_CHECKSUM_KEY: "not-a-checksum",
+                                    CFG_ARCHIVE_SIZE_KEY: "0 GB"})), \
+        mock.patch("refgenconf.refgenconf._is_large_archive", return_value=True), \
+        mock.patch("refgenconf.refgenconf.query_yes_no", return_value=False):
+        res = rgc.pull_asset(genome, asset, gencfg, get_main_url=get_get_url(genome, asset))
+    key, val = _parse_single_pull(res)
+    assert asset == key
+    assert val is None
+
+
 def _parse_single_pull(result):
     try:
         k, v = result[0]

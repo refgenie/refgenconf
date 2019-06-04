@@ -222,7 +222,7 @@ class RefGenConf(yacman.YacAttMap):
         _LOGGER.info("Starting pull for {}: {}".format(genome, asset))
 
         def raise_unpack_error():
-            raise NotImplementedError("Tarball preservation isn't yet supported.")
+            raise NotImplementedError("The option for not extracting the tarballs is not yet supported.")
 
         unpack or raise_unpack_error()
 

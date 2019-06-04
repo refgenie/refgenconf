@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from collections import Iterable, Mapping, OrderedDict
+from collections import Iterable, Mapping
 from functools import partial
 from inspect import getfullargspec as finspect
 import logging
@@ -9,7 +9,7 @@ import shutil
 from urllib.error import HTTPError
 import urllib.request
 import warnings
-from attmap import AttMap, PathExAttMap as PXAM
+from attmap import PathExAttMap as PXAM
 from ubiquerg import checksum, is_url, query_yes_no
 import yacman
 from .const import *

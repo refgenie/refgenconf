@@ -54,3 +54,11 @@ def test_genome_folder_is_value_from_config_file_if_key_present(
     rgc = RefGenConf(conf_file)
     assert expected != os.path.dirname(conf_file)
     assert expected == rgc[CFG_FOLDER_KEY]
+
+
+def test_empty_rgc_is_false():
+    assert bool(RefGenConf({CFG_SERVER_KEY: "http://localhost"})) is False
+
+
+def test_nonempty_rgc_is_true(rgc):
+    assert bool(rgc) is True

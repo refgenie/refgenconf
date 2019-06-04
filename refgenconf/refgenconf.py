@@ -50,6 +50,9 @@ class RefGenConf(yacman.YacAttMap):
         if CFG_SERVER_KEY not in self:
             raise MissingConfigDataError(CFG_SERVER_KEY)
 
+    def __bool__(self):
+        minkeys = set(self.keys()) == {CFG_SERVER_KEY, CFG_FOLDER_KEY, CFG_GENOMES_KEY}
+        return not minkeys or bool(self[CFG_GENOMES_KEY])
 
     def assets_dict(self):
         """

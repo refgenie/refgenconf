@@ -8,6 +8,7 @@ import pytest
 import yaml
 from attmap import PathExAttMap
 from refgenconf import RefGenConf
+from refgenconf.const import *
 
 __author__ = "Vince Reuter"
 __email__ = "vreuter@virginia.edu"
@@ -72,9 +73,9 @@ def get_get_url(genome, asset):
 def made_genome_config_file(temp_genome_config_file):
     """ Make the test session's genome config file. """
     genome_folder = os.path.dirname(temp_genome_config_file)
-    extra_kv_lines = ["genome_folder: {}".format(genome_folder),
-                      "genome_server: http://localhost",
-                      "genomes:"]
+    extra_kv_lines = ["{}: {}".format(CFG_FOLDER_KEY, genome_folder),
+                      "{}: http://localhost".format(CFG_SERVER_KEY),
+                      "{}:".format(CFG_GENOMES_KEY)]
     gen_data_lines = PathExAttMap(CONF_DATA).get_yaml_lines()
     fp = temp_genome_config_file
     with open(fp, 'w') as f:

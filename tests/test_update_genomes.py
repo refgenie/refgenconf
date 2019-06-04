@@ -2,7 +2,8 @@
 
 import pytest
 from attmap import PathExAttMap
-from refgenconf import CFG_GENOMES_KEY, RefGenConf as RGC
+from refgenconf import CFG_FOLDER_KEY, CFG_GENOMES_KEY, CFG_SERVER_KEY, \
+    RefGenConf as RGC
 from tests.conftest import get_conf_genomes, CONF_DATA
 
 __author__ = "Vince Reuter"
@@ -10,9 +11,11 @@ __email__ = "vreuter@virginia.edu"
 
 
 @pytest.fixture(scope="function")
-def rgc():
+def rgc(tmpdir):
     """ Provide an RGC instance; avoid disk read/write and stay in memory. """
-    return RGC({CFG_GENOMES_KEY: dict(CONF_DATA)})
+    return RGC({CFG_GENOMES_KEY: dict(CONF_DATA),
+                CFG_FOLDER_KEY: tmpdir.strpath,
+                CFG_SERVER_KEY: "http://localhost"})
 
 
 @pytest.mark.parametrize("assembly", ["dm3"])
@@ -63,11 +66,13 @@ def test_new_genome_and_asset(rgc, assembly, asset, validate):
      {"size": "4G", "path": "/home/res/gen/bt2.hg38"}),
     ({"size": "4G"}, {"size": "2G"}, {"size": "2G"})
 ])
-def test_update_asset_data(old_data, new_data, expected):
+def test_update_asset_data(tmpdir, old_data, new_data, expected):
     """ update_genomes can modify data for existing assembly and asset. """
     assembly = "hg38"
     asset = "idx_bt2"
-    c = RGC({CFG_GENOMES_KEY: {assembly: {asset: old_data}}})
+    c = RGC({CFG_GENOMES_KEY: {assembly: {asset: old_data}},
+             CFG_FOLDER_KEY: tmpdir.strpath,
+             CFG_SERVER_KEY: "http://localhost"})
     assert expected != c[CFG_GENOMES_KEY][assembly][asset].to_dict()
     c.update_genomes(assembly, asset, new_data)
     assert expected == c[CFG_GENOMES_KEY][assembly][asset].to_dict()

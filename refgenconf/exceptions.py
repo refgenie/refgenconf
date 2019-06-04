@@ -2,7 +2,8 @@
 
 import abc
 
-__all__ = ["MissingAssetError", "MissingGenomeError", "RefgenconfError"]
+__all__ = ["MissingAssetError", "MissingConfigDataError", "MissingGenomeError",
+           "RefgenconfError", "UnboundEnvironmentVariablesError"]
 
 
 class RefgenconfError(Exception):
@@ -15,6 +16,17 @@ class MissingAssetError(RefgenconfError):
     pass
 
 
+class MissingConfigDataError(RefgenconfError):
+    """ Missing required configuration instance items """
+    pass
+
+
+
 class MissingGenomeError(RefgenconfError):
     """ Error type for request of unknown genome/assembly. """
+    pass
+
+
+class UnboundEnvironmentVariablesError(RefgenconfError):
+    """ Use of environment variable that isn't bound to a value. """
     pass

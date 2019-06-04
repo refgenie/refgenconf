@@ -1,7 +1,9 @@
 from ._version import __version__
 
-from .refgenconf import *
-from .exceptions import *
 from .const import *
+from .exceptions import *
+from .helpers import *
+from .refgenconf import *
 
-__all__ = ["RefGenConf", "MissingAssetError", "MissingGenomeError"] + CFG_KEY_NAMES
+__all__ = ["RefGenConf", "select_genome_config", "MissingAssetError",
+           "MissingGenomeError"] + CFG_KEY_NAMES

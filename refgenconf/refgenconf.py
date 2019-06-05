@@ -314,6 +314,8 @@ class RefGenConf(yacman.YacAttMap):
             return True
 
         if check(genome, str, "genome"):
+            if self[CFG_GENOMES_KEY] is None:
+                self[CFG_GENOMES_KEY] = PXAM()
             self[CFG_GENOMES_KEY].setdefault(genome, PXAM())
             if check(asset, str, "asset"):
                 self[CFG_GENOMES_KEY][genome].setdefault(asset, PXAM())

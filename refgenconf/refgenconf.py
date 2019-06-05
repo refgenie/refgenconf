@@ -225,7 +225,7 @@ class RefGenConf(yacman.YacAttMap):
 
     def _pull_asset(self, genome, asset, genome_config, unpack, get_json_url, get_main_url):
 
-        _LOGGER.info("Starting pull for {}: {}".format(genome, asset))
+        _LOGGER.info("Starting pull for '{}/{}'".format(genome, asset))
 
         def raise_unpack_error():
             raise NotImplementedError("The option for not extracting the tarballs is not yet supported.")

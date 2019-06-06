@@ -4,7 +4,7 @@ import os
 import pytest
 from attmap import PathExAttMap
 from refgenconf import RefGenConf, MissingConfigDataError
-from refgenconf.const import CFG_FOLDER_KEY, CFG_SERVER_KEY
+from refgenconf.const import CFG_FOLDER_KEY, CFG_GENOMES_KEY, CFG_SERVER_KEY
 
 __author__ = "Vince Reuter"
 __email__ = "vreuter@virginia.edu"
@@ -62,3 +62,16 @@ def test_empty_rgc_is_false():
 
 def test_nonempty_rgc_is_true(rgc):
     assert bool(rgc) is True
+
+
+@pytest.mark.parametrize(
+    "genomes", [None, "genomes", 10] + [dt(["mm10", "hg38"]) for dt in [list, set, tuple]])
+def test_illegal_genomes_mapping_type_gets_converted_to_empty_mapping(genomes, tmpdir):
+    rgc = RefGenConf({
+        CFG_FOLDER_KEY: tmpdir.strpath,
+        CFG_GENOMES_KEY: genomes,
+        CFG_SERVER_KEY: "http://localhost"
+    })
+    res = rgc[CFG_GENOMES_KEY]
+    assert isinstance(res, PathExAttMap)
+    assert 0 == len(res)

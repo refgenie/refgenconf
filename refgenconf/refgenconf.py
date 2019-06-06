@@ -37,7 +37,13 @@ class RefGenConf(yacman.YacAttMap):
         :raise ValueError: if entries is given as a string and is not a file
         """
         super(RefGenConf, self).__init__(entries)
-        self.setdefault(CFG_GENOMES_KEY, PXAM())
+        genomes = self.setdefault(CFG_GENOMES_KEY, PXAM())
+        if not isinstance(genomes, PXAM):
+            if genomes:
+                _LOGGER.warning(
+                    "'{k}' value is a {t_old}, not a {t_new}; setting to empty {t_new}".
+                    format(k=CFG_GENOMES_KEY, t_old=type(genomes).__name__, t_new=PXAM.__name__))
+            self[CFG_GENOMES_KEY] = PXAM()
         if CFG_FOLDER_KEY not in self:
             if isinstance(entries, str):
                 if not os.path.isfile(entries):
@@ -219,7 +225,7 @@ class RefGenConf(yacman.YacAttMap):
 
     def _pull_asset(self, genome, asset, genome_config, unpack, get_json_url, get_main_url):
 
-        _LOGGER.info("Starting pull for {}: {}".format(genome, asset))
+        _LOGGER.info("Starting pull for '{}/{}'".format(genome, asset))
 
         def raise_unpack_error():
             raise NotImplementedError("The option for not extracting the tarballs is not yet supported.")

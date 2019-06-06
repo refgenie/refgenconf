@@ -3,6 +3,7 @@
 from collections import Iterable, Mapping
 from functools import partial
 from inspect import getfullargspec as finspect
+from tqdm import tqdm
 import logging
 import os
 import shutil
@@ -224,8 +225,8 @@ class RefGenConf(yacman.YacAttMap):
             genome, a, genome_config, unpack, get_json_url, get_main_url) for a in assets]
 
     def _pull_asset(self, genome, asset, genome_config, unpack, get_json_url, get_main_url):
-
-        _LOGGER.info("Starting pull for '{}/{}'".format(genome, asset))
+        bundle_name = '{}/{}'.format(genome, asset)
+        _LOGGER.info("Starting pull for '{}'".format(bundle_name))
 
         def raise_unpack_error():
             raise NotImplementedError("The option for not extracting the tarballs is not yet supported.")
@@ -247,7 +248,7 @@ class RefGenConf(yacman.YacAttMap):
         archive_data = _download_json(url_json)
         if archive_data:
             archsize = archive_data[CFG_ARCHIVE_SIZE_KEY]
-            _LOGGER.info("'{}/{}' archive size: {}".format(genome, asset, archsize))
+            _LOGGER.info("'{}' archive size: {}".format(bundle_name, archsize))
             if _is_large_archive(archsize) and not \
                     query_yes_no("Are you sure you want to download this large archive?"):
                 _LOGGER.info("pull action aborted by user")
@@ -256,7 +257,8 @@ class RefGenConf(yacman.YacAttMap):
         # Download the file from `url` and save it locally under `filepath`:
         _LOGGER.info("Downloading URL: {}".format(url))
         try:
-            _download_url_to_file(url, filepath)
+            # _download_url_to_file(url, filepath)
+            _download_url_progress(url, filepath, bundle_name)
         except HTTPError as e:
             _LOGGER.error("File not found on server: {}".format(e))
             return asset, None
@@ -345,6 +347,29 @@ class RefGenConf(yacman.YacAttMap):
             for a in am.keys():
                 genomes.setdefault(a, []).append(g)
         return genomes
+
+
+class DownloadPB(tqdm):
+    """
+    from: https://github.com/tqdm/tqdm#hooks-and-callbacks
+    """
+    def update_to(self, b=1, bsize=1, tsize=None):
+        """
+        b  : int, optional
+            Number of blocks transferred so far [default: 1].
+        bsize  : int, optional
+            Size of each block (in tqdm units) [default: 1].
+        tsize  : int, optional
+            Total size (in tqdm units). If [default: None] remains unchanged.
+        """
+        if tsize is not None:
+            self.total = tsize
+        self.update(b * bsize - self.n)
+
+
+def _download_url_progress(url, output_path, name):
+    with DownloadPB(unit_scale=True, desc=name, unit="B") as dpb:
+        urllib.request.urlretrieve(url, filename=output_path, reporthook=dpb.update_to)
 
 
 def _download_json(url):

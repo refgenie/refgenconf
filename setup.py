@@ -45,7 +45,6 @@ setup(
     license="BSD2",
     keywords="bioinformatics, sequencing, ngs",
     url='https://refgenie.databio.org',
-    author='Nathan Sheffield',
-    author_email='nathan@code.databio.org',
+    author=u'Nathan Sheffield, Vince Reuter, Michal Stolarczyk',
     **extra
 )

@@ -1,5 +1,5 @@
 attmap>=0.12.4
 pyyaml
 requests
-ubiquerg>=0.4.1
+ubiquerg>=0.4.3
 yacman>=0.3

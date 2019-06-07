@@ -286,18 +286,11 @@ class RefGenConf(yacman.YacAttMap):
                     tf.extractall(path=outdir)
             _LOGGER.debug("Unpacked archive into: {}".format(outdir))
 
-            # Write to config file
-            # TODO: Figure out how we want to handle the asset_key to folder_name
-            # mapping. Do we want to require that asset == folder_name?
-            # I guess we allow it to differ, but we keep it that way within refgenie?
-            # Right now they are identical:
             folder_name = asset
             _LOGGER.info("Writing genome config file: {}".format(genome_config))
-            # use the asset attribute 'path' instead of 'folder_name' here; the asset attributes need to be pulled first.
-            # see issue: https://github.com/databio/refgenie/issues/23
-            self.update_genomes(genome, asset, {CFG_ASSET_PATH_KEY: folder_name})
+            self.update_genomes(genome, asset, {CFG_ASSET_PATH_KEY: archive_data[CFG_ASSET_PATH_KEY]})
             self.write(genome_config)
-            return asset, folder_name
+            return asset, archive_data[CFG_ASSET_PATH_KEY]
         else:
             raise_unpack_error()
 

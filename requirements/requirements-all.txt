@@ -3,3 +3,4 @@ pyyaml
 requests
 ubiquerg>=0.4.1
 yacman>=0.3
+tqdm

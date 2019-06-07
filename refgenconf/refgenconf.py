@@ -246,16 +246,15 @@ class RefGenConf(yacman.YacAttMap):
         outdir = os.path.join(self.genome_folder, genome)
         filepath = os.path.join(outdir, asset + ".tar")
 
-        if not os.path.exists(outdir):
-            _LOGGER.debug("Creating directory: {}".format(outdir))
-            os.makedirs(outdir)
-
         url_json = get_json_url(self.genome_server, genome, asset)
         url = url_json + "/archive" if get_main_url is None \
             else get_main_url(self.genome_server, genome, asset)
 
         archive_data = _download_json(url_json)
         if archive_data:
+            if not os.path.exists(outdir):
+                _LOGGER.debug("Creating directory: {}".format(outdir))
+                os.makedirs(outdir)
             archsize = archive_data[CFG_ARCHIVE_SIZE_KEY]
             _LOGGER.info("'{}' archive size: {}".format(bundle_name, archsize))
             if _is_large_archive(archsize) and not \

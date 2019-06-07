@@ -122,8 +122,7 @@ class RefGenConf(yacman.YacAttMap):
         """
         if not callable(check_exist) or len(finspect(check_exist).args) != 1:
             raise TypeError("Asset existence check must be a one-arg function.")
-        asset_path = _genome_asset_path(self.genomes, genome_name, asset_name)
-        path = os.path.join(self.genome_folder, genome_name, asset_path)
+        path = _genome_asset_path(self.genomes, genome_name, asset_name)
         if strict_exists is not None and not check_exist(path):
             msg = "Asset may not exist: {}".format(path)
             for ext in [".tar.gz", ".tar"]:

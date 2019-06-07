@@ -130,7 +130,7 @@ class RefGenConf(yacman.YacAttMap):
         if strict_exists is None or check_exist(path):
             return path
         _LOGGER.debug("Nonexistent path: {}".format(asset_name, genome_name, path))
-        fullpath = os.path.join(self[CFG_FOLDER_KEY], path)
+        fullpath = os.path.join(self[CFG_FOLDER_KEY], genome_name, path)
         _LOGGER.debug("Trying path relative to genome folder: {}".format(fullpath))
         if check_exist(fullpath):
             return fullpath

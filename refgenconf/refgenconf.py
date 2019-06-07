@@ -379,7 +379,7 @@ def _download_json(url):
         reason = "{}: {}".format(e.__class__.__name__, e)
     else:
         if server_resp.ok:
-            return json.loads(server_resp.content)
+            return json.loads(server_resp.content.decode())
         reason = "Response status: {}".format(server_resp.status_code)
     _LOGGER.warning("Error querying '{}' -- {}".format(url, reason))
 

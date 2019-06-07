@@ -2,13 +2,23 @@
 
 import abc
 
-__all__ = ["MissingAssetError", "MissingConfigDataError", "MissingGenomeError",
+__all__ = ["GenomeConfigFormatError", "MissingAssetError",
+           "MissingConfigDataError", "MissingGenomeError",
            "RefgenconfError", "UnboundEnvironmentVariablesError"]
 
 
 class RefgenconfError(Exception):
     """ Base exception type for this package """
     __metaclass__ = abc.ABCMeta
+
+
+class GenomeConfigFormatError(RefgenconfError):
+    """ Exception for invalid genome config file format. """
+    def __init__(self, msg):
+        spacing = " " if msg[-1] in ["?", "."] else "; "
+        suggest = "For config format documentation please see " \
+                  "http://refgenie.databio.org/en/dev/genome_config/"
+        super(GenomeConfigFormatError, self).__init__(msg + spacing + suggest)
 
 
 class MissingAssetError(RefgenconfError):

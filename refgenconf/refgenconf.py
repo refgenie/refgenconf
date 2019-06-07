@@ -128,18 +128,7 @@ class RefGenConf(yacman.YacAttMap):
         """
         if not callable(check_exist) or len(finspect(check_exist).args) != 1:
             raise TypeError("Asset existence check must be a one-arg function.")
-        # is this even helpful? Just use RGC.genome_name.asset_name...
-        try:
-            genome = self.genomes[genome_name]
-        except KeyError:
-            raise MissingGenomeError(
-                "Your genomes do not include {}".format(genome_name))
-        try:
-            path = genome[asset_name]
-        except KeyError:
-            raise MissingAssetError(
-                "Genome {} exists, but index {} is missing".
-                format(genome_name, asset_name))
+        path = _genome_asset_path(self.genomes, genome_name, asset_name)
         if strict_exists is not None and not check_exist(path):
             msg = "Asset may not exist: {}".format(path)
             for ext in [".tar.gz", ".tar"]:
@@ -423,6 +412,28 @@ def _download_url_to_file(url, filepath):
     """
     with urllib.request.urlopen(url) as response, open(filepath, 'wb') as outf:
         shutil.copyfileobj(response, outf)
+
+
+def _genome_asset_path(genomes, gname, aname):
+    try:
+        genome = genomes[gname]
+    except KeyError:
+        raise MissingGenomeError("Your genomes do not include {}".format(gname))
+    try:
+        asset_data = genome[aname]
+    except KeyError:
+        raise MissingAssetError(
+            "Genome '{}' exists, but index '{}' is missing".format(gname, aname))
+    if isinstance(asset_data, str):
+        raise GenomeConfigFormatError(
+            "For genome '{}' asset '{}' has raw string value ('{}') "
+            "rather than mapping.".format(genome, aname, asset_data))
+    try:
+        return asset_data[CFG_ASSET_PATH_KEY]
+    except KeyError:
+        raise GenomeConfigFormatError(
+            "For genome '{}' asset '{}' exists but configuration lacks a "
+            "'{}' entry.".format(genome, aname, CFG_ASSET_PATH_KEY))
 
 
 def _is_large_archive(size):

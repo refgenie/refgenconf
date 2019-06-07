@@ -7,7 +7,9 @@ from tqdm import tqdm
 import logging
 import os
 import shutil
-from urllib.error import HTTPError
+import signal
+import sys
+from urllib.error import HTTPError, ContentTooShortError
 import urllib.request
 import warnings
 from attmap import PathExAttMap as PXAM
@@ -228,6 +230,16 @@ class RefGenConf(yacman.YacAttMap):
         bundle_name = '{}/{}'.format(genome, asset)
         _LOGGER.info("Starting pull for '{}'".format(bundle_name))
 
+        def signal_handler(sig, frame):
+            _LOGGER.warning("\nThe download was interrupted")
+            try:
+                os.remove(filepath)
+                _LOGGER.info("Incomplete file '{}' was removed".format(filepath))
+            except OSError:
+                _LOGGER.debug("'{}' not found, can't remove".format(filepath))
+                pass
+            sys.exit(0)
+
         def raise_unpack_error():
             raise NotImplementedError("The option for not extracting the tarballs is not yet supported.")
 
@@ -257,6 +269,7 @@ class RefGenConf(yacman.YacAttMap):
         # Download the file from `url` and save it locally under `filepath`:
         _LOGGER.info("Downloading URL: {}".format(url))
         try:
+            signal.signal(signal.SIGINT, signal_handler)
             # _download_url_to_file(url, filepath)
             _download_url_progress(url, filepath, bundle_name)
         except HTTPError as e:
@@ -267,6 +280,9 @@ class RefGenConf(yacman.YacAttMap):
             _LOGGER.error("Server {} refused download. Check your internet settings".
                           format(self.genome_server))
             return asset, None
+        except ContentTooShortError as e:
+            _LOGGER.error(str(e))
+            _LOGGER.error("'{}' download incomplete".format(bundle_name))
         else:
             _LOGGER.info("Download complete: {}".format(filepath))
 

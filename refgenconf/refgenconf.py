@@ -48,14 +48,8 @@ class RefGenConf(yacman.YacAttMap):
                     format(k=CFG_GENOMES_KEY, t_old=type(genomes).__name__, t_new=PXAM.__name__))
             self[CFG_GENOMES_KEY] = PXAM()
         if CFG_FOLDER_KEY not in self:
-            if isinstance(entries, str):
-                if not os.path.isfile(entries):
-                    raise ValueError("To create config object, string should "
-                                     "be config filepath; got '{}'".format(entries))
-                folder = os.path.dirname(entries)
-            else:
-                folder = os.getcwd()
-            self[CFG_FOLDER_KEY] = folder
+            self[CFG_FOLDER_KEY] = os.path.dirname(entries) \
+                if isinstance(entries, str) else os.getcwd()
         if CFG_SERVER_KEY not in self:
             raise MissingConfigDataError(CFG_SERVER_KEY)
 

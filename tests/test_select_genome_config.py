@@ -23,13 +23,14 @@ def _touch(p):
 
 def _check_no_env_vars():
     """ Verify that none of the relevant env. var.'s are set. """
-    assert all(os.getenv(v) is None for v in CFG_ENV_VARS)
+    assert not any(os.getenv(v) for v in CFG_ENV_VARS)
 
 
 def test_select_null():
     """ Test prioritized selection of genome configuration file. """
-    _check_no_env_vars()
-    assert select_genome_config(None) is None
+    with TmpEnv(overwrite=True, **{ev: "" for ev in CFG_ENV_VARS}):
+        _check_no_env_vars()
+        assert select_genome_config(None) is None
 
 
 @pytest.mark.parametrize(["setup", "expect"], [
@@ -39,11 +40,12 @@ def test_select_null():
 ])
 def test_select_local_config_file(tmpdir, setup, expect):
     """ Selection of local filepath hinges on its existence as a file """
-    _check_no_env_vars()
-    path = setup(tmpdir)
-    print("Path: {}".format(path))
-    with ExpectContext(expect(path), select_genome_config) as ctx:
-        ctx(path)
+    with TmpEnv(overwrite=True, **{ev: "" for ev in CFG_ENV_VARS}):
+        _check_no_env_vars()
+        path = setup(tmpdir)
+        print("Path: {}".format(path))
+        with ExpectContext(expect(path), select_genome_config) as ctx:
+            ctx(path)
 
 
 @pytest.mark.parametrize("env_var", CFG_ENV_VARS)

@@ -3,18 +3,20 @@
 from collections import Iterable, Mapping
 from functools import partial
 from inspect import getfullargspec as finspect
-from tqdm import tqdm
+import itertools
 import logging
 import os
-import shutil
 import signal
 import sys
 from urllib.error import HTTPError, ContentTooShortError
 import urllib.request
 import warnings
+
 from attmap import PathExAttMap as PXAM
 from ubiquerg import checksum, is_url, query_yes_no
+from tqdm import tqdm
 import yacman
+
 from .const import *
 from .helpers import unbound_env_vars
 from .exceptions import *
@@ -120,21 +122,32 @@ class RefGenConf(yacman.YacAttMap):
         :raise refgenconf.MissingAssetError: if the names assembly is known to
             this configuration instance, but the requested asset is unknown
         """
+        _LOGGER.info("Getting asset '{}' for genome '{}'".
+                     format(asset_name, genome_name))
         if not callable(check_exist) or len(finspect(check_exist).args) != 1:
             raise TypeError("Asset existence check must be a one-arg function.")
         path = _genome_asset_path(self.genomes, genome_name, asset_name)
-        if strict_exists is not None and not check_exist(path):
-            msg = "Asset may not exist: {}".format(path)
-            for ext in [".tar.gz", ".tar"]:
-                p_prime = path + ext
-                if check_exist(p_prime):
-                    msg += "; {} does exist".format(p_prime)
-                    break
-            if strict_exists:
-                raise IOError(msg)
-            else:
-                warnings.warn(msg, RuntimeWarning)
-        return path
+        if strict_exists is None or check_exist(path):
+            return path
+        _LOGGER.debug("Nonexistent path: {}".format(asset_name, genome_name, path))
+        fullpath = os.path.join(self[CFG_FOLDER_KEY], path)
+        _LOGGER.debug("Trying path relative to genome folder: {}".format(fullpath))
+        if check_exist(fullpath):
+            return fullpath
+        msg = "Asset '{}' for genome '{}' doesn't exist; tried {} and {}".\
+            format(asset_name, genome_name, path, fullpath)
+        extant = []
+        for base, ext in itertools.product([path, fullpath], [".tar.gz", ".tar"]):
+            # Attempt to enrich message with extra guidance.
+            p_prime = base + ext
+            if check_exist(p_prime):
+                extant.append(p_prime)
+        if extant:
+            msg += ". These paths exist: {}".format(extant)
+        if strict_exists is True:
+            raise IOError(msg)
+        else:
+            warnings.warn(msg, RuntimeWarning)
 
     def list_assets_by_genome(self, genome=None):
         """

@@ -253,7 +253,6 @@ class RefGenConf(yacman.YacAttMap):
         _LOGGER.info("Downloading URL: {}".format(url))
         try:
             signal.signal(signal.SIGINT, signal_handler)
-            # _download_url_to_file(url, filepath)
             _download_url_progress(url, filepath, bundle_name)
         except HTTPError as e:
             _LOGGER.error("File not found on server: {}".format(e))
@@ -365,18 +364,6 @@ class DownloadPB(tqdm):
         self.update(b * bsize - self.n)
 
 
-def _download_url_progress(url, output_path, name):
-    """
-    Download asset at given URL to given filepath and show the progress
-
-    :param str url: server API endpoint
-    :param str output_path: path to file to save download
-    :param str name: name to display in front of the progress bar
-    """
-    with DownloadPB(unit_scale=True, desc=name, unit="B") as dpb:
-        urllib.request.urlretrieve(url, filename=output_path, reporthook=dpb.update_to)
-
-
 def _download_json(url):
     """
     Safely connects to the provided API endpoint and downloads the JSON formatted data
@@ -397,15 +384,16 @@ def _download_json(url):
     _LOGGER.warning("Error querying '{}' -- {}".format(url, reason))
 
 
-def _download_url_to_file(url, filepath):
+def _download_url_progress(url, output_path, name):
     """
-    Download asset at given URL to given filepath.
+    Download asset at given URL to given filepath and show the progress
 
-    :param str url: URL to download
-    :param str filepath: path to file to save download
+    :param str url: server API endpoint
+    :param str output_path: path to file to save download
+    :param str name: name to display in front of the progress bar
     """
-    with urllib.request.urlopen(url) as response, open(filepath, 'wb') as outf:
-        shutil.copyfileobj(response, outf)
+    with DownloadPB(unit_scale=True, desc=name, unit="B") as dpb:
+        urllib.request.urlretrieve(url, filename=output_path, reporthook=dpb.update_to)
 
 
 def _genome_asset_path(genomes, gname, aname):

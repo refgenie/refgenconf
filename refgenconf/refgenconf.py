@@ -148,6 +148,7 @@ class RefGenConf(yacman.YacAttMap):
             raise IOError(msg)
         else:
             warnings.warn(msg, RuntimeWarning)
+        return path
 
     def list_assets_by_genome(self, genome=None):
         """

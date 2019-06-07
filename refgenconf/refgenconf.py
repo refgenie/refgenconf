@@ -355,12 +355,11 @@ class DownloadPB(tqdm):
     """
     def update_to(self, b=1, bsize=1, tsize=None):
         """
-        b  : int, optional
-            Number of blocks transferred so far [default: 1].
-        bsize  : int, optional
-            Size of each block (in tqdm units) [default: 1].
-        tsize  : int, optional
-            Total size (in tqdm units). If [default: None] remains unchanged.
+        Update the progress bar
+
+        :param int b: number of blocks transferred so far
+        :param int bsize: size of each block (in tqdm units)
+        :param int tsize: total size (in tqdm units)
         """
         if tsize is not None:
             self.total = tsize
@@ -368,6 +367,13 @@ class DownloadPB(tqdm):
 
 
 def _download_url_progress(url, output_path, name):
+    """
+    Download asset at given URL to given filepath and show the progress
+
+    :param str url: server API endpoint
+    :param str output_path: path to file to save download
+    :param str name: name to display in front of the progress bar
+    """
     with DownloadPB(unit_scale=True, desc=name, unit="B") as dpb:
         urllib.request.urlretrieve(url, filename=output_path, reporthook=dpb.update_to)
 

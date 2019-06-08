@@ -7,14 +7,14 @@ import pytest
 from yacman import YacAttMap
 from tests.conftest import CONF_DATA, REMOTE_ASSETS, REQUESTS, get_get_url
 import refgenconf
-from refgenconf.refgenconf import _download_url_to_file
+from refgenconf.refgenconf import _download_url_progress
 from refgenconf.const import *
 
 __author__ = "Vince Reuter"
 __email__ = "vreuter@virginia.edu"
 
 
-DOWNLOAD_FUNCTION = "refgenconf.refgenconf.{}".format(_download_url_to_file.__name__)
+DOWNLOAD_FUNCTION = "refgenconf.refgenconf.{}".format(_download_url_progress.__name__)
 
 
 @pytest.mark.parametrize(
@@ -104,7 +104,7 @@ def test_pull_asset_checksum_mismatch(rgc, genome, asset, gencfg, remove_genome_
             refgenconf.refgenconf, "_download_json",
             return_value=YacAttMap({CFG_CHECKSUM_KEY: "not-a-checksum",
                                     CFG_ARCHIVE_SIZE_KEY: "0 GB"})), \
-        mock.patch(DOWNLOAD_FUNCTION, side_effect=lambda _1, _2: None), \
+        mock.patch(DOWNLOAD_FUNCTION, side_effect=lambda _1, _2, _3: None), \
         mock.patch.object(refgenconf.refgenconf, "checksum", return_value="checksum2"):
         res = rgc.pull_asset(genome, asset, gencfg, get_main_url=get_get_url(genome, asset))
     key, val = _parse_single_pull(res)

@@ -48,7 +48,7 @@ def test_get_asset_missing_asset(rgc, gname, aname):
      for k, v in data])
 def test_get_asset_accuracy(rgc, gname, aname, exp):
     """ Asset request for particular genome is accurate. """
-    assert lift_into_path_pair(exp) == _get_asset(rgc, gname, aname).to_dict()
+    assert exp == _get_asset(rgc, gname, aname)
 
 
 @pytest.mark.parametrize("check_exist", [lambda: True, lambda _1, _2: True])
@@ -66,7 +66,7 @@ def test_check_exist_param_type(rgc, check_exist, gname, aname):
 def test_existence_check_strictness(rgc, temp_asset_spec, strict, ctxmgr, error):
     """ Asset existence check behavior responds to strictness parameter. """
     gname, aname = "tmpgen", "testasset"
-    rgc.genomes[gname] = {aname: temp_asset_spec}
+    rgc.genomes[gname] = {aname: lift_into_path_pair(temp_asset_spec)}
     def fetch():
         return _get_asset(rgc, gname, aname, strict_exists=strict)
     with ctxmgr(error):
@@ -86,7 +86,7 @@ def test_existence_check_function(
         rgc, check_exist, get_exp_from_path, temp_asset_spec):
     """ Asset existence check behavior responds to existence checker. """
     gname, aname = "tmpgen", "testasset"
-    rgc.genomes[gname] = {aname: temp_asset_spec}
+    rgc.genomes[gname] = {aname: lift_into_path_pair(temp_asset_spec)}
     with open(temp_asset_spec, 'w'):
         pass
     with ExpectContext(get_exp_from_path(temp_asset_spec), _get_asset) as ctx:
@@ -102,7 +102,7 @@ def test_tar_check(rgc, temp_asset_spec, extension, strict, ctx, err, get_msg,
                    exp_in_msg):
     """ Asset fetch checks for TAR variant of true asset path value. """
     gname, aname = "tmpgen", "testasset"
-    rgc.genomes[gname] = {aname: temp_asset_spec}
+    rgc.genomes[gname] = {aname: lift_into_path_pair(temp_asset_spec)}
     tarpath = temp_asset_spec + extension
     with open(tarpath, 'w'):
         pass

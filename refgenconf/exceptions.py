@@ -2,7 +2,7 @@
 
 import abc
 
-__all__ = ["GenomeConfigFormatError", "MissingAssetError",
+__all__ = ["DownloadJsonError", "GenomeConfigFormatError", "MissingAssetError",
            "MissingConfigDataError", "MissingGenomeError",
            "RefgenconfError", "UnboundEnvironmentVariablesError"]
 
@@ -10,6 +10,11 @@ __all__ = ["GenomeConfigFormatError", "MissingAssetError",
 class RefgenconfError(Exception):
     """ Base exception type for this package """
     __metaclass__ = abc.ABCMeta
+
+
+class DownloadJsonError(RefgenconfError):
+    """ Non-OK response from a JSON download attempt """
+    pass
 
 
 class GenomeConfigFormatError(RefgenconfError):
@@ -29,7 +34,6 @@ class MissingAssetError(RefgenconfError):
 class MissingConfigDataError(RefgenconfError):
     """ Missing required configuration instance items """
     pass
-
 
 
 class MissingGenomeError(RefgenconfError):

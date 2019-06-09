@@ -353,7 +353,7 @@ class RefGenConf(yacman.YacAttMap):
         return genomes
 
 
-class DownloadPB(tqdm):
+class DownloadProgressBar(tqdm):
     """
     from: https://github.com/tqdm/tqdm#hooks-and-callbacks
     """
@@ -394,7 +394,7 @@ def _download_url_progress(url, output_path, name):
     :param str output_path: path to file to save download
     :param str name: name to display in front of the progress bar
     """
-    with DownloadPB(unit_scale=True, desc=name, unit="B") as dpb:
+    with DownloadProgressBar(unit_scale=True, desc=name, unit="B") as dpb:
         urllib.request.urlretrieve(url, filename=output_path, reporthook=dpb.update_to)
 
 

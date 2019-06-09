@@ -250,17 +250,20 @@ class RefGenConf(yacman.YacAttMap):
         url = url_json + "/archive" if get_main_url is None \
             else get_main_url(self.genome_server, genome, asset)
 
-        archive_data = _download_json(url_json)
-        if archive_data:
-            if not os.path.exists(outdir):
-                _LOGGER.debug("Creating directory: {}".format(outdir))
-                os.makedirs(outdir)
-            archsize = archive_data[CFG_ARCHIVE_SIZE_KEY]
-            _LOGGER.info("'{}' archive size: {}".format(bundle_name, archsize))
-            if _is_large_archive(archsize) and not \
-                    query_yes_no("Are you sure you want to download this large archive?"):
-                _LOGGER.info("pull action aborted by user")
-                return asset, None
+        try:
+            archive_data = _download_json(url_json)
+        except Exception as e:
+            _LOGGER.error(str(e))
+            return asset, None
+        if not os.path.exists(outdir):
+            _LOGGER.debug("Creating directory: {}".format(outdir))
+            os.makedirs(outdir)
+        archsize = archive_data[CFG_ARCHIVE_SIZE_KEY]
+        _LOGGER.info("'{}' archive size: {}".format(bundle_name, archsize))
+        if _is_large_archive(archsize) and not \
+                query_yes_no("Are you sure you want to download this large archive?"):
+            _LOGGER.info("pull action aborted by user")
+            return asset, None
 
         # Download the file from `url` and save it locally under `filepath`:
         _LOGGER.info("Downloading URL: {}".format(url))
@@ -291,7 +294,6 @@ class RefGenConf(yacman.YacAttMap):
             _LOGGER.debug("Matched checksum: '{}'".format(old_checksum))
 
         # successfully downloaded and moved tarball; untar it
-        # TODO: Make this a CLI option.
         if unpack:
             if filepath.endswith(".tar") or filepath.endswith(".tgz"):
                 import tarfile
@@ -351,7 +353,7 @@ class RefGenConf(yacman.YacAttMap):
         return genomes
 
 
-class DownloadPB(tqdm):
+class DownloadProgressBar(tqdm):
     """
     from: https://github.com/tqdm/tqdm#hooks-and-callbacks
     """
@@ -377,15 +379,11 @@ def _download_json(url):
     """
     import json, requests
     _LOGGER.debug("Downloading JSON data; querying URL: '{}'".format(url))
-    try:
-        server_resp = requests.get(url)
-    except Exception as e:
-        reason = "{}: {}".format(e.__class__.__name__, e)
-    else:
-        if server_resp.ok:
-            return json.loads(server_resp.content.decode())
-        reason = "Response status: {}".format(server_resp.status_code)
-    _LOGGER.warning("Error querying '{}' -- {}".format(url, reason))
+    server_resp = requests.get(url)
+    if server_resp.ok:
+        return json.loads(server_resp.content.decode())
+    raise DownloadJsonError("Non-OK response (status {}) for URL: {}".
+                            format(server_resp.status_code, url))
 
 
 def _download_url_progress(url, output_path, name):
@@ -396,7 +394,7 @@ def _download_url_progress(url, output_path, name):
     :param str output_path: path to file to save download
     :param str name: name to display in front of the progress bar
     """
-    with DownloadPB(unit_scale=True, desc=name, unit="B") as dpb:
+    with DownloadProgressBar(unit_scale=True, desc=name, unit="B") as dpb:
         urllib.request.urlretrieve(url, filename=output_path, reporthook=dpb.update_to)
 
 

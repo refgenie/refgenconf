@@ -292,6 +292,7 @@ class RefGenConf(yacman.YacAttMap):
         except ContentTooShortError as e:
             _LOGGER.error(str(e))
             _LOGGER.error("'{}' download incomplete".format(bundle_name))
+            return asset, None
         else:
             _LOGGER.info("Download complete: {}".format(filepath))
 

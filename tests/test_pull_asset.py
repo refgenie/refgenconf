@@ -87,7 +87,9 @@ def test_pull_asset_returns_key_value_pair(
                 CFG_CHECKSUM_KEY: checksum_tmpval,
                 CFG_ARCHIVE_SIZE_KEY: "0 GB", CFG_ASSET_PATH_KEY: "testpath"})), \
          mock.patch.object(refgenconf.refgenconf, "checksum",
-                           return_value=checksum_tmpval):
+                           return_value=checksum_tmpval), \
+         mock.patch.object(refgenconf.refgenconf, "_download_url_progress"), \
+         mock.patch.object(refgenconf.refgenconf, "_untar"):
         res = rgc.pull_asset(
             genome, asset, gencfg, get_main_url=get_get_url(genome, asset))
     key, val = _parse_single_pull(res)

@@ -14,6 +14,8 @@ CFG_CHECKSUM_KEY = "archive_checksum"
 CFG_KEY_NAMES = ["CFG_GENOMES_KEY", "CFG_ASSET_PATH_KEY", "CFG_ARCHIVE_KEY", "CFG_FOLDER_KEY", "CFG_ARCHIVE_SIZE_KEY",
                  "CFG_ASSET_SIZE_KEY", "CFG_CHECKSUM_KEY"]
 CFG_CONST = ["CFG_ENV_VARS", "CFG_NAME"]
+DEFAULT_SERVER = "http://refgenomes.databio.org"
+
 
 """
 # example genome configuration structure

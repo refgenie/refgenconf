@@ -71,6 +71,8 @@ class RefGenConf(yacman.YacAttMap):
         minkeys = set(self.keys()) == {CFG_SERVER_KEY, CFG_FOLDER_KEY, CFG_GENOMES_KEY}
         return not minkeys or bool(self[CFG_GENOMES_KEY])
 
+    __nonzero__ = __bool__
+
     def assets_dict(self):
         """
         Map each assembly name to a list of available asset names.
@@ -311,9 +313,7 @@ class RefGenConf(yacman.YacAttMap):
         # successfully downloaded and moved tarball; untar it
         if unpack:
             if filepath.endswith(".tar") or filepath.endswith(".tgz"):
-                import tarfile
-                with tarfile.open(filepath) as tf:
-                    tf.extractall(path=outdir)
+                _untar(filepath, outdir)
             _LOGGER.debug("Unpacked archive into: {}".format(outdir))
             _LOGGER.info("Writing genome config file: {}".format(genome_config))
             self.update_genomes(genome, asset, {CFG_ASSET_PATH_KEY: result})
@@ -477,3 +477,9 @@ def _read_remote_data(url):
     with urllib.request.urlopen(url) as response:
         encoding = response.info().get_content_charset('utf8')
         return json.loads(response.read().decode(encoding))
+
+
+def _untar(src, dst):
+    import tarfile
+    with tarfile.open(src) as tf:
+        tf.extractall(path=dst)

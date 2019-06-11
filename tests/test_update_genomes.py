@@ -3,7 +3,7 @@
 import pytest
 from attmap import PathExAttMap
 from refgenconf import CFG_FOLDER_KEY, CFG_GENOMES_KEY, CFG_SERVER_KEY, \
-    RefGenConf as RGC
+    DEFAULT_SERVER, RefGenConf as RGC
 from tests.conftest import get_conf_genomes, CONF_DATA
 
 __author__ = "Vince Reuter"
@@ -15,7 +15,7 @@ def rgc(tmpdir):
     """ Provide an RGC instance; avoid disk read/write and stay in memory. """
     return RGC({CFG_GENOMES_KEY: dict(CONF_DATA),
                 CFG_FOLDER_KEY: tmpdir.strpath,
-                CFG_SERVER_KEY: "http://localhost"})
+                CFG_SERVER_KEY: DEFAULT_SERVER})
 
 
 @pytest.mark.parametrize("assembly", ["dm3"])
@@ -72,7 +72,7 @@ def test_update_asset_data(tmpdir, old_data, new_data, expected):
     asset = "idx_bt2"
     c = RGC({CFG_GENOMES_KEY: {assembly: {asset: old_data}},
              CFG_FOLDER_KEY: tmpdir.strpath,
-             CFG_SERVER_KEY: "http://localhost"})
+             CFG_SERVER_KEY: DEFAULT_SERVER})
     assert expected != c[CFG_GENOMES_KEY][assembly][asset].to_dict()
     c.update_genomes(assembly, asset, new_data)
     assert expected == c[CFG_GENOMES_KEY][assembly][asset].to_dict()

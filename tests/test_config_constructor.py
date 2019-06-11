@@ -4,7 +4,8 @@ import os
 import pytest
 from attmap import PathExAttMap
 from refgenconf import RefGenConf, MissingConfigDataError
-from refgenconf.const import CFG_FOLDER_KEY, CFG_GENOMES_KEY, CFG_SERVER_KEY
+from refgenconf.const import CFG_FOLDER_KEY, CFG_GENOMES_KEY, CFG_SERVER_KEY, \
+    DEFAULT_SERVER
 
 __author__ = "Vince Reuter"
 __email__ = "vreuter@virginia.edu"
@@ -50,14 +51,14 @@ def test_genome_folder_is_value_from_config_file_if_key_present(
                 if l.startswith(CFG_SERVER_KEY):
                     found = True
         if not found:
-            fout.write("{}: http://localhost".format(CFG_SERVER_KEY))
+            fout.write("{}: {}".format(CFG_SERVER_KEY, DEFAULT_SERVER))
     rgc = RefGenConf(conf_file)
     assert expected != os.path.dirname(conf_file)
     assert expected == rgc[CFG_FOLDER_KEY]
 
 
 def test_empty_rgc_is_false():
-    assert bool(RefGenConf({CFG_SERVER_KEY: "http://localhost"})) is False
+    assert bool(RefGenConf({CFG_SERVER_KEY: DEFAULT_SERVER})) is False
 
 
 def test_nonempty_rgc_is_true(rgc):
@@ -70,7 +71,7 @@ def test_illegal_genomes_mapping_type_gets_converted_to_empty_mapping(genomes, t
     rgc = RefGenConf({
         CFG_FOLDER_KEY: tmpdir.strpath,
         CFG_GENOMES_KEY: genomes,
-        CFG_SERVER_KEY: "http://localhost"
+        CFG_SERVER_KEY: DEFAULT_SERVER
     })
     res = rgc[CFG_GENOMES_KEY]
     assert isinstance(res, PathExAttMap)

@@ -13,7 +13,6 @@ else:
     from inspect import getargspec as finspect
     from urllib2 import HTTPError
     from urllib import ContentTooShortError
-    import urllib2
     ConnectionRefusedError = Exception
 
 import itertools

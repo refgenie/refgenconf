@@ -12,6 +12,7 @@ if sys.version_info >= (3, ):
 else:
     from inspect import getargspec as finspect
     from urllib2 import HTTPError
+    import urllib
     from urllib import ContentTooShortError
     ConnectionRefusedError = Exception
 
@@ -387,7 +388,7 @@ class DownloadProgressBar(tqdm):
 
 def _download_json(url):
     """
-    Safely connects to the provided API endpoint and downloads the JSON formatted data
+    Safely connect to the provided API endpoint and download JSON data.
 
     :param str url: server API endpoint
     :return dict: served data
@@ -403,7 +404,7 @@ def _download_json(url):
 
 def _download_url_progress(url, output_path, name):
     """
-    Download asset at given URL to given filepath and show the progress
+    Download asset at given URL to given filepath, show progress along the way.
 
     :param str url: server API endpoint
     :param str output_path: path to file to save download

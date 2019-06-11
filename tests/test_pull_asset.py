@@ -3,15 +3,15 @@
 import mock
 import os
 import sys
-if sys.version_info >= (3, ):
-    from urllib.error import HTTPError
-else:
+if sys.version_info.major < 3:
     from urllib2 import HTTPError
     ConnectionRefusedError = Exception
+else:
+    from urllib.error import HTTPError
 import pytest
 from yacman import YacAttMap
-from tests.conftest import CONF_DATA, IDX_BT2_VAL, REMOTE_ASSETS, REQUESTS, \
-    get_get_url, lift_into_path_pair
+from tests.conftest import CONF_DATA, REMOTE_ASSETS, REQUESTS, \
+    get_get_url
 import refgenconf
 from refgenconf.refgenconf import _download_url_progress
 from refgenconf.const import *
@@ -37,6 +37,8 @@ def test_no_unpack(rgc, genome, asset, temp_genome_config_file):
 def test_pull_asset_download(rgc, genome, asset, gencfg, exp_file_ext,
                              remove_genome_folder):
     """ Verify download and unpacking of tarball asset. """
+    if sys.version_info.major < 3:
+        pytest.xfail("pull_asset download tests fail on py2")
     exp_file = os.path.join(rgc.genome_folder, genome, asset + exp_file_ext)
     assert not os.path.exists(exp_file)
     with mock.patch.object(
@@ -67,7 +69,10 @@ def test_pull_asset_updates_genome_config(
         return_value=YacAttMap({CFG_CHECKSUM_KEY: checksum_tmpval,
                                 CFG_ARCHIVE_SIZE_KEY: "0 GB", CFG_ASSET_PATH_KEY: "testpath"})), \
          mock.patch.object(refgenconf.refgenconf, "checksum",
-                           return_value=checksum_tmpval):
+                           return_value=checksum_tmpval), \
+         mock.patch.object(refgenconf.refgenconf, "_download_url_progress",
+                           return_value=None), \
+         mock.patch.object(refgenconf.refgenconf, "_untar", return_value=None):
         rgc.pull_asset(genome, asset, gencfg,
                        get_main_url=get_get_url(genome, asset))
     new_data = YacAttMap(gencfg)

@@ -8,11 +8,19 @@ __author__ = "Vince Reuter"
 __email__ = "vreuter@virginia.edu"
 
 
+def _is_custom_error(obj):
+    return isinstance(obj, type) and issubclass(obj, RefgenconfError)
+
+
 @pytest.mark.parametrize(
     ["obj_name", "typecheck"],
     [("RefGenConf", isclass), ("select_genome_config", isfunction),
-     ("MissingAssetError", lambda obj: issubclass(obj, RefgenconfError)),
-     ("MissingGenomeError", lambda obj: issubclass(obj, RefgenconfError))])
+     ("DownloadJsonError", _is_custom_error),
+     ("GenomeConfigFormatError", _is_custom_error),
+     ("MissingAssetError", _is_custom_error),
+     ("MissingConfigDataError", _is_custom_error),
+     ("MissingGenomeError", _is_custom_error), 
+     ("UnboundEnvironmentVariablesError", _is_custom_error)])
 def test_top_level_exports(obj_name, typecheck):
     """ At package level, validate object availability and type. """
     import refgenconf

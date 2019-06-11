@@ -37,7 +37,8 @@ setup(
     packages=[PACKAGE_NAME],
     version=version,
     description='A standardized configuration object for reference genome assemblies',
-    long_description=long_description,
+    long_description=long_description, 
+    long_description_content_type='text/markdown',
     classifiers=[
         "Development Status :: 4 - Beta",
         "License :: OSI Approved :: BSD License",

@@ -5,16 +5,17 @@ import os
 from urllib.error import HTTPError
 import pytest
 from yacman import YacAttMap
-from tests.conftest import CONF_DATA, REMOTE_ASSETS, REQUESTS, get_get_url
+from tests.conftest import CONF_DATA, IDX_BT2_VAL, REMOTE_ASSETS, REQUESTS, \
+    get_get_url, lift_into_path_pair
 import refgenconf
-from refgenconf.refgenconf import _download_url_to_file
+from refgenconf.refgenconf import _download_url_progress
 from refgenconf.const import *
 
 __author__ = "Vince Reuter"
 __email__ = "vreuter@virginia.edu"
 
 
-DOWNLOAD_FUNCTION = "refgenconf.refgenconf.{}".format(_download_url_to_file.__name__)
+DOWNLOAD_FUNCTION = "refgenconf.refgenconf.{}".format(_download_url_progress.__name__)
 
 
 @pytest.mark.parametrize(
@@ -33,7 +34,9 @@ def test_pull_asset_download(rgc, genome, asset, gencfg, exp_file_ext,
     """ Verify download and unpacking of tarball asset. """
     exp_file = os.path.join(rgc.genome_folder, genome, asset + exp_file_ext)
     assert not os.path.exists(exp_file)
-    with mock.patch.object(refgenconf.refgenconf, "_download_json", lambda _: None), \
+    with mock.patch.object(
+            refgenconf.refgenconf, "_download_json",
+            lambda _: {CFG_ARCHIVE_SIZE_KEY: "0GB", CFG_ASSET_PATH_KEY: exp_file}), \
          mock.patch("refgenconf.refgenconf.query_yes_no", return_value=True):
         rgc.pull_asset(genome, asset, gencfg,
                        get_main_url=get_get_url(genome, asset))
@@ -53,10 +56,18 @@ def test_pull_asset_updates_genome_config(
     rgc.write(gencfg)
     old_data = YacAttMap(gencfg)
     assert asset not in old_data.genomes[genome]
-    rgc.pull_asset(genome, asset, gencfg, get_main_url=get_get_url(genome, asset))
+    checksum_tmpval = "not-a-checksum"
+    with mock.patch.object(
+        refgenconf.refgenconf, "_download_json",
+        return_value=YacAttMap({CFG_CHECKSUM_KEY: checksum_tmpval,
+                                CFG_ARCHIVE_SIZE_KEY: "0 GB", CFG_ASSET_PATH_KEY: "testpath"})), \
+         mock.patch.object(refgenconf.refgenconf, "checksum",
+                           return_value=checksum_tmpval):
+        rgc.pull_asset(genome, asset, gencfg,
+                       get_main_url=get_get_url(genome, asset))
     new_data = YacAttMap(gencfg)
     assert asset in new_data.genomes[genome]
-    assert asset == new_data.genomes[genome][asset].path
+    assert "testpath" == new_data.genomes[genome][asset].path
 
 
 @pytest.mark.remote_data
@@ -64,10 +75,19 @@ def test_pull_asset_updates_genome_config(
 def test_pull_asset_returns_key_value_pair(
         rgc, genome, asset, gencfg, remove_genome_folder):
     """ Verify asset pull returns asset name, and value if pulled. """
-    res = rgc.pull_asset(genome, asset, gencfg, get_main_url=get_get_url(genome, asset))
+    checksum_tmpval = "not-a-checksum"
+    with mock.patch.object(
+            refgenconf.refgenconf, "_download_json",
+            return_value=YacAttMap({
+                CFG_CHECKSUM_KEY: checksum_tmpval,
+                CFG_ARCHIVE_SIZE_KEY: "0 GB", CFG_ASSET_PATH_KEY: "testpath"})), \
+         mock.patch.object(refgenconf.refgenconf, "checksum",
+                           return_value=checksum_tmpval):
+        res = rgc.pull_asset(
+            genome, asset, gencfg, get_main_url=get_get_url(genome, asset))
     key, val = _parse_single_pull(res)
     assert asset == key
-    assert asset == val
+    assert "testpath" == val
 
 
 @pytest.mark.parametrize(["genome", "asset"], REQUESTS)
@@ -101,10 +121,10 @@ def test_pull_asset_illegal_asset_name(rgc, genome, asset, gencfg, remove_genome
 def test_pull_asset_checksum_mismatch(rgc, genome, asset, gencfg, remove_genome_folder):
     """ Checksum mismatch short-circuits asset pull, returning null value. """
     with mock.patch.object(
-            refgenconf.refgenconf, "_download_json",
-            return_value=YacAttMap({CFG_CHECKSUM_KEY: "not-a-checksum",
-                                    CFG_ARCHIVE_SIZE_KEY: "0 GB"})), \
-        mock.patch(DOWNLOAD_FUNCTION, side_effect=lambda _1, _2: None), \
+        refgenconf.refgenconf, "_download_json",
+        return_value=YacAttMap({CFG_CHECKSUM_KEY: "not-a-checksum",
+                                CFG_ARCHIVE_SIZE_KEY: "0 GB"})), \
+        mock.patch(DOWNLOAD_FUNCTION, side_effect=lambda _1, _2, _3: None), \
         mock.patch.object(refgenconf.refgenconf, "checksum", return_value="checksum2"):
         res = rgc.pull_asset(genome, asset, gencfg, get_main_url=get_get_url(genome, asset))
     key, val = _parse_single_pull(res)

@@ -14,12 +14,12 @@ __author__ = "Vince Reuter"
 __email__ = "vreuter@virginia.edu"
 
 
-
+IDX_BT2_VAL = "indexed_bowtie2"
 HG38_DATA = [
-    ("bowtie2", "indexed_bowtie2"), ("hisat2", "indexed_hisat2"),
+    ("bowtie2", IDX_BT2_VAL), ("hisat2", "indexed_hisat2"),
     ("tss_annotation", "TSS.bed.gz"), ("gtf", "blah.gtf")]
-MM10_DATA = [("bowtie2", "indexed_bowtie2"), ("blacklist", "blacklist/mm10.bed")]
-MITO_DATA = [("bowtie2", "indexed_bowtie2"), ("bowtie", "indexed_bowtie")]
+MM10_DATA = [("bowtie2", IDX_BT2_VAL), ("blacklist", "blacklist/mm10.bed")]
+MITO_DATA = [("bowtie2", IDX_BT2_VAL), ("bowtie", "indexed_bowtie")]
 
 
 REMOTE_ASSETS = {
@@ -62,11 +62,19 @@ def gencfg(temp_genome_config_file):
     return fp
 
 
+def get_get_url(genome, asset, base=URL_BASE):
+    """
+    Create 3-arg function that determines URL from genome and asset names.
 
-def get_get_url(genome, asset):
-    """ Create 3-arg function that determines URL from genome and asset names. """
+    :param str genome: the reference genome assembly ID, e.g. mm10
+    :param str asset: the name of the asset to use in the URL, e.g. bowtie2
+    :param str base: the base of the URL to create
+    :return function(object, str, str): function with which to build URL
+        based on reference genome assembly ID, asset name, and one unused
+        positional argument
+    """
     return (lambda _, g, a: "{base}/{g}/{fn}".format(
-        base=URL_BASE, g=genome, fn=a + REMOTE_ASSETS[g][asset]))
+        base=base, g=genome, fn=a + REMOTE_ASSETS[g][asset]))
 
 
 @pytest.fixture(scope="session")

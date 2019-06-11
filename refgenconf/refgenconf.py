@@ -7,22 +7,26 @@ from functools import partial
 import sys
 if sys.version_info >= (3, ):
     from inspect import getfullargspec as finspect
-    from urllib.error import HTTPError
+    from urllib.error import HTTPError, ContentTooShortError
     import urllib.request
 else:
     from inspect import getargspec as finspect
-    from urllib2 import HTTPError
+    from urllib2 import HTTPError, ContentTooShortError
     import urllib2
 
-import logging
+import itertools
+    import logging
 import os
 import shutil
-
-# from urllib.error import HTTPError
+import signal
+import sys
 import warnings
+
 from attmap import PathExAttMap as PXAM
 from ubiquerg import checksum, is_url, query_yes_no
+from tqdm import tqdm
 import yacman
+
 from .const import *
 from .helpers import unbound_env_vars
 from .exceptions import *
@@ -56,14 +60,8 @@ class RefGenConf(yacman.YacAttMap):
                     format(k=CFG_GENOMES_KEY, t_old=type(genomes).__name__, t_new=PXAM.__name__))
             self[CFG_GENOMES_KEY] = PXAM()
         if CFG_FOLDER_KEY not in self:
-            if isinstance(entries, str):
-                if not os.path.isfile(entries):
-                    raise ValueError("To create config object, string should "
-                                     "be config filepath; got '{}'".format(entries))
-                folder = os.path.dirname(entries)
-            else:
-                folder = os.getcwd()
-            self[CFG_FOLDER_KEY] = folder
+            self[CFG_FOLDER_KEY] = os.path.dirname(entries) \
+                if isinstance(entries, str) else os.getcwd()
         if CFG_SERVER_KEY not in self:
             raise MissingConfigDataError(CFG_SERVER_KEY)
 
@@ -134,31 +132,32 @@ class RefGenConf(yacman.YacAttMap):
         :raise refgenconf.MissingAssetError: if the names assembly is known to
             this configuration instance, but the requested asset is unknown
         """
+        _LOGGER.info("Getting asset '{}' for genome '{}'".
+                     format(asset_name, genome_name))
         if not callable(check_exist) or len(finspect(check_exist).args) != 1:
             raise TypeError("Asset existence check must be a one-arg function.")
-        # is this even helpful? Just use RGC.genome_name.asset_name...
-        try:
-            genome = self.genomes[genome_name]
-        except KeyError:
-            raise MissingGenomeError(
-                "Your genomes do not include {}".format(genome_name))
-        try:
-            path = genome[asset_name]
-        except KeyError:
-            raise MissingAssetError(
-                "Genome {} exists, but index {} is missing".
-                format(genome_name, asset_name))
-        if strict_exists is not None and not check_exist(path):
-            msg = "Asset may not exist: {}".format(path)
-            for ext in [".tar.gz", ".tar"]:
-                p_prime = path + ext
-                if check_exist(p_prime):
-                    msg += "; {} does exist".format(p_prime)
-                    break
-            if strict_exists:
-                raise IOError(msg)
-            else:
-                warnings.warn(msg, RuntimeWarning)
+        path = _genome_asset_path(self.genomes, genome_name, asset_name)
+        if strict_exists is None or check_exist(path):
+            return path
+        _LOGGER.debug("Nonexistent path: {}".format(asset_name, genome_name, path))
+        fullpath = os.path.join(self[CFG_FOLDER_KEY], genome_name, path)
+        _LOGGER.debug("Trying path relative to genome folder: {}".format(fullpath))
+        if check_exist(fullpath):
+            return fullpath
+        msg = "Asset '{}' for genome '{}' doesn't exist; tried {} and {}".\
+            format(asset_name, genome_name, path, fullpath)
+        extant = []
+        for base, ext in itertools.product([path, fullpath], [".tar.gz", ".tar"]):
+            # Attempt to enrich message with extra guidance.
+            p_prime = base + ext
+            if check_exist(p_prime):
+                extant.append(p_prime)
+        if extant:
+            msg += ". These paths exist: {}".format(extant)
+        if strict_exists is True:
+            raise IOError(msg)
+        else:
+            warnings.warn(msg, RuntimeWarning)
         return path
 
     def list_assets_by_genome(self, genome=None):
@@ -235,8 +234,18 @@ class RefGenConf(yacman.YacAttMap):
             genome, a, genome_config, unpack, get_json_url, get_main_url) for a in assets]
 
     def _pull_asset(self, genome, asset, genome_config, unpack, get_json_url, get_main_url):
+        bundle_name = '{}/{}'.format(genome, asset)
+        _LOGGER.info("Starting pull for '{}'".format(bundle_name))
 
-        _LOGGER.info("Starting pull for '{}/{}'".format(genome, asset))
+        def signal_handler(sig, frame):
+            _LOGGER.warning("\nThe download was interrupted")
+            try:
+                os.remove(filepath)
+                _LOGGER.info("Incomplete file '{}' was removed".format(filepath))
+            except OSError:
+                _LOGGER.debug("'{}' not found, can't remove".format(filepath))
+                pass
+            sys.exit(0)
 
         def raise_unpack_error():
             raise NotImplementedError("The option for not extracting the tarballs is not yet supported.")
@@ -247,27 +256,30 @@ class RefGenConf(yacman.YacAttMap):
         outdir = os.path.join(self.genome_folder, genome)
         filepath = os.path.join(outdir, asset + ".tar")
 
-        if not os.path.exists(outdir):
-            _LOGGER.debug("Creating directory: {}".format(outdir))
-            os.makedirs(outdir)
-
         url_json = get_json_url(self.genome_server, genome, asset)
         url = url_json + "/archive" if get_main_url is None \
             else get_main_url(self.genome_server, genome, asset)
 
-        archive_data = _download_json(url_json)
-        if archive_data:
-            archsize = archive_data[CFG_ARCHIVE_SIZE_KEY]
-            _LOGGER.info("'{}/{}' archive size: {}".format(genome, asset, archsize))
-            if _is_large_archive(archsize) and not \
-                    query_yes_no("Are you sure you want to download this large archive?"):
-                _LOGGER.info("pull action aborted by user")
-                return asset, None
+        try:
+            archive_data = _download_json(url_json)
+        except Exception as e:
+            _LOGGER.error(str(e))
+            return asset, None
+        if not os.path.exists(outdir):
+            _LOGGER.debug("Creating directory: {}".format(outdir))
+            os.makedirs(outdir)
+        archsize = archive_data[CFG_ARCHIVE_SIZE_KEY]
+        _LOGGER.info("'{}' archive size: {}".format(bundle_name, archsize))
+        if _is_large_archive(archsize) and not \
+                query_yes_no("Are you sure you want to download this large archive?"):
+            _LOGGER.info("pull action aborted by user")
+            return asset, None
 
         # Download the file from `url` and save it locally under `filepath`:
         _LOGGER.info("Downloading URL: {}".format(url))
         try:
-            _download_url_to_file(url, filepath)
+            signal.signal(signal.SIGINT, signal_handler)
+            _download_url_progress(url, filepath, bundle_name)
         except HTTPError as e:
             _LOGGER.error("File not found on server: {}".format(e))
             return asset, None
@@ -276,6 +288,9 @@ class RefGenConf(yacman.YacAttMap):
             _LOGGER.error("Server {} refused download. Check your internet settings".
                           format(self.genome_server))
             return asset, None
+        except ContentTooShortError as e:
+            _LOGGER.error(str(e))
+            _LOGGER.error("'{}' download incomplete".format(bundle_name))
         else:
             _LOGGER.info("Download complete: {}".format(filepath))
 
@@ -289,26 +304,16 @@ class RefGenConf(yacman.YacAttMap):
             _LOGGER.debug("Matched checksum: '{}'".format(old_checksum))
 
         # successfully downloaded and moved tarball; untar it
-        # TODO: Make this a CLI option.
         if unpack:
             if filepath.endswith(".tar") or filepath.endswith(".tgz"):
                 import tarfile
                 with tarfile.open(filepath) as tf:
                     tf.extractall(path=outdir)
             _LOGGER.debug("Unpacked archive into: {}".format(outdir))
-
-            # Write to config file
-            # TODO: Figure out how we want to handle the asset_key to folder_name
-            # mapping. Do we want to require that asset == folder_name?
-            # I guess we allow it to differ, but we keep it that way within refgenie?
-            # Right now they are identical:
-            folder_name = asset
             _LOGGER.info("Writing genome config file: {}".format(genome_config))
-            # use the asset attribute 'path' instead of 'folder_name' here; the asset attributes need to be pulled first.
-            # see issue: https://github.com/databio/refgenie/issues/23
-            self.update_genomes(genome, asset, {CFG_ASSET_PATH_KEY: folder_name})
+            self.update_genomes(genome, asset, {CFG_ASSET_PATH_KEY: archive_data[CFG_ASSET_PATH_KEY]})
             self.write(genome_config)
-            return asset, folder_name
+            return asset, archive_data[CFG_ASSET_PATH_KEY]
         else:
             raise_unpack_error()
 
@@ -358,6 +363,23 @@ class RefGenConf(yacman.YacAttMap):
         return genomes
 
 
+class DownloadProgressBar(tqdm):
+    """
+    from: https://github.com/tqdm/tqdm#hooks-and-callbacks
+    """
+    def update_to(self, b=1, bsize=1, tsize=None):
+        """
+        Update the progress bar
+
+        :param int b: number of blocks transferred so far
+        :param int bsize: size of each block (in tqdm units)
+        :param int tsize: total size (in tqdm units)
+        """
+        if tsize is not None:
+            self.total = tsize
+        self.update(b * bsize - self.n)
+
+
 def _download_json(url):
     """
     Safely connects to the provided API endpoint and downloads the JSON formatted data
@@ -367,26 +389,45 @@ def _download_json(url):
     """
     import json, requests
     _LOGGER.debug("Downloading JSON data; querying URL: '{}'".format(url))
+    server_resp = requests.get(url)
+    if server_resp.ok:
+        return json.loads(server_resp.content.decode())
+    raise DownloadJsonError("Non-OK response (status {}) for URL: {}".
+                            format(server_resp.status_code, url))
+
+
+def _download_url_progress(url, output_path, name):
+    """
+    Download asset at given URL to given filepath and show the progress
+
+    :param str url: server API endpoint
+    :param str output_path: path to file to save download
+    :param str name: name to display in front of the progress bar
+    """
+    with DownloadProgressBar(unit_scale=True, desc=name, unit="B") as dpb:
+        urllib.request.urlretrieve(url, filename=output_path, reporthook=dpb.update_to)
+
+
+def _genome_asset_path(genomes, gname, aname):
     try:
-        server_resp = requests.get(url)
-    except Exception as e:
-        reason = "{}: {}".format(e.__class__.__name__, e)
-    else:
-        if server_resp.ok:
-            return json.loads(server_resp.content)
-        reason = "Response status: {}".format(server_resp.status_code)
-    _LOGGER.warning("Error querying '{}' -- {}".format(url, reason))
-
-
-def _download_url_to_file(url, filepath):
-    """
-    Download asset at given URL to given filepath.
-
-    :param str url: URL to download
-    :param str filepath: path to file to save download
-    """
-    with urllib.request.urlopen(url) as response, open(filepath, 'wb') as outf:
-        shutil.copyfileobj(response, outf)
+        genome = genomes[gname]
+    except KeyError:
+        raise MissingGenomeError("Your genomes do not include {}".format(gname))
+    try:
+        asset_data = genome[aname]
+    except KeyError:
+        raise MissingAssetError(
+            "Genome '{}' exists, but index '{}' is missing".format(gname, aname))
+    if isinstance(asset_data, str):
+        raise GenomeConfigFormatError(
+            "For genome '{}' asset '{}' has raw string value ('{}') "
+            "rather than mapping.".format(genome, aname, asset_data))
+    try:
+        return asset_data[CFG_ASSET_PATH_KEY]
+    except KeyError:
+        raise GenomeConfigFormatError(
+            "For genome '{}' asset '{}' exists but configuration lacks a "
+            "'{}' entry.".format(genome, aname, CFG_ASSET_PATH_KEY))
 
 
 def _is_large_archive(size):

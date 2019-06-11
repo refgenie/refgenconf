@@ -11,8 +11,10 @@ if sys.version_info >= (3, ):
     import urllib.request
 else:
     from inspect import getargspec as finspect
-    from urllib2 import HTTPError, ContentTooShortError
+    from urllib2 import HTTPError
+    from urllib import ContentTooShortError
     import urllib2
+    ConnectionRefusedError = Exception
 
 import itertools
 import logging

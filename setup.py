@@ -48,6 +48,9 @@ setup(
     ],    
     license="BSD2",
     keywords="bioinformatics, sequencing, ngs",
+    test_suite="tests",
+    tests_require=(["pytest"]),
+    setup_requires=(["pytest-runner"] if {"test", "pytest", "ptr"} & set(sys.argv) else []),
     url='https://refgenie.databio.org',
     author=u'Nathan Sheffield, Vince Reuter, Michal Stolarczyk',
     **extra

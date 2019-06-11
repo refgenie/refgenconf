@@ -2,7 +2,12 @@
 
 import mock
 import os
-from urllib.error import HTTPError
+import sys
+if sys.version_info >= (3, ):
+    from urllib.error import HTTPError
+else:
+    from urllib2 import HTTPError
+    ConnectionRefusedError = Exception
 import pytest
 from yacman import YacAttMap
 from tests.conftest import CONF_DATA, IDX_BT2_VAL, REMOTE_ASSETS, REQUESTS, \

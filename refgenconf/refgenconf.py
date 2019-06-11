@@ -63,7 +63,9 @@ class RefGenConf(yacman.YacAttMap):
         if CFG_FOLDER_KEY not in self:
             self[CFG_FOLDER_KEY] = os.path.dirname(entries) \
                 if isinstance(entries, str) else os.getcwd()
-        if CFG_SERVER_KEY not in self:
+        try:
+            self[CFG_SERVER_KEY] = self[CFG_SERVER_KEY].rstrip("/")
+        except KeyError:
             raise MissingConfigDataError(CFG_SERVER_KEY)
 
     def __bool__(self):

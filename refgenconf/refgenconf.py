@@ -15,7 +15,7 @@ else:
     import urllib2
 
 import itertools
-    import logging
+import logging
 import os
 import shutil
 import signal

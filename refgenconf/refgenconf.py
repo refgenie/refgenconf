@@ -205,7 +205,7 @@ class RefGenConf(yacman.YacAttMap):
         genomes, assets = _list_remote(url)
         return genomes, assets
 
-    def pull_asset(self, genome, assets, genome_config, unpack=True,
+    def pull_asset(self, genome, assets, genome_config, unpack=True, force=None,
                    get_json_url=lambda base, g, a: "{}/asset/{}/{}".format(base, g, a),
                    get_main_url=None):
         """
@@ -215,6 +215,10 @@ class RefGenConf(yacman.YacAttMap):
         :param str assets: name(s) of particular asset(s) to fetch
         :param str genome_config: path to genome configuration file to update
         :param bool unpack: whether to unpack a tarball
+        :param bool | NoneType force: how to handle case in which asset path
+            already exists; null for prompt (on a per-asset basis), False to
+            effectively auto-reply No to the prompt to replace existing file,
+            and True to auto-replay Yes for existing asset replacement.
         :param function(str, str, str) -> str get_json_url: how to build URL from
             genome server URL base, genome, and asset
         :param function(str) -> str get_main_url: how to get archive URL from
@@ -236,9 +240,9 @@ class RefGenConf(yacman.YacAttMap):
             raise TypeError("Assets to pull should be single name or collection "
                             "of names; got {} ({})".format(assets, type(assets)))
         return [self._pull_asset(
-            genome, a, genome_config, unpack, get_json_url, get_main_url) for a in assets]
+            genome, a, genome_config, unpack, force, get_json_url, get_main_url) for a in assets]
 
-    def _pull_asset(self, genome, asset, genome_config, unpack, get_json_url, get_main_url):
+    def _pull_asset(self, genome, asset, genome_config, unpack, force, get_json_url, get_main_url):
         bundle_name = '{}/{}'.format(genome, asset)
         _LOGGER.info("Starting pull for '{}'".format(bundle_name))
 
@@ -260,6 +264,23 @@ class RefGenConf(yacman.YacAttMap):
         # local file to save as
         outdir = os.path.join(self.genome_folder, genome)
         filepath = os.path.join(outdir, asset + ".tar")
+
+        if os.path.exists(filepath):
+            # TODO: how to best handle the result value when the asset exists?
+            def preserve():
+                _LOGGER.debug("Preserving existing: {}".format(filepath))
+                return asset, outdir
+            def msg_overwrite():
+                _LOGGER.debug("Overwriting: {}".format(filepath))
+            if force is False:
+                return preserve()
+            elif force is None:
+                if not query_yes_no("Replace existing ({})?".format(filepath), "no"):
+                    return preserve()
+                else:
+                    msg_overwrite()
+            else:
+                msg_overwrite()
 
         url_json = get_json_url(self.genome_server, genome, asset)
         url = url_json + "/archive" if get_main_url is None \

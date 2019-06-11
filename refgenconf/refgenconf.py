@@ -305,6 +305,8 @@ class RefGenConf(yacman.YacAttMap):
         else:
             _LOGGER.debug("Matched checksum: '{}'".format(old_checksum))
 
+        result = archive_data[CFG_ASSET_PATH_KEY]
+
         # successfully downloaded and moved tarball; untar it
         if unpack:
             if filepath.endswith(".tar") or filepath.endswith(".tgz"):
@@ -313,9 +315,9 @@ class RefGenConf(yacman.YacAttMap):
                     tf.extractall(path=outdir)
             _LOGGER.debug("Unpacked archive into: {}".format(outdir))
             _LOGGER.info("Writing genome config file: {}".format(genome_config))
-            self.update_genomes(genome, asset, {CFG_ASSET_PATH_KEY: archive_data[CFG_ASSET_PATH_KEY]})
+            self.update_genomes(genome, asset, {CFG_ASSET_PATH_KEY: result})
             self.write(genome_config)
-            return asset, archive_data[CFG_ASSET_PATH_KEY]
+            return asset, result
         else:
             raise_unpack_error()
 

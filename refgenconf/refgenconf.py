@@ -312,16 +312,13 @@ class RefGenConf(yacman.YacAttMap):
         result = archive_data[CFG_ASSET_PATH_KEY]
 
         # successfully downloaded and moved tarball; untar it
-        if unpack:
-            if filepath.endswith(".tar") or filepath.endswith(".tgz"):
-                _untar(filepath, outdir)
+        if unpack and filepath.endswith(".tar") or filepath.endswith(".tgz"):
+            _untar(filepath, outdir)
             _LOGGER.debug("Unpacked archive into: {}".format(outdir))
-            _LOGGER.info("Writing genome config file: {}".format(genome_config))
-            self.update_genomes(genome, asset, {CFG_ASSET_PATH_KEY: result})
-            self.write(genome_config)
-            return asset, result
-        else:
-            raise_unpack_error()
+        _LOGGER.info("Writing genome config file: {}".format(genome_config))
+        self.update_genomes(genome, asset, {CFG_ASSET_PATH_KEY: result})
+        self.write(genome_config)
+        return asset, result
 
     def update_genomes(self, genome, asset=None, data=None):
         """

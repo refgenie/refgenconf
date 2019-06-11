@@ -2,14 +2,24 @@
 
 from collections import Iterable, Mapping
 from functools import partial
-from inspect import getfullargspec as finspect
+
+# Some short-term hacks to get at least 1 working version on python 2.7
+import sys
+if sys.version_info >= (3, ):
+    from inspect import getfullargspec as finspect
+    from urllib.error import HTTPError, ContentTooShortError
+    import urllib.request
+else:
+    from inspect import getargspec as finspect
+    from urllib2 import HTTPError, ContentTooShortError
+    import urllib2
+
 import itertools
-import logging
+    import logging
 import os
+import shutil
 import signal
 import sys
-from urllib.error import HTTPError, ContentTooShortError
-import urllib.request
 import warnings
 
 from attmap import PathExAttMap as PXAM

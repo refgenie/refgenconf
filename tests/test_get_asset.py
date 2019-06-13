@@ -111,6 +111,31 @@ def test_tar_check(rgc, temp_asset_spec, extension, strict, ctx, err, get_msg,
     assert (tarpath in get_msg(rec)) is exp_in_msg
 
 
+@pytest.mark.parametrize("strict_exists", [None, False, True])
+def test_asset_already_exists(tmpdir, strict_exists):
+    """ Asset path is joined to genome folder and returned if it exists. """
+    genome = "mm10"
+    a_key = "chrom_sizes"
+    a_path = "Mus_musculus.contig_lengths"
+    cfgdat = {
+        CFG_FOLDER_KEY: tmpdir.strpath,
+        CFG_SERVER_KEY: DEFAULT_SERVER,
+        CFG_GENOMES_KEY: {genome: {a_key: {CFG_ASSET_PATH_KEY: a_path}}}}
+    rgc = RefGenConf(cfgdat)
+    assert a_path == rgc[CFG_GENOMES_KEY][genome][a_key][CFG_ASSET_PATH_KEY]
+    assert not os.path.exists(a_path)
+    def folder():
+        return rgc[CFG_FOLDER_KEY]
+    assert tmpdir.strpath == folder()
+    fullpath = os.path.join(folder(), genome, a_path)
+    if not os.path.exists(os.path.dirname(fullpath)):
+        os.makedirs(os.path.dirname(fullpath))
+    print("Writing: {}".format(fullpath))
+    with open(fullpath, 'w'):
+        assert os.path.isfile(fullpath)
+    assert fullpath == rgc.get_asset(genome, a_key, strict_exists=strict_exists)
+
+
 def _get_asset(rgc, g, a, **kwargs):
     """
     Call the asset fetch function.

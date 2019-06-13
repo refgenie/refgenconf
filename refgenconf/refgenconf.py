@@ -142,13 +142,15 @@ class RefGenConf(yacman.YacAttMap):
         if not callable(check_exist) or len(finspect(check_exist).args) != 1:
             raise TypeError("Asset existence check must be a one-arg function.")
         path = _genome_asset_path(self.genomes, genome_name, asset_name)
-        if strict_exists is None or check_exist(path):
+        if check_exist(path):
             return path
         _LOGGER.debug("Nonexistent path: {}".format(asset_name, genome_name, path))
         fullpath = os.path.join(self[CFG_FOLDER_KEY], genome_name, path)
         _LOGGER.debug("Trying path relative to genome folder: {}".format(fullpath))
         if check_exist(fullpath):
             return fullpath
+        elif strict_exists is None:
+            return path
         msg = "Asset '{}' for genome '{}' doesn't exist; tried {} and {}".\
             format(asset_name, genome_name, path, fullpath)
         extant = []

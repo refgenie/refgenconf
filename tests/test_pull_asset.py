@@ -13,8 +13,9 @@ from yacman import YacAttMap
 from tests.conftest import CONF_DATA, REMOTE_ASSETS, REQUESTS, \
     get_get_url
 import refgenconf
-from refgenconf.refgenconf import _download_url_progress
 from refgenconf.const import *
+from refgenconf.exceptions import DownloadJsonError
+from refgenconf.refgenconf import _download_url_progress
 
 __author__ = "Vince Reuter"
 __email__ = "vreuter@virginia.edu"
@@ -103,10 +104,10 @@ def test_pull_asset_returns_key_value_pair(
 
 
 @pytest.mark.parametrize(["genome", "asset"], REQUESTS)
-@pytest.mark.parametrize("error", [ConnectionRefusedError, HTTPError])
+@pytest.mark.parametrize("error", [ConnectionRefusedError, HTTPError, DownloadJsonError])
 def test_pull_asset_pull_error(
         rgc, genome, asset, gencfg, remove_genome_folder, error):
-    """ Error pulling asset raises no exception but returns null value. """
+    """ Error pulling asset is exceptional. """
     class SubErr(error):
         def __init__(self):
             pass
@@ -114,11 +115,21 @@ def test_pull_asset_pull_error(
             return self.__class__.__name__
     def raise_error(*args, **kwargs):
         raise SubErr()
+    args = (genome, asset, gencfg)
+    kwargs = {"get_main_url": get_get_url(genome, asset)}
     with mock.patch(DOWNLOAD_FUNCTION, side_effect=raise_error):
-        res = rgc.pull_asset(genome, asset, gencfg, get_main_url=get_get_url(genome, asset))
-    key, val = _parse_single_pull(res)
-    assert asset == key
-    assert val is None
+        if error is DownloadJsonError:
+            with pytest.raises(DownloadJsonError):
+                rgc.pull_asset(*args, **kwargs)
+        else:
+            with mock.patch.object(
+                    refgenconf.refgenconf, "_download_json",
+                    return_value=YacAttMap({CFG_CHECKSUM_KEY: "not-a-checksum",
+                                            CFG_ARCHIVE_SIZE_KEY: "0 GB"})):
+                res = rgc.pull_asset(*args, **kwargs)
+                key, val = _parse_single_pull(res)
+                assert asset == key
+                assert val is None
 
 
 @pytest.mark.parametrize(

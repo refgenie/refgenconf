@@ -16,7 +16,9 @@ class RefgenconfError(Exception):
 
 class DownloadJsonError(RefgenconfError):
     """ Non-OK response from a JSON download attempt """
-    pass
+    def __init__(self, resp):
+        super(DownloadJsonError, self).__init__("JSON: {}".format(resp.json()))
+        self.response = resp
 
 
 class GenomeConfigFormatError(RefgenconfError):

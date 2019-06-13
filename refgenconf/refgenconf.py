@@ -286,11 +286,7 @@ class RefGenConf(yacman.YacAttMap):
         url = url_json + "/archive" if get_main_url is None \
             else get_main_url(self.genome_server, genome, asset)
 
-        try:
-            archive_data = _download_json(url_json)
-        except Exception as e:
-            _LOGGER.error(str(e))
-            return asset, None
+        archive_data = _download_json(url_json)
         if not os.path.exists(outdir):
             _LOGGER.debug("Creating directory: {}".format(outdir))
             os.makedirs(outdir)
@@ -413,11 +409,10 @@ def _download_json(url):
     """
     import json, requests
     _LOGGER.debug("Downloading JSON data; querying URL: '{}'".format(url))
-    server_resp = requests.get(url)
-    if server_resp.ok:
-        return json.loads(server_resp.content.decode())
-    raise DownloadJsonError("Non-OK response (status {}) for URL: {}".
-                            format(server_resp.status_code, url))
+    resp = requests.get(url)
+    if resp.ok:
+        return json.loads(resp.content.decode())
+    raise DownloadJsonError(resp)
 
 
 def _download_url_progress(url, output_path, name):

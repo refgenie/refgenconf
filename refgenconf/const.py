@@ -2,33 +2,43 @@
 
 CFG_ENV_VARS = ["REFGENIE"]
 CFG_NAME = "genome configuration"
-CFG_GENOMES_KEY = "genomes"
-CFG_SERVER_KEY = "genome_server"
-CFG_ASSET_PATH_KEY = "path"
-CFG_ARCHIVE_KEY = "genome_archive"
+
 CFG_FOLDER_KEY = "genome_folder"
-CFG_ARCHIVE_SIZE_KEY = "archive_size"
+CFG_SERVER_KEY = "genome_server"
+CFG_GENOMES_KEY = "genomes"
+
+CFG_ASSET_PATH_KEY = "path"
 CFG_ASSET_SIZE_KEY = "asset_size"
+CFG_ARCHIVE_KEY = "genome_archive"
+CFG_ARCHIVE_SIZE_KEY = "archive_size"
 CFG_CHECKSUM_KEY = "archive_checksum"
+CFG_SINGLE_ASSET_SECTION_KEYS = [
+    CFG_ASSET_PATH_KEY, CFG_ASSET_SIZE_KEY, CFG_ARCHIVE_KEY,
+    CFG_ARCHIVE_SIZE_KEY, CFG_CHECKSUM_KEY]
 
-CFG_KEY_NAMES = ["CFG_GENOMES_KEY", "CFG_ASSET_PATH_KEY", "CFG_ARCHIVE_KEY", "CFG_FOLDER_KEY", "CFG_ARCHIVE_SIZE_KEY",
-                 "CFG_ASSET_SIZE_KEY", "CFG_CHECKSUM_KEY"]
+CFG_KEY_NAMES = [
+    "CFG_FOLDER_KEY", "CFG_SERVER_KEY", "CFG_GENOMES_KEY",
+    "CFG_ASSET_PATH_KEY", "CFG_ARCHIVE_KEY", "CFG_ARCHIVE_SIZE_KEY",
+    "CFG_ASSET_SIZE_KEY", "CFG_CHECKSUM_KEY"]
 CFG_CONST = ["CFG_ENV_VARS", "CFG_NAME"]
-DEFAULT_SERVER = "http://refgenomes.databio.org"
 
+DEFAULT_SERVER = "http://refgenomes.databio.org"
 
 """
 # example genome configuration structure
 
-CFG_FOLDER_KEY: $GENOMES
-CFG_SERVER_KEY: http://localhost
-CFG_ARCHIVE_KEY: /path/to/archives
+{folder}: $GENOMES
+{server}: http://localhost
+{archive}: /path/to/archives
 
-CFG_GENOMES_KEY:
+{genomes}:
   hg38:
     bowtie2:
-      CFG_ASSET_PATH_KEY: indexed_bowtie2
-      CFG_CHECKSUM_KEY: mm20349234n20349280345mv2035
-      CFG_ASSET_SIZE_KEY: 32G
-      CFG_ARCHIVE_SIZE_KEY: 7G
-"""
+      {path}: indexed_bowtie2
+      {checksum}: mm20349234n20349280345mv2035
+      {asset_size}: 32G
+      {archive_size}: 7G
+""".format(folder=CFG_FOLDER_KEY, server=CFG_SERVER_KEY,
+           archive=CFG_ARCHIVE_KEY, genomes=CFG_GENOMES_KEY,
+           path=CFG_ASSET_PATH_KEY, checksum=CFG_CHECKSUM_KEY,
+           asset_size=CFG_ASSET_SIZE_KEY, archive_size=CFG_ARCHIVE_SIZE_KEY)

@@ -108,28 +108,34 @@ def test_pull_asset_returns_key_value_pair(
 def test_pull_asset_pull_error(
         rgc, genome, asset, gencfg, remove_genome_folder, error):
     """ Error pulling asset is exceptional. """
-    class SubErr(error):
-        def __init__(self):
-            pass
-        def __str__(self):
-            return self.__class__.__name__
-    def raise_error(*args, **kwargs):
-        raise SubErr()
     args = (genome, asset, gencfg)
     kwargs = {"get_main_url": get_get_url(genome, asset)}
-    with mock.patch(DOWNLOAD_FUNCTION, side_effect=raise_error):
-        if error is DownloadJsonError:
-            with pytest.raises(DownloadJsonError):
-                rgc.pull_asset(*args, **kwargs)
-        else:
-            with mock.patch.object(
-                    refgenconf.refgenconf, "_download_json",
-                    return_value=YacAttMap({CFG_CHECKSUM_KEY: "not-a-checksum",
-                                            CFG_ARCHIVE_SIZE_KEY: "0 GB"})):
-                res = rgc.pull_asset(*args, **kwargs)
-                key, val = _parse_single_pull(res)
-                assert asset == key
-                assert val is None
+    if error is DownloadJsonError:
+        def raise_error(*args, **kwargs):
+            raise DownloadJsonError(None)
+        with mock.patch("refgenconf.refgenconf._download_json", side_effect=raise_error), \
+             pytest.raises(DownloadJsonError):
+            rgc.pull_asset(*args, **kwargs)
+    else:
+        class SubErr(error):
+            def __init__(self):
+                pass
+
+
+            def __str__(self):
+                return self.__class__.__name__
+
+        def raise_error(*args, **kwargs):
+            raise SubErr()
+        with mock.patch.object(
+                refgenconf.refgenconf, "_download_json",
+                return_value=YacAttMap({CFG_CHECKSUM_KEY: "not-a-checksum",
+                                        CFG_ARCHIVE_SIZE_KEY: "0 GB"})), \
+             mock.patch(DOWNLOAD_FUNCTION, side_effect=raise_error):
+            res = rgc.pull_asset(*args, **kwargs)
+            key, val = _parse_single_pull(res)
+            assert asset == key
+            assert val is None
 
 
 @pytest.mark.parametrize(

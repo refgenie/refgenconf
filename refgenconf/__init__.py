@@ -7,4 +7,5 @@ from .refgenconf import *
 
 __all__ = ["RefGenConf", "select_genome_config", "GenomeConfigFormatError",
            "MissingAssetError", "MissingConfigDataError", "MissingGenomeError",
-           "RefgenconfError", "UnboundEnvironmentVariablesError"] + CFG_KEY_NAMES
+           "RefgenconfError", "UnboundEnvironmentVariablesError"] + \
+          ["DEFAULT_SERVER"] + CFG_KEY_NAMES

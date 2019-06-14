@@ -218,18 +218,21 @@ class PreexistingAssetTests:
 
     @staticmethod
     def _assert_result(res, exp_key, exp_val):
+        """ Check the return key/value from the pull operation. """
         k, v = _parse_single_pull(res)
         assert exp_key == k
         assert exp_val == v
 
     @staticmethod
     def _assert_single_message(log, levname, test_text):
+        """ Verify presence of a log message with expected level and content. """
         assert levname in dir(logging), "Not a logging level: {}".format(levname)
         msgs = [r.msg for r in log.records if r.levelname == levname]
         matched = list(filter(test_text, msgs))
         assert 1 == len(matched)
 
     def _assert_preserved(self, rgc, genome, asset, res, init_time, log):
+        """ Verify behavior expected if asset was preserved. """
         exp_val = rgc.filepath(genome, asset)
         self._assert_result(res, asset, exp_val)
         assert init_time == os.path.getmtime(exp_val)
@@ -237,6 +240,7 @@ class PreexistingAssetTests:
             log, "DEBUG", lambda m: m == "Preserving existing: {}".format(exp_val))
 
     def _assert_overwritten(self, rgc, genome, asset, res, init_time, log):
+        """ Verify behavior expected if asset was overwritten. """
         exp_val = rgc.filepath(genome, asset)
         self._assert_result(res, asset, exp_val)
         assert init_time < os.path.getmtime(exp_val)
@@ -244,13 +248,17 @@ class PreexistingAssetTests:
             log, "DEBUG", lambda m: m == "Overwriting: {}".format(exp_val))
 
     @pytest.mark.parametrize(["genome", "asset"], REQUESTS)
-    @pytest.mark.parametrize(["force", "reply_patch"], [
-        (True, {"side_effect": lambda *args, **kwargs: pytest.fail(
+    @pytest.mark.parametrize(["force", "exp_overwrite", "reply_patch"], [
+        (True, True, {"side_effect": lambda *args, **kwargs: pytest.fail(
             "Forced short-circuit failed")}),
-        (None, {"return_value": True})])
-    def test_preserve_existing(self, rgc, genome, asset, gencfg,
-                               remove_genome_folder, force, reply_patch, caplog):
-        """ Existing asset is respected if forced pull is toggled off. """
+        (None, True, {"return_value": True}),
+        (False, False, {"side_effect": lambda *args, **kwargs: pytest.fail(
+            "Forced short-circuit failed")}),
+        (None, False, {"return_value": False})])
+    def test_asset_already_exists(
+            self, rgc, genome, asset, gencfg,
+            force, exp_overwrite, reply_patch, caplog, remove_genome_folder):
+        """ Overwrite may be prespecified or determined by response to prompt. """
         fp = rgc.filepath(genome, asset)
         assert not os.path.exists(fp)
         if not os.path.exists(os.path.dirname(fp)):
@@ -277,46 +285,11 @@ class PreexistingAssetTests:
                                return_value=dummy_checksum_value), \
              mock.patch.object(refgenconf.refgenconf, "_untar"), \
              caplog.at_level(logging.DEBUG):
-            res = rgc.pull_asset(genome, asset, gencfg, force=False,
+            res = rgc.pull_asset(genome, asset, gencfg, force=force,
                                  get_main_url=get_get_url(genome, asset))
-        self._assert_preserved(rgc, genome, asset, res, init_time, caplog)
-
-    @pytest.mark.parametrize(["genome", "asset"], REQUESTS)
-    @pytest.mark.parametrize(["force", "reply_patch"], [
-        (False, {"side_effect": lambda *args, **kwargs: pytest.fail(
-            "Forced short-circuit failed")}),
-        (None, {"return_value": False})])
-    def test_overwrite_existing(self, rgc, genome, asset, gencfg,
-                                remove_genome_folder, force, reply_patch, caplog):
-        """ Asset re-creation can be forced. """
-        fp = rgc.filepath(genome, asset)
-        assert not os.path.exists(fp)
-        if not os.path.exists(os.path.dirname(fp)):
-            os.makedirs(os.path.dirname(fp))
-        with open(fp, 'w'):
-            print("Creating: {}".format(fp))
-        init_time = os.path.getmtime(fp)
-        dummy_checksum_value = "fixed_value"
-        def touch(*_args, **_kwargs):
-            with open(fp, 'w'):
-                print("Recreating: {}".format(fp))
-        time.sleep(0.01)
-        assert os.path.isfile(fp)
-        with mock.patch.object(
-                refgenconf.refgenconf, "_download_json", return_value=YacAttMap({
-                    CFG_CHECKSUM_KEY: "fixed_value",
-                    CFG_ARCHIVE_SIZE_KEY: "1M",
-                    CFG_ASSET_PATH_KEY: fp
-                })), \
-             mock.patch.object(refgenconf.refgenconf, "query_yes_no", **reply_patch), \
-             mock.patch(DOWNLOAD_FUNCTION, side_effect=touch), \
-             mock.patch.object(refgenconf.refgenconf, "checksum",
-                               return_value=dummy_checksum_value), \
-             mock.patch.object(refgenconf.refgenconf, "_untar"), \
-             caplog.at_level(logging.DEBUG):
-            res = rgc.pull_asset(genome, asset, gencfg, force=True,
-                                 get_main_url=get_get_url(genome, asset))
-        self._assert_overwritten(rgc, genome, asset, res, init_time, caplog)
+        assertion_arguments = (rgc, genome, asset, res, init_time, caplog)
+        verify = self._assert_overwritten if exp_overwrite else self._assert_preserved
+        verify(*assertion_arguments)
 
 
 def _parse_single_pull(result):

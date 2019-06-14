@@ -448,6 +448,24 @@ def _download_url_progress(url, output_path, name):
 
 
 def _genome_asset_path(genomes, gname, aname):
+    """
+    Retrieve the raw path value for a particular asset for a particular genome.
+
+    :param Mapping[str, Mapping[str, Mapping[str, object]]] genomes: nested
+        collection of key-value pairs, keyed at top level on genome ID, then by
+        asset name, then by asset attribute
+    :param str gname: top level key to query -- genome ID, e.g. mm10
+    :param str aname: second-level key to query -- asset name, e.g. chrom_sizes
+    :return str: raw path value for a particular asset for a particular genome
+    :raise MissingGenomeError: if the given key-value pair collection does not
+        contain as a top-level key the given genome ID
+    :raise MissingAssetError: if the given key-value pair colelction does
+        contain the given genome ID, but that key's mapping doesn't contain
+        the given asset name as a key
+    :raise GenomeConfigFormatError: if it's discovered during the query that
+        the structure of the given genomes mapping suggests that it was
+        parsd from an improperly formatted/structured genome config gile.
+    """
     try:
         genome = genomes[gname]
     except KeyError:
@@ -496,6 +514,17 @@ def _list_remote(url):
 
 def _make_genome_assets_line(
         gen, assets, offset_text="  ", genome_assets_delim=": ", asset_sep="; "):
+    """
+    Build a line of text for display of assets by genome
+
+    :param str gen: reference assembly ID, e.g. hg38
+    :param Iterable[str] assets: collection of asset names for the given genome
+    :param str offset_text: prefix for the line, e.g. a kind of whitespace
+    :param str genome_assets_delim: delimiter between a genome ID and text
+        showing names of assets for that genome
+    :param str asset_sep: delimiter between asset names
+    :return:
+    """
     return offset_text + "{}{}{}".format(
         gen, genome_assets_delim, asset_sep.join(list(assets)))
 
@@ -514,6 +543,12 @@ def _read_remote_data(url):
 
 
 def _untar(src, dst):
+    """
+    Unpack a path to a target folder.
+
+    :param str src: path to unpack
+    :param str dst: path to output folder
+    """
     import tarfile
     with tarfile.open(src) as tf:
         tf.extractall(path=dst)

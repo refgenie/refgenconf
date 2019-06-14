@@ -350,6 +350,7 @@ class RefGenConf(yacman.YacAttMap):
 
         # successfully downloaded and moved tarball; untar it
         if unpack and filepath.endswith(".tar") or filepath.endswith(".tgz"):
+            _LOGGER.info("Extracting: {}".format(bundle_name))
             _untar(filepath, outdir)
             _LOGGER.debug("Unpacked archive into: {}".format(outdir))
         _LOGGER.info("Writing genome config file: {}".format(genome_config))

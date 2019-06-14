@@ -1,8 +1,10 @@
 """ Tests for asset pull """
 
+import logging
 import mock
 import os
 import sys
+import time
 if sys.version_info.major < 3:
     from urllib2 import HTTPError
     ConnectionRefusedError = Exception
@@ -21,7 +23,8 @@ __author__ = "Vince Reuter"
 __email__ = "vreuter@virginia.edu"
 
 
-DOWNLOAD_FUNCTION = "refgenconf.refgenconf.{}".format(_download_url_progress.__name__)
+DOWNLOAD_FUNCTION = \
+    "refgenconf.refgenconf.{}".format(_download_url_progress.__name__)
 
 
 @pytest.mark.parametrize(
@@ -43,8 +46,8 @@ def test_pull_asset_download(rgc, genome, asset, gencfg, exp_file_ext,
     exp_file = os.path.join(rgc.genome_folder, genome, asset + exp_file_ext)
     assert not os.path.exists(exp_file)
     with mock.patch.object(
-            refgenconf.refgenconf, "_download_json",
-            lambda _: {CFG_ARCHIVE_SIZE_KEY: "0GB", CFG_ASSET_PATH_KEY: exp_file}), \
+            refgenconf.refgenconf, "_download_json", lambda _: {
+                CFG_ARCHIVE_SIZE_KEY: "0GB", CFG_ASSET_PATH_KEY: exp_file}), \
          mock.patch("refgenconf.refgenconf.query_yes_no", return_value=True):
         rgc.pull_asset(genome, asset, gencfg,
                        get_main_url=get_get_url(genome, asset))
@@ -67,8 +70,10 @@ def test_pull_asset_updates_genome_config(
     checksum_tmpval = "not-a-checksum"
     with mock.patch.object(
         refgenconf.refgenconf, "_download_json",
-        return_value=YacAttMap({CFG_CHECKSUM_KEY: checksum_tmpval,
-                                CFG_ARCHIVE_SIZE_KEY: "0 GB", CFG_ASSET_PATH_KEY: "testpath"})), \
+        return_value=YacAttMap({
+            CFG_CHECKSUM_KEY: checksum_tmpval,
+            CFG_ARCHIVE_SIZE_KEY: "0 GB",
+            CFG_ASSET_PATH_KEY: "testpath"})), \
          mock.patch.object(refgenconf.refgenconf, "checksum",
                            return_value=checksum_tmpval), \
          mock.patch.object(refgenconf.refgenconf, "_download_url_progress",
@@ -91,7 +96,8 @@ def test_pull_asset_returns_key_value_pair(
             refgenconf.refgenconf, "_download_json",
             return_value=YacAttMap({
                 CFG_CHECKSUM_KEY: checksum_tmpval,
-                CFG_ARCHIVE_SIZE_KEY: "0 GB", CFG_ASSET_PATH_KEY: "testpath"})), \
+                CFG_ARCHIVE_SIZE_KEY: "0 GB",
+                CFG_ASSET_PATH_KEY: "testpath"})), \
          mock.patch.object(refgenconf.refgenconf, "checksum",
                            return_value=checksum_tmpval), \
          mock.patch.object(refgenconf.refgenconf, "_download_url_progress"), \
@@ -104,7 +110,8 @@ def test_pull_asset_returns_key_value_pair(
 
 
 @pytest.mark.parametrize(["genome", "asset"], REQUESTS)
-@pytest.mark.parametrize("error", [ConnectionRefusedError, HTTPError, DownloadJsonError])
+@pytest.mark.parametrize(
+    "error", [ConnectionRefusedError, HTTPError, DownloadJsonError])
 def test_pull_asset_pull_error(
         rgc, genome, asset, gencfg, remove_genome_folder, error):
     """ Error pulling asset is exceptional. """
@@ -113,7 +120,8 @@ def test_pull_asset_pull_error(
     if error is DownloadJsonError:
         def raise_error(*args, **kwargs):
             raise DownloadJsonError(None)
-        with mock.patch("refgenconf.refgenconf._download_json", side_effect=raise_error), \
+        with mock.patch("refgenconf.refgenconf._download_json",
+                        side_effect=raise_error), \
              pytest.raises(DownloadJsonError):
             rgc.pull_asset(*args, **kwargs)
     else:
@@ -138,45 +146,181 @@ def test_pull_asset_pull_error(
             assert val is None
 
 
-@pytest.mark.parametrize(
-    ["genome", "asset"], [(g, a) for g in REMOTE_ASSETS for a in [None, 1, -0.1]])
-def test_pull_asset_illegal_asset_name(rgc, genome, asset, gencfg, remove_genome_folder):
+@pytest.mark.parametrize(["genome", "asset"], [
+    (g, a) for g in REMOTE_ASSETS for a in [None, 1, -0.1]])
+def test_pull_asset_illegal_asset_name(
+        rgc, genome, asset, gencfg, remove_genome_folder):
     """ TypeError occurs if asset argument is not iterable. """
     with pytest.raises(TypeError):
-        rgc.pull_asset(genome, asset, gencfg, get_main_url=get_get_url(genome, asset))
+        rgc.pull_asset(genome, asset, gencfg,
+                       get_main_url=get_get_url(genome, asset))
 
 
 @pytest.mark.parametrize(["genome", "asset"], REQUESTS)
-def test_pull_asset_checksum_mismatch(rgc, genome, asset, gencfg, remove_genome_folder):
+def test_pull_asset_checksum_mismatch(
+        rgc, genome, asset, gencfg, remove_genome_folder):
     """ Checksum mismatch short-circuits asset pull, returning null value. """
     with mock.patch.object(
         refgenconf.refgenconf, "_download_json",
         return_value=YacAttMap({CFG_CHECKSUM_KEY: "not-a-checksum",
                                 CFG_ARCHIVE_SIZE_KEY: "0 GB"})), \
         mock.patch(DOWNLOAD_FUNCTION, side_effect=lambda _1, _2, _3: None), \
-        mock.patch.object(refgenconf.refgenconf, "checksum", return_value="checksum2"):
-        res = rgc.pull_asset(genome, asset, gencfg, get_main_url=get_get_url(genome, asset))
+        mock.patch.object(
+            refgenconf.refgenconf, "checksum", return_value="checksum2"):
+        res = rgc.pull_asset(genome, asset, gencfg,
+                             get_main_url=get_get_url(genome, asset))
     key, val = _parse_single_pull(res)
     assert asset == key
     assert val is None
 
 
 @pytest.mark.parametrize(["genome", "asset"], REQUESTS)
-def test_abort_pull_asset(rgc, genome, asset, gencfg, remove_genome_folder):
+def test_negative_response_to_large_download_prompt(
+        rgc, genome, asset, gencfg, remove_genome_folder):
     """ Test responsiveness to user abortion of pull request. """
     with mock.patch.object(
             refgenconf.refgenconf, "_download_json",
             return_value=YacAttMap({CFG_CHECKSUM_KEY: "not-a-checksum",
-                                    CFG_ARCHIVE_SIZE_KEY: "0 GB"})), \
+                                    CFG_ARCHIVE_SIZE_KEY: "1M"})), \
         mock.patch("refgenconf.refgenconf._is_large_archive", return_value=True), \
         mock.patch("refgenconf.refgenconf.query_yes_no", return_value=False):
-        res = rgc.pull_asset(genome, asset, gencfg, get_main_url=get_get_url(genome, asset))
+        res = rgc.pull_asset(
+            genome, asset, gencfg, get_main_url=get_get_url(genome, asset))
     key, val = _parse_single_pull(res)
     assert asset == key
     assert val is None
 
 
+@pytest.mark.parametrize(["genome", "asset"], REQUESTS)
+def test_download_interruption(
+        rgc, genome, asset, gencfg, remove_genome_folder, caplog):
+    """ Download interruption provides appropriate warning message and halts. """
+    import signal
+    def kill_download(*args, **kwargs):
+        os.kill(os.getpid(), signal.SIGINT)
+    with mock.patch.object(refgenconf.refgenconf, "_download_json",
+                           return_value=YacAttMap({
+                               CFG_CHECKSUM_KEY: "dummy",
+                               CFG_ARCHIVE_SIZE_KEY: "1M"})),\
+         mock.patch(DOWNLOAD_FUNCTION, side_effect=kill_download), \
+         caplog.at_level(logging.WARNING), \
+         pytest.raises(SystemExit):
+        rgc.pull_asset(genome, asset, gencfg, get_main_url=get_get_url(genome, asset))
+    records = caplog.records
+    assert 1 == len(records)
+    r = records[0]
+    assert "WARNING" == r.levelname
+    assert "The download was interrupted" in r.msg
+
+
+class PreexistingAssetTests:
+    """ Tests for asset pull when the asset path already exists. """
+
+    @staticmethod
+    def _assert_result(res, exp_key, exp_val):
+        k, v = _parse_single_pull(res)
+        assert exp_key == k
+        assert exp_val == v
+
+    @staticmethod
+    def _assert_single_message(log, levname, test_text):
+        assert levname in dir(logging), "Not a logging level: {}".format(levname)
+        msgs = [r.msg for r in log.records if r.levelname == levname]
+        matched = list(filter(test_text, msgs))
+        assert 1 == len(matched)
+
+    def _assert_preserved(self, rgc, genome, asset, res, init_time, log):
+        exp_val = rgc.filepath(genome, asset)
+        self._assert_result(res, asset, exp_val)
+        assert init_time == os.path.getmtime(exp_val)
+        self._assert_single_message(
+            log, "DEBUG", lambda m: m == "Preserving existing: {}".format(exp_val))
+
+    def _assert_overwritten(self, rgc, genome, asset, res, init_time, log):
+        exp_val = rgc.filepath(genome, asset)
+        self._assert_result(res, asset, exp_val)
+        assert init_time < os.path.getmtime(exp_val)
+        self._assert_single_message(
+            log, "DEBUG", lambda m: m == "Overwriting: {}".format(exp_val))
+
+    @pytest.mark.parametrize(["genome", "asset"], REQUESTS)
+    @pytest.mark.parametrize(["force", "reply_patch"], [
+        (True, {"side_effect": lambda *args, **kwargs: pytest.fail(
+            "Forced short-circuit failed")}),
+        (None, {"return_value": True})])
+    def test_preserve_existing(self, rgc, genome, asset, gencfg,
+                               remove_genome_folder, force, reply_patch, caplog):
+        """ Existing asset is respected if forced pull is toggled off. """
+        fp = rgc.filepath(genome, asset)
+        assert not os.path.exists(fp)
+        if not os.path.exists(os.path.dirname(fp)):
+            os.makedirs(os.path.dirname(fp))
+        with open(fp, 'w'):
+            print("Create empty file: {}".format(fp))
+        init_time = os.path.getmtime(fp)
+        dummy_checksum_value = "fixed_value"
+        def touch(*_args, **_kwargs):
+            with open(fp, 'w'):
+                print("Recreating: {}".format(fp))
+
+        time.sleep(0.01)
+        assert os.path.isfile(fp)
+        with mock.patch.object(
+                refgenconf.refgenconf, "_download_json", return_value=YacAttMap({
+                    CFG_CHECKSUM_KEY: "fixed_value",
+                    CFG_ARCHIVE_SIZE_KEY: "1M",
+                    CFG_ASSET_PATH_KEY: fp
+                })), \
+             mock.patch.object(refgenconf.refgenconf, "query_yes_no", **reply_patch), \
+             mock.patch(DOWNLOAD_FUNCTION, side_effect=touch), \
+             mock.patch.object(refgenconf.refgenconf, "checksum",
+                               return_value=dummy_checksum_value), \
+             mock.patch.object(refgenconf.refgenconf, "_untar"), \
+             caplog.at_level(logging.DEBUG):
+            res = rgc.pull_asset(genome, asset, gencfg, force=False,
+                                 get_main_url=get_get_url(genome, asset))
+        self._assert_preserved(rgc, genome, asset, res, init_time, caplog)
+
+    @pytest.mark.parametrize(["genome", "asset"], REQUESTS)
+    @pytest.mark.parametrize(["force", "reply_patch"], [
+        (False, {"side_effect": lambda *args, **kwargs: pytest.fail(
+            "Forced short-circuit failed")}),
+        (None, {"return_value": False})])
+    def test_overwrite_existing(self, rgc, genome, asset, gencfg,
+                                remove_genome_folder, force, reply_patch, caplog):
+        """ Asset re-creation can be forced. """
+        fp = rgc.filepath(genome, asset)
+        assert not os.path.exists(fp)
+        if not os.path.exists(os.path.dirname(fp)):
+            os.makedirs(os.path.dirname(fp))
+        with open(fp, 'w'):
+            print("Creating: {}".format(fp))
+        init_time = os.path.getmtime(fp)
+        dummy_checksum_value = "fixed_value"
+        def touch(*_args, **_kwargs):
+            with open(fp, 'w'):
+                print("Recreating: {}".format(fp))
+        time.sleep(0.01)
+        assert os.path.isfile(fp)
+        with mock.patch.object(
+                refgenconf.refgenconf, "_download_json", return_value=YacAttMap({
+                    CFG_CHECKSUM_KEY: "fixed_value",
+                    CFG_ARCHIVE_SIZE_KEY: "1M",
+                    CFG_ASSET_PATH_KEY: fp
+                })), \
+             mock.patch.object(refgenconf.refgenconf, "query_yes_no", **reply_patch), \
+             mock.patch(DOWNLOAD_FUNCTION, side_effect=touch), \
+             mock.patch.object(refgenconf.refgenconf, "checksum",
+                               return_value=dummy_checksum_value), \
+             mock.patch.object(refgenconf.refgenconf, "_untar"), \
+             caplog.at_level(logging.DEBUG):
+            res = rgc.pull_asset(genome, asset, gencfg, force=True,
+                                 get_main_url=get_get_url(genome, asset))
+        self._assert_overwritten(rgc, genome, asset, res, init_time, caplog)
+
+
 def _parse_single_pull(result):
+    """ Unpack asset pull result, expecting asset name and value. """
     try:
         k, v = result[0]
     except (IndexError, ValueError):

@@ -20,7 +20,6 @@ import itertools
 import logging
 import os
 import signal
-import sys
 import warnings
 
 from attmap import PathExAttMap as PXAM
@@ -37,6 +36,19 @@ _LOGGER = logging.getLogger(__name__)
 
 
 __all__ = ["RefGenConf"]
+
+
+def _handle_sigint(filepath):
+    def handle(sig, frame):
+        _LOGGER.warning("\nThe download was interrupted: {}".format(filepath))
+        try:
+            os.remove(filepath)
+        except OSError:
+            _LOGGER.debug("'{}' not found, can't remove".format(filepath))
+        else:
+            _LOGGER.info("Incomplete file '{}' was removed".format(filepath))
+        sys.exit(0)
+    return handle
 
 
 class RefGenConf(yacman.YacAttMap):
@@ -99,6 +111,17 @@ class RefGenConf(yacman.YacAttMap):
         make_line = partial(_make_genome_assets_line, offset_text=offset_text,
                             genome_assets_delim=genome_assets_delim, asset_sep=asset_sep)
         return "\n".join([make_line(g, am) for g, am in self.genomes.items()])
+
+    def filepath(self, genome, asset, ext=".tar"):
+        """
+        Determine path to a particular asset for a particular genome.
+
+        :param str genome: reference genome iD
+        :param str asset: asset name
+        :param str ext: file extension
+        :return str: path to asset for given genome and asset kind/name
+        """
+        return os.path.join(self[CFG_FOLDER_KEY], genome, asset + ext)
 
     def genomes_list(self):
         """
@@ -209,7 +232,7 @@ class RefGenConf(yacman.YacAttMap):
 
     def pull_asset(self, genome, assets, genome_config, unpack=True, force=None,
                    get_json_url=lambda base, g, a: "{}/asset/{}/{}".format(base, g, a),
-                   get_main_url=None):
+                   get_main_url=None, build_signal_handler=_handle_sigint):
         """
         Download and possibly unpack one or more assets for a given ref gen.
 
@@ -225,6 +248,9 @@ class RefGenConf(yacman.YacAttMap):
             genome server URL base, genome, and asset
         :param function(str) -> str get_main_url: how to get archive URL from
             main URL
+        :param function(str) -> function build_signal_handler: how to create
+            a signal handler to use during the download; the single argument
+            to this function factory is the download filepath
         :return Iterable[(str, str | NoneType)]: collection of pairs of asset
             name and folder name (key-value pair with which genome config file
             is updated) if pull succeeds, else asset key and a null value.
@@ -241,22 +267,14 @@ class RefGenConf(yacman.YacAttMap):
         elif not isinstance(assets, Iterable):
             raise TypeError("Assets to pull should be single name or collection "
                             "of names; got {} ({})".format(assets, type(assets)))
-        return [self._pull_asset(
-            genome, a, genome_config, unpack, force, get_json_url, get_main_url) for a in assets]
+        return [self._pull_asset(genome, a, genome_config, unpack, force,
+                                 get_json_url, get_main_url, build_signal_handler)
+                for a in assets]
 
-    def _pull_asset(self, genome, asset, genome_config, unpack, force, get_json_url, get_main_url):
+    def _pull_asset(self, genome, asset, genome_config, unpack, force,
+                    get_json_url, get_main_url, build_signal_handler):
         bundle_name = '{}/{}'.format(genome, asset)
         _LOGGER.info("Starting pull for '{}'".format(bundle_name))
-
-        def signal_handler(sig, frame):
-            _LOGGER.warning("\nThe download was interrupted")
-            try:
-                os.remove(filepath)
-                _LOGGER.info("Incomplete file '{}' was removed".format(filepath))
-            except OSError:
-                _LOGGER.debug("'{}' not found, can't remove".format(filepath))
-                pass
-            sys.exit(0)
 
         def raise_unpack_error():
             raise NotImplementedError("The option for not extracting the tarballs is not yet supported.")
@@ -264,14 +282,14 @@ class RefGenConf(yacman.YacAttMap):
         unpack or raise_unpack_error()
 
         # local file to save as
-        outdir = os.path.join(self.genome_folder, genome)
-        filepath = os.path.join(outdir, asset + ".tar")
+        filepath = self.filepath(genome, asset)
+        outdir = os.path.dirname(filepath)
 
         if os.path.exists(filepath):
             # TODO: how to best handle the result value when the asset exists?
             def preserve():
                 _LOGGER.debug("Preserving existing: {}".format(filepath))
-                return asset, outdir
+                return asset, filepath
             def msg_overwrite():
                 _LOGGER.debug("Overwriting: {}".format(filepath))
             if force is False:
@@ -302,7 +320,7 @@ class RefGenConf(yacman.YacAttMap):
         # Download the file from `url` and save it locally under `filepath`:
         _LOGGER.info("Downloading URL: {}".format(url))
         try:
-            signal.signal(signal.SIGINT, signal_handler)
+            signal.signal(signal.SIGINT, build_signal_handler(filepath))
             _download_url_progress(url, filepath, bundle_name)
         except HTTPError as e:
             _LOGGER.error("File not found on server: {}".format(e))

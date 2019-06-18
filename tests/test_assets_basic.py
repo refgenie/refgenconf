@@ -1,5 +1,7 @@
 """ Basic RGC asset tests """
 
+from collections import OrderedDict
+from operator import itemgetter
 import pytest
 from tests.conftest import CONF_DATA, HG38_DATA, MM10_DATA, MITO_DATA
 
@@ -13,26 +15,33 @@ HISAT2_EXP = ["hg38"]
 BLACKLIST_EXP = ["mm10"]
 TSS_EXP = ["hg38"]
 GTF_EXP = ["hg38"]
+SORT_CONF_DATA = [(g, sorted(assets.keys())) for g, assets in
+                  sorted(CONF_DATA, key=itemgetter(0))]
+
+
+def _ord_exp_map(m):
+    return OrderedDict([(k, sorted(m[k])) for k in sorted(m.keys())])
 
 
 def test_assets_dict(rgc):
     """ Verify mapping of genome name to assets key-value collection. """
-    assert {g: list(am.keys()) for g, am in CONF_DATA} == rgc.assets_dict()
+    exp = _ord_exp_map({g: list(am.keys()) for g, am in CONF_DATA})
+    assert exp == rgc.assets_dict()
 
 
 @pytest.mark.parametrize(
     ["kwargs", "expected"],
-    [({}, "\n".join("  " + "{}: {}".format(g, "; ".join(assets.keys()))
-                    for g, assets in CONF_DATA)),
+    [({}, "\n".join("  " + "{}: {}".format(g, "; ".join(assets))
+                    for g, assets in SORT_CONF_DATA)),
      ({"offset_text": ""},
-      "\n".join("{}: {}".format(g, "; ".join(assets.keys()))
-                for g, assets in CONF_DATA)),
+      "\n".join("{}: {}".format(g, "; ".join(assets))
+                for g, assets in SORT_CONF_DATA)),
      ({"asset_sep": ","},
-      "\n".join("  " + "{}: {}".format(
-          g, ",".join(assets.keys())) for g, assets in CONF_DATA)),
+      "\n".join("  " + "{}: {}".format(g, ",".join(assets)) 
+                for g, assets in SORT_CONF_DATA)),
      ({"genome_assets_delim": " -- "},
-      "\n".join("  " + "{} -- {}".format(
-          g, "; ".join(assets.keys())) for g, assets in CONF_DATA))])
+      "\n".join("  " + "{} -- {}".format(g, "; ".join(assets)) 
+                for g, assets in SORT_CONF_DATA))])
 def test_assets_str(rgc, kwargs, expected):
     """ Verify text representation of the configuration instance's assets. """
     print("kwargs: {}".format(kwargs))
@@ -40,10 +49,10 @@ def test_assets_str(rgc, kwargs, expected):
 
 
 @pytest.mark.parametrize(["gname", "expected"], [
-    ("hg38", [a for a, _ in HG38_DATA]),
-    ("mm10", [a for a, _ in MM10_DATA]),
-    ("rCRSd", [a for a, _ in MITO_DATA]),
-    (None, {g: list(assets.keys()) for g, assets in CONF_DATA})
+    ("hg38", sorted([a for a, _ in HG38_DATA])),
+    ("mm10", sorted([a for a, _ in MM10_DATA])),
+    ("rCRSd", sorted([a for a, _ in MITO_DATA])),
+    (None, _ord_exp_map({g: list(assets.keys()) for g, assets in CONF_DATA}))
 ])
 def test_list_assets_by_genome(rgc, gname, expected):
     """ Verify listing of asset name/key/type, possible for one/all genomes. """

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from collections import Iterable, Mapping
+from collections import Iterable, Mapping, OrderedDict
 from functools import partial
 
 # Some short-term hacks to get at least 1 working version on python 2.7
@@ -86,17 +86,19 @@ class RefGenConf(yacman.YacAttMap):
 
     __nonzero__ = __bool__
 
-    def assets_dict(self):
+    def assets_dict(self, order=None):
         """
         Map each assembly name to a list of available asset names.
 
         :return Mapping[str, Iterable[str]]: mapping from assembly name to
             collection of available asset names.
         """
-        return {g: list(assets.keys()) for g, assets in self.genomes.items()}
+        refgens = sorted(self.genomes.keys())
+        return OrderedDict([(g, sorted(list(self.genomes[g].keys()), key=order))
+                            for g in refgens])
 
     def assets_str(self, offset_text="  ", asset_sep="; ",
-                   genome_assets_delim=": "):
+                   genome_assets_delim=": ", order=None):
         """
         Create a block of text representing genome-to-asset mapping.
 
@@ -109,8 +111,10 @@ class RefGenConf(yacman.YacAttMap):
         :return str: text representing genome-to-asset mapping
         """
         make_line = partial(_make_genome_assets_line, offset_text=offset_text,
-                            genome_assets_delim=genome_assets_delim, asset_sep=asset_sep)
-        return "\n".join([make_line(g, am) for g, am in self.genomes.items()])
+                            genome_assets_delim=genome_assets_delim,
+                            asset_sep=asset_sep, order=order)
+        refgens = sorted(self.genomes.keys(), key=order)
+        return "\n".join([make_line(g, self.genomes[g]) for g in refgens])
 
     def filepath(self, genome, asset, ext=".tar"):
         """
@@ -123,23 +127,23 @@ class RefGenConf(yacman.YacAttMap):
         """
         return os.path.join(self[CFG_FOLDER_KEY], genome, asset + ext)
 
-    def genomes_list(self):
+    def genomes_list(self, order=None):
         """
         Get a list of this configuration's reference genome assembly IDs.
 
         :return Iterable[str]: list of this configuration's reference genome
             assembly IDs
         """
-        return list(self.genomes.keys())
+        return sorted(list(self.genomes.keys()), key=order)
 
-    def genomes_str(self):
+    def genomes_str(self, order=None):
         """
         Get as single string this configuration's reference genome assembly IDs.
 
         :return str: single string that lists this configuration's known
             reference genome assembly IDs
         """
-        return ", ".join(self.genomes_list())
+        return ", ".join(self.genomes_list(order))
 
     def get_asset(self, genome_name, asset_name, strict_exists=True,
                   check_exist=lambda p: os.path.exists(p) or is_url(p)):
@@ -190,7 +194,7 @@ class RefGenConf(yacman.YacAttMap):
             warnings.warn(msg, RuntimeWarning)
         return path
 
-    def list_assets_by_genome(self, genome=None):
+    def list_assets_by_genome(self, genome=None, order=None):
         """
         List types/names of assets that are available for one--or all--genomes.
 
@@ -201,9 +205,10 @@ class RefGenConf(yacman.YacAttMap):
             one is provided, else the full mapping between assembly ID and
             collection available asset type names
         """
-        return self.assets_dict() if genome is None else list(self.genomes[genome].keys())
+        return self.assets_dict(order) if genome is None \
+            else sorted(list(self.genomes[genome].keys()), key=order)
 
-    def list_genomes_by_asset(self, asset=None):
+    def list_genomes_by_asset(self, asset=None, order=None):
         """
         List assemblies for which a particular asset is available.
 
@@ -214,20 +219,31 @@ class RefGenConf(yacman.YacAttMap):
             collection of assembly names for which the asset key is available
             will be returned.
         """
-        return self._invert_genomes() \
-            if not asset else [g for g, am in self.genomes.items() if asset in am]
+        return self._invert_genomes(order) if not asset else \
+            sorted([g for g, am in self.genomes.items() if asset in am], key=order)
 
-    def list_remote(self, get_url=lambda rgc: "{}/assets".format(rgc.genome_server)):
+    def list_local(self, order=None):
+        """
+        List locally available reference genome IDs and assets by ID.
+
+        :param order:
+        :return str, str: text reps of locally available genomes and assets
+        """
+        return self.genomes_str(order), self.assets_str(order)
+
+    def list_remote(self, get_url=lambda rgc: "{}/assets".format(rgc.genome_server),
+                    order=None):
         """
         List genomes and assets available remotely.
 
         :param function(refgenconf.RefGenConf) -> str get_url: how to determine
             URL request, given RefGenConf instance
+        :param order:
         :return str, str: text reps of remotely available genomes and assets
         """
         url = get_url(self)
         _LOGGER.info("Querying available assets from server: {}".format(url))
-        genomes, assets = _list_remote(url)
+        genomes, assets = _list_remote(url, order)
         return genomes, assets
 
     def pull_asset(self, genome, assets, genome_config, unpack=True, force=None,
@@ -384,7 +400,7 @@ class RefGenConf(yacman.YacAttMap):
                     self[CFG_GENOMES_KEY][genome][asset].update(data)
         return self
 
-    def _invert_genomes(self):
+    def _invert_genomes(self, order=None):
         """ Map each asset type/kind/name to a collection of assemblies.
 
         A configuration file encodes assets by genome, but in some use cases
@@ -393,7 +409,7 @@ class RefGenConf(yacman.YacAttMap):
         necessarily lost in this inversion, but we can collect genome IDs by
         asset ID.
 
-        :return Mapping[str, Iterable[str]] binding between asset kind/key/name
+        :return OrderedDict[str, Iterable[str]] binding between asset kind/key/name
             and collection of reference genome assembly names for which the
             asset type is available
         """
@@ -401,7 +417,8 @@ class RefGenConf(yacman.YacAttMap):
         for g, am in self.genomes.items():
             for a in am.keys():
                 genomes.setdefault(a, []).append(g)
-        return genomes
+        assets = sorted(genomes.keys(), key=order)
+        return OrderedDict([(a, sorted(genomes[a], key=order)) for a in assets])
 
 
 class DownloadProgressBar(tqdm):
@@ -500,7 +517,7 @@ def _is_large_archive(size):
             size.endswith("GB") and float("".join(c for c in size if c in '0123456789.')) > 5)
 
 
-def _list_remote(url):
+def _list_remote(url, order=None):
     """
     List genomes and assets available remotely.
 
@@ -508,13 +525,15 @@ def _list_remote(url):
     :return str, str: text reps of remotely available genomes and assets
     """
     genomes_data = _read_remote_data(url)
-    return ", ".join(genomes_data.keys()), \
-           "\n".join([_make_genome_assets_line(g, am)
-                      for g, am in genomes_data.items()])
+    refgens = sorted(genomes_data.keys(), key=order)
+    return ", ".join(refgens), \
+           "\n".join([_make_genome_assets_line(g, genomes_data[g], order=order)
+                      for g in refgens])
 
 
 def _make_genome_assets_line(
-        gen, assets, offset_text="  ", genome_assets_delim=": ", asset_sep="; "):
+        gen, assets, offset_text="  ", genome_assets_delim=": ", asset_sep="; ",
+        order=None):
     """
     Build a line of text for display of assets by genome
 
@@ -527,7 +546,7 @@ def _make_genome_assets_line(
     :return:
     """
     return offset_text + "{}{}{}".format(
-        gen, genome_assets_delim, asset_sep.join(list(assets)))
+        gen, genome_assets_delim, asset_sep.join(sorted(list(assets), key=order)))
 
 
 def _read_remote_data(url):

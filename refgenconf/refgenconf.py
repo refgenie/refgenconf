@@ -164,7 +164,7 @@ class RefGenConf(yacman.YacAttMap):
         :raise refgenconf.MissingAssetError: if the names assembly is known to
             this configuration instance, but the requested asset is unknown
         """
-        _LOGGER.info("Getting asset '{}' for genome '{}'".
+        _LOGGER.debug("Getting asset '{}' for genome '{}'".
                      format(asset_name, genome_name))
         if not callable(check_exist) or len(finspect(check_exist).args) != 1:
             raise TypeError("Asset existence check must be a one-arg function.")

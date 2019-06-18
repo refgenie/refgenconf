@@ -238,7 +238,7 @@ class RefGenConf(yacman.YacAttMap):
             names for sort
         :return str, str: text reps of locally available genomes and assets
         """
-        return self.genomes_str(order), self.assets_str(order)
+        return self.genomes_str(order=order), self.assets_str(order=order)
 
     def list_remote(self, get_url=lambda rgc: "{}/assets".format(rgc.genome_server),
                     order=None):

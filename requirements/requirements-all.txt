@@ -4,3 +4,4 @@ requests
 tqdm
 ubiquerg>=0.4.3
 yacman>=0.4
+future

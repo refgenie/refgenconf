@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from collections import Iterable, Mapping
+from collections import Iterable, Mapping, OrderedDict
 from functools import partial
 
 # Some short-term hacks to get at least 1 working version on python 2.7
@@ -20,7 +20,6 @@ import itertools
 import logging
 import os
 import signal
-import sys
 import warnings
 
 from attmap import PathExAttMap as PXAM
@@ -37,6 +36,19 @@ _LOGGER = logging.getLogger(__name__)
 
 
 __all__ = ["RefGenConf"]
+
+
+def _handle_sigint(filepath):
+    def handle(sig, frame):
+        _LOGGER.warning("\nThe download was interrupted: {}".format(filepath))
+        try:
+            os.remove(filepath)
+        except OSError:
+            _LOGGER.debug("'{}' not found, can't remove".format(filepath))
+        else:
+            _LOGGER.info("Incomplete file '{}' was removed".format(filepath))
+        sys.exit(0)
+    return handle
 
 
 class RefGenConf(yacman.YacAttMap):
@@ -74,17 +86,20 @@ class RefGenConf(yacman.YacAttMap):
 
     __nonzero__ = __bool__
 
-    def assets_dict(self):
+    def assets_dict(self, order=None):
         """
         Map each assembly name to a list of available asset names.
 
+        :param order: function(str) -> object how to key genome IDs for sort
         :return Mapping[str, Iterable[str]]: mapping from assembly name to
             collection of available asset names.
         """
-        return {g: list(assets.keys()) for g, assets in self.genomes.items()}
+        refgens = sorted(self.genomes.keys(), key=order)
+        return OrderedDict([(g, sorted(list(self.genomes[g].keys()), key=order))
+                            for g in refgens])
 
     def assets_str(self, offset_text="  ", asset_sep="; ",
-                   genome_assets_delim=": "):
+                   genome_assets_delim=": ", order=None):
         """
         Create a block of text representing genome-to-asset mapping.
 
@@ -94,29 +109,45 @@ class RefGenConf(yacman.YacAttMap):
             within each genome line
         :param str genome_assets_delim: the delimiter to place between
             reference genome assembly name and its list of asset names
+        :param order: function(str) -> object how to key genome IDs and asset
+            names for sort
         :return str: text representing genome-to-asset mapping
         """
         make_line = partial(_make_genome_assets_line, offset_text=offset_text,
-                            genome_assets_delim=genome_assets_delim, asset_sep=asset_sep)
-        return "\n".join([make_line(g, am) for g, am in self.genomes.items()])
+                            genome_assets_delim=genome_assets_delim,
+                            asset_sep=asset_sep, order=order)
+        refgens = sorted(self.genomes.keys(), key=order)
+        return "\n".join([make_line(g, self.genomes[g]) for g in refgens])
 
-    def genomes_list(self):
+    def filepath(self, genome, asset, ext=".tar"):
+        """
+        Determine path to a particular asset for a particular genome.
+
+        :param str genome: reference genome iD
+        :param str asset: asset name
+        :param str ext: file extension
+        :return str: path to asset for given genome and asset kind/name
+        """
+        return os.path.join(self[CFG_FOLDER_KEY], genome, asset + ext)
+
+    def genomes_list(self, order=None):
         """
         Get a list of this configuration's reference genome assembly IDs.
 
         :return Iterable[str]: list of this configuration's reference genome
             assembly IDs
         """
-        return list(self.genomes.keys())
+        return sorted(list(self.genomes.keys()), key=order)
 
-    def genomes_str(self):
+    def genomes_str(self, order=None):
         """
         Get as single string this configuration's reference genome assembly IDs.
 
+        :param order: function(str) -> object how to key genome IDs for sort
         :return str: single string that lists this configuration's known
             reference genome assembly IDs
         """
-        return ", ".join(self.genomes_list())
+        return ", ".join(self.genomes_list(order))
 
     def get_asset(self, genome_name, asset_name, strict_exists=True,
                   check_exist=lambda p: os.path.exists(p) or is_url(p)):
@@ -137,18 +168,20 @@ class RefGenConf(yacman.YacAttMap):
         :raise refgenconf.MissingAssetError: if the names assembly is known to
             this configuration instance, but the requested asset is unknown
         """
-        _LOGGER.info("Getting asset '{}' for genome '{}'".
+        _LOGGER.debug("Getting asset '{}' for genome '{}'".
                      format(asset_name, genome_name))
         if not callable(check_exist) or len(finspect(check_exist).args) != 1:
             raise TypeError("Asset existence check must be a one-arg function.")
         path = _genome_asset_path(self.genomes, genome_name, asset_name)
-        if strict_exists is None or check_exist(path):
+        if check_exist(path):
             return path
         _LOGGER.debug("Nonexistent path: {}".format(asset_name, genome_name, path))
         fullpath = os.path.join(self[CFG_FOLDER_KEY], genome_name, path)
         _LOGGER.debug("Trying path relative to genome folder: {}".format(fullpath))
         if check_exist(fullpath):
             return fullpath
+        elif strict_exists is None:
+            return path
         msg = "Asset '{}' for genome '{}' doesn't exist; tried {} and {}".\
             format(asset_name, genome_name, path, fullpath)
         extant = []
@@ -165,49 +198,67 @@ class RefGenConf(yacman.YacAttMap):
             warnings.warn(msg, RuntimeWarning)
         return path
 
-    def list_assets_by_genome(self, genome=None):
+    def list_assets_by_genome(self, genome=None, order=None):
         """
         List types/names of assets that are available for one--or all--genomes.
 
         :param str | NoneType genome: reference genome assembly ID, optional;
             if omitted, the full mapping from genome to asset names
+        :param order: function(str) -> object how to key genome IDs and asset
+            names for sort
         :return Iterable[str] | Mapping[str, Iterable[str]]: collection of
             asset type names available for particular reference assembly if
             one is provided, else the full mapping between assembly ID and
             collection available asset type names
         """
-        return self.assets_dict() if genome is None else list(self.genomes[genome].keys())
+        return self.assets_dict(order) if genome is None \
+            else sorted(list(self.genomes[genome].keys()), key=order)
 
-    def list_genomes_by_asset(self, asset=None):
+    def list_genomes_by_asset(self, asset=None, order=None):
         """
         List assemblies for which a particular asset is available.
 
         :param str | NoneType asset: name of type of asset of interest, optional
+        :param order: function(str) -> object how to key genome IDs and asset
+            names for sort
         :return Iterable[str] | Mapping[str, Iterable[str]]: collection of
             assemblies for which the given asset is available; if asset
             argument is omitted, the full mapping from name of asset type to
             collection of assembly names for which the asset key is available
             will be returned.
         """
-        return self._invert_genomes() \
-            if not asset else [g for g, am in self.genomes.items() if asset in am]
+        return self._invert_genomes(order) if not asset else \
+            sorted([g for g, am in self.genomes.items() if asset in am], key=order)
 
-    def list_remote(self, get_url=lambda rgc: "{}/assets".format(rgc.genome_server)):
+    def list_local(self, order=None):
+        """
+        List locally available reference genome IDs and assets by ID.
+
+        :param order: function(str) -> object how to key genome IDs and asset
+            names for sort
+        :return str, str: text reps of locally available genomes and assets
+        """
+        return self.genomes_str(order=order), self.assets_str(order=order)
+
+    def list_remote(self, get_url=lambda rgc: "{}/assets".format(rgc.genome_server),
+                    order=None):
         """
         List genomes and assets available remotely.
 
         :param function(refgenconf.RefGenConf) -> str get_url: how to determine
             URL request, given RefGenConf instance
+        :param order: function(str) -> object how to key genome IDs and asset
+            names for sort
         :return str, str: text reps of remotely available genomes and assets
         """
         url = get_url(self)
         _LOGGER.info("Querying available assets from server: {}".format(url))
-        genomes, assets = _list_remote(url)
+        genomes, assets = _list_remote(url, order)
         return genomes, assets
 
-    def pull_asset(self, genome, assets, genome_config, unpack=True,
+    def pull_asset(self, genome, assets, genome_config, unpack=True, force=None,
                    get_json_url=lambda base, g, a: "{}/asset/{}/{}".format(base, g, a),
-                   get_main_url=None):
+                   get_main_url=None, build_signal_handler=_handle_sigint):
         """
         Download and possibly unpack one or more assets for a given ref gen.
 
@@ -215,10 +266,17 @@ class RefGenConf(yacman.YacAttMap):
         :param str assets: name(s) of particular asset(s) to fetch
         :param str genome_config: path to genome configuration file to update
         :param bool unpack: whether to unpack a tarball
+        :param bool | NoneType force: how to handle case in which asset path
+            already exists; null for prompt (on a per-asset basis), False to
+            effectively auto-reply No to the prompt to replace existing file,
+            and True to auto-replay Yes for existing asset replacement.
         :param function(str, str, str) -> str get_json_url: how to build URL from
             genome server URL base, genome, and asset
         :param function(str) -> str get_main_url: how to get archive URL from
             main URL
+        :param function(str) -> function build_signal_handler: how to create
+            a signal handler to use during the download; the single argument
+            to this function factory is the download filepath
         :return Iterable[(str, str | NoneType)]: collection of pairs of asset
             name and folder name (key-value pair with which genome config file
             is updated) if pull succeeds, else asset key and a null value.
@@ -235,22 +293,14 @@ class RefGenConf(yacman.YacAttMap):
         elif not isinstance(assets, Iterable):
             raise TypeError("Assets to pull should be single name or collection "
                             "of names; got {} ({})".format(assets, type(assets)))
-        return [self._pull_asset(
-            genome, a, genome_config, unpack, get_json_url, get_main_url) for a in assets]
+        return [self._pull_asset(genome, a, genome_config, unpack, force,
+                                 get_json_url, get_main_url, build_signal_handler)
+                for a in assets]
 
-    def _pull_asset(self, genome, asset, genome_config, unpack, get_json_url, get_main_url):
+    def _pull_asset(self, genome, asset, genome_config, unpack, force,
+                    get_json_url, get_main_url, build_signal_handler):
         bundle_name = '{}/{}'.format(genome, asset)
         _LOGGER.info("Starting pull for '{}'".format(bundle_name))
-
-        def signal_handler(sig, frame):
-            _LOGGER.warning("\nThe download was interrupted")
-            try:
-                os.remove(filepath)
-                _LOGGER.info("Incomplete file '{}' was removed".format(filepath))
-            except OSError:
-                _LOGGER.debug("'{}' not found, can't remove".format(filepath))
-                pass
-            sys.exit(0)
 
         def raise_unpack_error():
             raise NotImplementedError("The option for not extracting the tarballs is not yet supported.")
@@ -258,18 +308,31 @@ class RefGenConf(yacman.YacAttMap):
         unpack or raise_unpack_error()
 
         # local file to save as
-        outdir = os.path.join(self.genome_folder, genome)
-        filepath = os.path.join(outdir, asset + ".tar")
+        filepath = self.filepath(genome, asset)
+        outdir = os.path.dirname(filepath)
+
+        if os.path.exists(filepath):
+            # TODO: how to best handle the result value when the asset exists?
+            def preserve():
+                _LOGGER.debug("Preserving existing: {}".format(filepath))
+                return asset, filepath
+            def msg_overwrite():
+                _LOGGER.debug("Overwriting: {}".format(filepath))
+            if force is False:
+                return preserve()
+            elif force is None:
+                if not query_yes_no("Replace existing ({})?".format(filepath), "no"):
+                    return preserve()
+                else:
+                    msg_overwrite()
+            else:
+                msg_overwrite()
 
         url_json = get_json_url(self.genome_server, genome, asset)
         url = url_json + "/archive" if get_main_url is None \
             else get_main_url(self.genome_server, genome, asset)
 
-        try:
-            archive_data = _download_json(url_json)
-        except Exception as e:
-            _LOGGER.error(str(e))
-            return asset, None
+        archive_data = _download_json(url_json)
         if not os.path.exists(outdir):
             _LOGGER.debug("Creating directory: {}".format(outdir))
             os.makedirs(outdir)
@@ -283,7 +346,7 @@ class RefGenConf(yacman.YacAttMap):
         # Download the file from `url` and save it locally under `filepath`:
         _LOGGER.info("Downloading URL: {}".format(url))
         try:
-            signal.signal(signal.SIGINT, signal_handler)
+            signal.signal(signal.SIGINT, build_signal_handler(filepath))
             _download_url_progress(url, filepath, bundle_name)
         except HTTPError as e:
             _LOGGER.error("File not found on server: {}".format(e))
@@ -313,6 +376,7 @@ class RefGenConf(yacman.YacAttMap):
 
         # successfully downloaded and moved tarball; untar it
         if unpack and filepath.endswith(".tar") or filepath.endswith(".tgz"):
+            _LOGGER.info("Extracting: {}".format(bundle_name))
             _untar(filepath, outdir)
             _LOGGER.debug("Unpacked archive into: {}".format(outdir))
         _LOGGER.info("Writing genome config file: {}".format(genome_config))
@@ -346,7 +410,7 @@ class RefGenConf(yacman.YacAttMap):
                     self[CFG_GENOMES_KEY][genome][asset].update(data)
         return self
 
-    def _invert_genomes(self):
+    def _invert_genomes(self, order=None):
         """ Map each asset type/kind/name to a collection of assemblies.
 
         A configuration file encodes assets by genome, but in some use cases
@@ -355,7 +419,9 @@ class RefGenConf(yacman.YacAttMap):
         necessarily lost in this inversion, but we can collect genome IDs by
         asset ID.
 
-        :return Mapping[str, Iterable[str]] binding between asset kind/key/name
+        :param order: function(str) -> object how to key genome IDs and asset
+            names for sort
+        :return OrderedDict[str, Iterable[str]] binding between asset kind/key/name
             and collection of reference genome assembly names for which the
             asset type is available
         """
@@ -363,7 +429,8 @@ class RefGenConf(yacman.YacAttMap):
         for g, am in self.genomes.items():
             for a in am.keys():
                 genomes.setdefault(a, []).append(g)
-        return genomes
+        assets = sorted(genomes.keys(), key=order)
+        return OrderedDict([(a, sorted(genomes[a], key=order)) for a in assets])
 
 
 class DownloadProgressBar(tqdm):
@@ -392,11 +459,10 @@ def _download_json(url):
     """
     import json, requests
     _LOGGER.debug("Downloading JSON data; querying URL: '{}'".format(url))
-    server_resp = requests.get(url)
-    if server_resp.ok:
-        return json.loads(server_resp.content.decode())
-    raise DownloadJsonError("Non-OK response (status {}) for URL: {}".
-                            format(server_resp.status_code, url))
+    resp = requests.get(url)
+    if resp.ok:
+        return json.loads(resp.content.decode())
+    raise DownloadJsonError(resp)
 
 
 def _download_url_progress(url, output_path, name):
@@ -412,6 +478,24 @@ def _download_url_progress(url, output_path, name):
 
 
 def _genome_asset_path(genomes, gname, aname):
+    """
+    Retrieve the raw path value for a particular asset for a particular genome.
+
+    :param Mapping[str, Mapping[str, Mapping[str, object]]] genomes: nested
+        collection of key-value pairs, keyed at top level on genome ID, then by
+        asset name, then by asset attribute
+    :param str gname: top level key to query -- genome ID, e.g. mm10
+    :param str aname: second-level key to query -- asset name, e.g. chrom_sizes
+    :return str: raw path value for a particular asset for a particular genome
+    :raise MissingGenomeError: if the given key-value pair collection does not
+        contain as a top-level key the given genome ID
+    :raise MissingAssetError: if the given key-value pair colelction does
+        contain the given genome ID, but that key's mapping doesn't contain
+        the given asset name as a key
+    :raise GenomeConfigFormatError: if it's discovered during the query that
+        the structure of the given genomes mapping suggests that it was
+        parsd from an improperly formatted/structured genome config gile.
+    """
     try:
         genome = genomes[gname]
     except KeyError:
@@ -445,23 +529,39 @@ def _is_large_archive(size):
             size.endswith("GB") and float("".join(c for c in size if c in '0123456789.')) > 5)
 
 
-def _list_remote(url):
+def _list_remote(url, order=None):
     """
     List genomes and assets available remotely.
 
     :param url: location or ref genome config data
+    :param order: function(str) -> object how to key genome IDs and asset
+        names for sort
     :return str, str: text reps of remotely available genomes and assets
     """
     genomes_data = _read_remote_data(url)
-    return ", ".join(genomes_data.keys()), \
-           "\n".join([_make_genome_assets_line(g, am)
-                      for g, am in genomes_data.items()])
+    refgens = sorted(genomes_data.keys(), key=order)
+    return ", ".join(refgens), \
+           "\n".join([_make_genome_assets_line(g, genomes_data[g], order=order)
+                      for g in refgens])
 
 
 def _make_genome_assets_line(
-        gen, assets, offset_text="  ", genome_assets_delim=": ", asset_sep="; "):
+        gen, assets, offset_text="  ", genome_assets_delim=": ", asset_sep="; ",
+        order=None):
+    """
+    Build a line of text for display of assets by genome
+
+    :param str gen: reference assembly ID, e.g. hg38
+    :param Iterable[str] assets: collection of asset names for the given genome
+    :param str offset_text: prefix for the line, e.g. a kind of whitespace
+    :param str genome_assets_delim: delimiter between a genome ID and text
+        showing names of assets for that genome
+    :param str asset_sep: delimiter between asset names
+    :param order: function(str) -> object how to key asset names for sort
+    :return str: text representation of a single assembly's name and assets
+    """
     return offset_text + "{}{}{}".format(
-        gen, genome_assets_delim, asset_sep.join(list(assets)))
+        gen, genome_assets_delim, asset_sep.join(sorted(list(assets), key=order)))
 
 
 def _read_remote_data(url):
@@ -478,6 +578,12 @@ def _read_remote_data(url):
 
 
 def _untar(src, dst):
+    """
+    Unpack a path to a target folder.
+
+    :param str src: path to unpack
+    :param str dst: path to output folder
+    """
     import tarfile
     with tarfile.open(src) as tf:
         tf.extractall(path=dst)

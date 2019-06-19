@@ -8,7 +8,7 @@ from .const import CFG_ENV_VARS
 __all__ = ["select_genome_config"]
 
 
-def select_genome_config(filename, conf_env_vars=None):
+def select_genome_config(filename, conf_env_vars=None, **kwargs):
     """
     Get path to genome configuration file.
 
@@ -17,7 +17,7 @@ def select_genome_config(filename, conf_env_vars=None):
         consider; basically, a prioritized search list
     :return str: path to genome configuration file
     """
-    return yacman.select_config(filename, conf_env_vars or CFG_ENV_VARS)
+    return yacman.select_config(filename, conf_env_vars or CFG_ENV_VARS, **kwargs)
 
 
 def unbound_env_vars(path):

@@ -8,14 +8,15 @@ import sys
 if sys.version_info >= (3, ):
     from inspect import getfullargspec as finspect
     from urllib.error import HTTPError, ContentTooShortError
-    import urllib.request
 else:
+    from future.standard_library import install_aliases
+    install_aliases()
     from inspect import getargspec as finspect
     from urllib2 import HTTPError
-    import urllib
     from urllib import ContentTooShortError
     ConnectionRefusedError = Exception
 
+import urllib.request
 import itertools
 import logging
 import os

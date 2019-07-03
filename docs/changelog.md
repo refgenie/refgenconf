@@ -2,6 +2,10 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format. 
 
+## [0.2.1] - Unreleased
+### Changed
+- Favor asset path relative to genome config rather than local folder in case both exist.
+
 ## [0.2.0] - 2019-06-18
 ### Added
 - Ability to control behavior when pulled asset already exists

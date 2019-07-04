@@ -547,7 +547,7 @@ def _list_remote(url, order=None):
 
 
 def _make_genome_assets_line(
-        gen, assets, offset_text="  ", genome_assets_delim=": ", asset_sep="; ",
+        gen, assets, offset_text="  ", genome_assets_delim=": ", asset_sep=", ",
         order=None):
     """
     Build a line of text for display of assets by genome

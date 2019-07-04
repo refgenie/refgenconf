@@ -31,16 +31,16 @@ def test_assets_dict(rgc):
 
 @pytest.mark.parametrize(
     ["kwargs", "expected"],
-    [({}, "\n".join("  " + "{}: {}".format(g, "; ".join(assets))
+    [({}, "\n".join("  " + "{}: {}".format(g, ", ".join(assets))
                     for g, assets in SORT_CONF_DATA)),
      ({"offset_text": ""},
-      "\n".join("{}: {}".format(g, "; ".join(assets))
+      "\n".join("{}: {}".format(g, ", ".join(assets))
                 for g, assets in SORT_CONF_DATA)),
      ({"asset_sep": ","},
       "\n".join("  " + "{}: {}".format(g, ",".join(assets)) 
                 for g, assets in SORT_CONF_DATA)),
      ({"genome_assets_delim": " -- "},
-      "\n".join("  " + "{} -- {}".format(g, "; ".join(assets)) 
+      "\n".join("  " + "{} -- {}".format(g, ", ".join(assets))
                 for g, assets in SORT_CONF_DATA))])
 def test_assets_str(rgc, kwargs, expected):
     """ Verify text representation of the configuration instance's assets. """

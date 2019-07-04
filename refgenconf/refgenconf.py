@@ -99,7 +99,7 @@ class RefGenConf(yacman.YacAttMap):
         return OrderedDict([(g, sorted(list(self.genomes[g].keys()), key=order))
                             for g in refgens])
 
-    def assets_str(self, offset_text="  ", asset_sep="; ",
+    def assets_str(self, offset_text="  ", asset_sep=", ",
                    genome_assets_delim=": ", order=None):
         """
         Create a block of text representing genome-to-asset mapping.

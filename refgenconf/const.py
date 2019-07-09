@@ -15,22 +15,25 @@ CFG_SERVER_KEY = "genome_server"
 CFG_ARCHIVE_KEY = "genome_archive"
 CFG_GENOMES_KEY = "genomes"
 
+CFG_GENOME_DESC = "genome_description"
+
 CFG_ASSET_PATH_KEY = "path"
 CFG_ASSET_SIZE_KEY = "asset_size"
+CFG_ASSET_DESC_KEY = "asset_description"
 CFG_ARCHIVE_SIZE_KEY = "archive_size"
 CFG_CHECKSUM_KEY = "archive_checksum"
 
 CFG_TOP_LEVEL_KEYS = [
     CFG_FOLDER_KEY, CFG_SERVER_KEY, CFG_ARCHIVE_KEY, CFG_GENOMES_KEY]
 CFG_SINGLE_ASSET_SECTION_KEYS = [
-    CFG_ASSET_PATH_KEY, CFG_ASSET_SIZE_KEY, CFG_ARCHIVE_SIZE_KEY, CFG_CHECKSUM_KEY]
+    CFG_ASSET_PATH_KEY, CFG_ASSET_DESC_KEY, CFG_ASSET_SIZE_KEY, CFG_ARCHIVE_SIZE_KEY, CFG_CHECKSUM_KEY]
 
 CFG_KEY_NAMES = [
     "CFG_FOLDER_KEY", "CFG_SERVER_KEY", "CFG_GENOMES_KEY",
-    "CFG_ASSET_PATH_KEY", "CFG_ARCHIVE_KEY", "CFG_ARCHIVE_SIZE_KEY",
+    "CFG_ASSET_PATH_KEY", "CFG_ASSET_DESC_KEY", "CFG_ARCHIVE_KEY", "CFG_ARCHIVE_SIZE_KEY",
     "CFG_ASSET_SIZE_KEY", "CFG_CHECKSUM_KEY"]
 
-__all__ = CFG_CONST + CFG_KEY_NAMES + ["DEFAULT_SERVER", "CFG_KEY_NAMES"]
+__all__ = CFG_CONST + CFG_KEY_NAMES + ["DEFAULT_SERVER", "CFG_KEY_NAMES", "CFG_GENOME_DESC"]
 
 """
 # example genome configuration structure
@@ -41,12 +44,14 @@ __all__ = CFG_CONST + CFG_KEY_NAMES + ["DEFAULT_SERVER", "CFG_KEY_NAMES"]
 
 {genomes}:
   hg38:
+    {desc_genome} 
     bowtie2:
       {path}: indexed_bowtie2
+      {desc_asset}: Genome index for bowtie2, produced with bowtie2-build
       {checksum}: mm20349234n20349280345mv2035
       {asset_size}: 32G
       {archive_size}: 7G
 """.format(folder=CFG_FOLDER_KEY, server=CFG_SERVER_KEY,
-           archive=CFG_ARCHIVE_KEY, genomes=CFG_GENOMES_KEY,
-           path=CFG_ASSET_PATH_KEY, checksum=CFG_CHECKSUM_KEY,
+           archive=CFG_ARCHIVE_KEY, genomes=CFG_GENOMES_KEY, desc_genome=CFG_GENOME_DESC,
+           path=CFG_ASSET_PATH_KEY, desc_asset=CFG_ASSET_DESC_KEY, checksum=CFG_CHECKSUM_KEY,
            asset_size=CFG_ASSET_SIZE_KEY, archive_size=CFG_ARCHIVE_SIZE_KEY)

@@ -75,11 +75,23 @@ class RefGenConf(yacman.YacAttMap):
             self[CFG_GENOMES_KEY] = PXAM()
         if CFG_FOLDER_KEY not in self:
             self[CFG_FOLDER_KEY] = os.path.dirname(entries) if isinstance(entries, str) else os.getcwd()
-        if CFG_VERSION_KEY in self and float(self[CFG_VERSION_KEY]) < REQ_CFG_VERSION:
-            msg = "This genome config (v{}) is not compliant with v{} standards. To use it, please downgrade " \
-                  "refgenie: 'pip install refgenie==0.4.4'.".format(self[CFG_VERSION_KEY], str(REQ_CFG_VERSION))
-            raise ConfigNotCompliantError(msg)
-        _LOGGER.debug("Config version is correct: {}".format(self[CFG_VERSION_KEY]))
+        try:
+            version = self[CFG_VERSION_KEY]
+        except KeyError:
+            _LOGGER.warning("Config lacks version key: {}".format(CFG_VERSION_KEY))
+        else:
+            try:
+                version = float(version)
+            except ValueError:
+                _LOGGER.warning("Cannot parse as numeric: {}".format(version))
+            else:
+                if version < REQ_CFG_VERSION:
+                    # TODO: what's special about 0.4.4 of refgenie? Can we store that value as an indicatively named constant?
+                    msg = "This genome config (v{}) is not compliant with v{} standards. To use it, please downgrade " \
+                          "refgenie: 'pip install refgenie==0.4.4'.".format(self[CFG_VERSION_KEY], str(REQ_CFG_VERSION))
+                    raise ConfigNotCompliantError(msg)
+                else:
+                    _LOGGER.debug("Config version is compliant: {}".format(version))
         try:
             self[CFG_SERVER_KEY] = self[CFG_SERVER_KEY].rstrip("/")
         except KeyError:

@@ -5,6 +5,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [0.2.1] - Unreleased
 ### Changed
 - Favor asset path relative to genome config rather than local folder in case both exist.
+- `update_genomes` method renamed to `update_assets`
+
+### Added
+- `udpate_genomes` method
 
 ## [0.2.0] - 2019-06-18
 ### Added

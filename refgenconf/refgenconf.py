@@ -8,14 +8,15 @@ import sys
 if sys.version_info >= (3, ):
     from inspect import getfullargspec as finspect
     from urllib.error import HTTPError, ContentTooShortError
-    import urllib.request
 else:
+    from future.standard_library import install_aliases
+    install_aliases()
     from inspect import getargspec as finspect
     from urllib2 import HTTPError
-    import urllib
     from urllib import ContentTooShortError
     ConnectionRefusedError = Exception
 
+import urllib.request
 import itertools
 import logging
 import os
@@ -70,11 +71,15 @@ class RefGenConf(yacman.YacAttMap):
             if genomes:
                 _LOGGER.warning(
                     "'{k}' value is a {t_old}, not a {t_new}; setting to empty {t_new}".
-                    format(k=CFG_GENOMES_KEY, t_old=type(genomes).__name__, t_new=PXAM.__name__))
+                        format(k=CFG_GENOMES_KEY, t_old=type(genomes).__name__, t_new=PXAM.__name__))
             self[CFG_GENOMES_KEY] = PXAM()
         if CFG_FOLDER_KEY not in self:
-            self[CFG_FOLDER_KEY] = os.path.dirname(entries) \
-                if isinstance(entries, str) else os.getcwd()
+            self[CFG_FOLDER_KEY] = os.path.dirname(entries) if isinstance(entries, str) else os.getcwd()
+        if CFG_VERSION_KEY in self and float(self[CFG_VERSION_KEY]) < REQ_CFG_VERSION:
+            msg = "This genome config (v{}) is not compliant with v{} standards. To use it, please downgrade " \
+                  "refgenie: 'pip install refgenie==0.4.4'.".format(self[CFG_VERSION_KEY], str(REQ_CFG_VERSION))
+            raise ConfigNotCompliantError(msg)
+        _LOGGER.debug("Config version is correct: {}".format(self[CFG_VERSION_KEY]))
         try:
             self[CFG_SERVER_KEY] = self[CFG_SERVER_KEY].rstrip("/")
         except KeyError:
@@ -94,12 +99,10 @@ class RefGenConf(yacman.YacAttMap):
         :return Mapping[str, Iterable[str]]: mapping from assembly name to
             collection of available asset names.
         """
-        refgens = sorted(self.genomes.keys(), key=order)
-        return OrderedDict([(g, sorted(list(self.genomes[g].keys()), key=order))
-                            for g in refgens])
+        refgens = sorted(self[CFG_GENOMES_KEY].keys(), key=order)
+        return OrderedDict([(g, sorted(list(self[CFG_GENOMES_KEY][g][CFG_ASSETS_KEY].keys()), key=order)) for g in refgens])
 
-    def assets_str(self, offset_text="  ", asset_sep="; ",
-                   genome_assets_delim=": ", order=None):
+    def assets_str(self, offset_text="  ", asset_sep=", ", genome_assets_delim=": ", order=None):
         """
         Create a block of text representing genome-to-asset mapping.
 
@@ -114,10 +117,9 @@ class RefGenConf(yacman.YacAttMap):
         :return str: text representing genome-to-asset mapping
         """
         make_line = partial(_make_genome_assets_line, offset_text=offset_text,
-                            genome_assets_delim=genome_assets_delim,
-                            asset_sep=asset_sep, order=order)
-        refgens = sorted(self.genomes.keys(), key=order)
-        return "\n".join([make_line(g, self.genomes[g]) for g in refgens])
+                            genome_assets_delim=genome_assets_delim, asset_sep=asset_sep, order=order)
+        refgens = sorted(self[CFG_GENOMES_KEY].keys(), key=order)
+        return "\n".join([make_line(g, self[CFG_GENOMES_KEY][g][CFG_ASSETS_KEY]) for g in refgens])
 
     def filepath(self, genome, asset, ext=".tar"):
         """
@@ -137,7 +139,7 @@ class RefGenConf(yacman.YacAttMap):
         :return Iterable[str]: list of this configuration's reference genome
             assembly IDs
         """
-        return sorted(list(self.genomes.keys()), key=order)
+        return sorted(list(self[CFG_GENOMES_KEY].keys()), key=order)
 
     def genomes_str(self, order=None):
         """
@@ -172,10 +174,10 @@ class RefGenConf(yacman.YacAttMap):
                      format(asset_name, genome_name))
         if not callable(check_exist) or len(finspect(check_exist).args) != 1:
             raise TypeError("Asset existence check must be a one-arg function.")
-        path = _genome_asset_path(self.genomes, genome_name, asset_name)
-        if check_exist(path):
+        path = _genome_asset_path(self[CFG_GENOMES_KEY], genome_name, asset_name)
+        if os.path.isabs(path) and check_exist(path):
             return path
-        _LOGGER.debug("Nonexistent path: {}".format(asset_name, genome_name, path))
+        _LOGGER.debug("Relative or nonexistent path: {}".format(path))
         fullpath = os.path.join(self[CFG_FOLDER_KEY], genome_name, path)
         _LOGGER.debug("Trying path relative to genome folder: {}".format(fullpath))
         if check_exist(fullpath):
@@ -212,7 +214,7 @@ class RefGenConf(yacman.YacAttMap):
             collection available asset type names
         """
         return self.assets_dict(order) if genome is None \
-            else sorted(list(self.genomes[genome].keys()), key=order)
+            else sorted(list(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY].keys()), key=order)
 
     def list_genomes_by_asset(self, asset=None, order=None):
         """
@@ -228,7 +230,7 @@ class RefGenConf(yacman.YacAttMap):
             will be returned.
         """
         return self._invert_genomes(order) if not asset else \
-            sorted([g for g, am in self.genomes.items() if asset in am], key=order)
+            sorted([g for g, am in self[CFG_GENOMES_KEY].items() if asset in am], key=order)
 
     def list_local(self, order=None):
         """
@@ -380,11 +382,11 @@ class RefGenConf(yacman.YacAttMap):
             _untar(filepath, outdir)
             _LOGGER.debug("Unpacked archive into: {}".format(outdir))
         _LOGGER.info("Writing genome config file: {}".format(genome_config))
-        self.update_genomes(genome, asset, {CFG_ASSET_PATH_KEY: result})
+        self.update_assets(genome, asset, {CFG_ASSET_PATH_KEY: result})
         self.write(genome_config)
         return asset, result
 
-    def update_genomes(self, genome, asset=None, data=None):
+    def update_assets(self, genome, asset=None, data=None):
         """
         Updates the genomes in RefGenConf object at any level.
         If a requested genome-asset mapping is missing, it will be created
@@ -394,20 +396,27 @@ class RefGenConf(yacman.YacAttMap):
         :param Mapping data: data to be added/updated
         :return RefGenConf: updated object
         """
-        def check(obj, datatype, name):
-            if obj is None:
-                return False
-            if not isinstance(obj, datatype):
-                raise TypeError("{} must be {}; got {}".format(
-                    name, datatype.__name__, type(obj).__name__))
-            return True
+        if _check_insert_data(genome, str, "genome"):
+            self[CFG_GENOMES_KEY].setdefault(genome, PXAM({CFG_ASSETS_KEY: PXAM()}))
+            if _check_insert_data(asset, str, "asset"):
+                self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY].setdefault(asset, PXAM())
+                if _check_insert_data(data, Mapping, "data"):
+                    self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset].update(data)
+        return self
 
-        if check(genome, str, "genome"):
-            self[CFG_GENOMES_KEY].setdefault(genome, PXAM())
-            if check(asset, str, "asset"):
-                self[CFG_GENOMES_KEY][genome].setdefault(asset, PXAM())
-                if check(data, Mapping, "data"):
-                    self[CFG_GENOMES_KEY][genome][asset].update(data)
+    def update_genomes(self, genome, data=None):
+        """
+        Updates the genomes in RefGenConf object at any level.
+        If a requested genome is missing, it will be added
+
+        :param str genome: genome to be added/updated
+        :param Mapping data: data to be added/updated
+        :return RefGenConf: updated object
+        """
+        if _check_insert_data(genome, str, "genome"):
+            self[CFG_GENOMES_KEY].setdefault(genome, PXAM({CFG_ASSETS_KEY: PXAM()}))
+            if _check_insert_data(data, Mapping, "data"):
+                self[CFG_GENOMES_KEY][genome].update(data)
         return self
 
     def _invert_genomes(self, order=None):
@@ -426,8 +435,8 @@ class RefGenConf(yacman.YacAttMap):
             asset type is available
         """
         genomes = {}
-        for g, am in self.genomes.items():
-            for a in am.keys():
+        for g, am in self[CFG_GENOMES_KEY].items():
+            for a in am[CFG_ASSETS_KEY].keys():
                 genomes.setdefault(a, []).append(g)
         assets = sorted(genomes.keys(), key=order)
         return OrderedDict([(a, sorted(genomes[a], key=order)) for a in assets])
@@ -501,7 +510,7 @@ def _genome_asset_path(genomes, gname, aname):
     except KeyError:
         raise MissingGenomeError("Your genomes do not include {}".format(gname))
     try:
-        asset_data = genome[aname]
+        asset_data = genome[CFG_ASSETS_KEY][aname]
     except KeyError:
         raise MissingAssetError(
             "Genome '{}' exists, but index '{}' is missing".format(gname, aname))
@@ -540,13 +549,11 @@ def _list_remote(url, order=None):
     """
     genomes_data = _read_remote_data(url)
     refgens = sorted(genomes_data.keys(), key=order)
-    return ", ".join(refgens), \
-           "\n".join([_make_genome_assets_line(g, genomes_data[g], order=order)
-                      for g in refgens])
+    return ", ".join(refgens), "\n".join([_make_genome_assets_line(g, genomes_data[g], order=order) for g in refgens])
 
 
 def _make_genome_assets_line(
-        gen, assets, offset_text="  ", genome_assets_delim=": ", asset_sep="; ",
+        gen, assets, offset_text="  ", genome_assets_delim=": ", asset_sep=", ",
         order=None):
     """
     Build a line of text for display of assets by genome
@@ -587,3 +594,13 @@ def _untar(src, dst):
     import tarfile
     with tarfile.open(src) as tf:
         tf.extractall(path=dst)
+
+
+def _check_insert_data(obj, datatype, name):
+    """ Checks validity of an object """
+    if obj is None:
+        return False
+    if not isinstance(obj, datatype):
+        raise TypeError("{} must be {}; got {}".format(
+            name, datatype.__name__, type(obj).__name__))
+    return True

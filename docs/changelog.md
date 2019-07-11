@@ -2,6 +2,18 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format. 
 
+## [0.3.0] - 2019-07-11
+### Changed
+- Favor asset path relative to genome config rather than local folder in case both exist.
+- `update_genomes` method renamed to `update_assets`
+- genome config file format changes:
+    - Added `config_version` entry
+    - Added `assets` section in `genomes` section
+
+### Added
+- `udpate_genomes` method
+- Genome config file version is now verified in `RefGenConf.__init__` 
+
 ## [0.2.0] - 2019-06-18
 ### Added
 - Ability to control behavior when pulled asset already exists

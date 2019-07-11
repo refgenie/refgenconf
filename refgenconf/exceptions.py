@@ -4,9 +4,9 @@ import abc
 
 __all__ = ["DownloadJsonError", "GenomeConfigFormatError", "MissingAssetError",
            "MissingConfigDataError", "MissingGenomeError",
-           "RefgenconfError", "UnboundEnvironmentVariablesError"]
+           "RefgenconfError", "UnboundEnvironmentVariablesError", "ConfigNotCompliantError"]
 
-DOC_URL = "http://refgenie.databio.org/en/dev/genome_config/"
+DOC_URL = "http://refgenie.databio.org/en/latest/genome_config/"
 
 
 class RefgenconfError(Exception):
@@ -26,7 +26,7 @@ class DownloadJsonError(RefgenconfError):
 class GenomeConfigFormatError(RefgenconfError):
     """ Exception for invalid genome config file format. """
     def __init__(self, msg):
-        spacing = " " if msg[-1] in ["?", "."] else "; "
+        spacing = " " if msg[-1] in ["?", ".", "\n"] else "; "
         suggest = "For config format documentation please see " + DOC_URL
         super(GenomeConfigFormatError, self).__init__(msg + spacing + suggest)
 
@@ -38,6 +38,11 @@ class MissingAssetError(RefgenconfError):
 
 class MissingConfigDataError(RefgenconfError):
     """ Missing required configuration instance items """
+    pass
+
+
+class ConfigNotCompliantError(GenomeConfigFormatError):
+    """ The format of the config file does not match required version/standards """
     pass
 
 

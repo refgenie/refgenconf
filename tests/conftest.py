@@ -45,6 +45,10 @@ CONF_DATA = [
 ]
 
 
+def bind_to_assets(data):
+    return {CFG_ASSETS_KEY: data}
+
+
 def get_conf_genomes():
     """
     Get the collection of reference genome assembly names used in test data.

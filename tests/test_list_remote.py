@@ -22,5 +22,6 @@ def test_list_remote(rgc, tmpdir):
 
 
 def _assert_eq_as_sets(a, b):
+    """ Collections are equivalent as sets iff they're equal in size and element's collective identity. """
     assert len(a) == len(b)
     assert set(a) == set(b)

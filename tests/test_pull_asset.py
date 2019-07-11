@@ -82,8 +82,9 @@ def test_pull_asset_updates_genome_config(
         rgc.pull_asset(genome, asset, gencfg,
                        get_main_url=get_get_url(genome, asset))
     new_data = YacAttMap(gencfg)
-    assert asset in new_data.genomes[genome]
-    assert "testpath" == new_data.genomes[genome][asset].path
+    new_assets = new_data.genomes[genome][CFG_ASSETS_KEY]
+    assert asset in new_assets
+    assert "testpath" == new_assets[asset].path
 
 
 @pytest.mark.remote_data

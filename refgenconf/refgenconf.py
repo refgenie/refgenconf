@@ -412,6 +412,8 @@ class RefGenConf(yacman.YacAttMap):
         if _check_insert_data(genome, str, "genome"):
             self[CFG_GENOMES_KEY].setdefault(genome, PXAM({CFG_ASSETS_KEY: PXAM()}))
             if _check_insert_data(asset, str, "asset"):
+                # DEBUG
+                print("{} data: {}".format(genome, self[CFG_GENOMES_KEY][genome]))
                 self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY].setdefault(asset, PXAM())
                 if _check_insert_data(data, Mapping, "data"):
                     self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset].update(data)
@@ -562,7 +564,9 @@ def _list_remote(url, order=None):
     """
     genomes_data = _read_remote_data(url)
     refgens = sorted(genomes_data.keys(), key=order)
-    return ", ".join(refgens), "\n".join([_make_genome_assets_line(g, genomes_data[g], order=order) for g in refgens])
+    asset_texts = [_make_genome_assets_line(g, genomes_data[g][CFG_ASSETS_KEY], order=order)
+                   for g in refgens]
+    return ", ".join(refgens), "\n".join(asset_texts)
 
 
 def _make_genome_assets_line(

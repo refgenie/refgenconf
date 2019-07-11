@@ -2,7 +2,9 @@
 
 import pytest
 from refgenconf import *
+from refgenconf.const import CFG_ASSETS_KEY
 from refgenconf.exceptions import DOC_URL
+from tests.conftest import bind_to_assets
 from ubiquerg import powerset
 
 __author__ = "Vince Reuter"
@@ -45,7 +47,7 @@ def test_config_format_error_message_formatting(msg, exp, check):
 def test_genome_config_format_raising_is_sensitive(
         rgc, genome, asset, data, message_content, check_exist):
     """ Check that config format error occurs in expected cases. """
-    rgc[CFG_GENOMES_KEY][genome] = {asset: data}
+    rgc[CFG_GENOMES_KEY][genome] = {CFG_ASSETS_KEY: {asset: data}}
     with pytest.raises(GenomeConfigFormatError) as err_ctx:
         rgc.get_asset(genome, asset, strict_exists=check_exist)
     assert message_content in str(err_ctx.value)

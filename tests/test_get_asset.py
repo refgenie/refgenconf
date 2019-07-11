@@ -3,7 +3,9 @@
 import os
 import pytest
 from refgenconf import *
-from tests.conftest import get_conf_genomes, lift_into_path_pair, CONF_DATA, \
+from refgenconf.const import CFG_ASSETS_KEY
+from tests.conftest import bind_to_assets, get_conf_genomes, \
+    lift_into_path_pair, CONF_DATA, \
     HG38_DATA, MM10_DATA, MITO_DATA
 from veracitools import ExpectContext
 
@@ -66,7 +68,7 @@ def test_check_exist_param_type(rgc, check_exist, gname, aname):
 def test_existence_check_strictness(rgc, temp_asset_spec, strict, ctxmgr, error):
     """ Asset existence check behavior responds to strictness parameter. """
     gname, aname = "tmpgen", "testasset"
-    rgc.genomes[gname] = {aname: lift_into_path_pair(temp_asset_spec)}
+    rgc.genomes[gname] = bind_to_assets({aname: lift_into_path_pair(temp_asset_spec)})
     def fetch():
         return _get_asset(rgc, gname, aname, strict_exists=strict)
     with ctxmgr(error):
@@ -86,7 +88,7 @@ def test_existence_check_function(
         rgc, check_exist, get_exp_from_path, temp_asset_spec):
     """ Asset existence check behavior responds to existence checker. """
     gname, aname = "tmpgen", "testasset"
-    rgc.genomes[gname] = {aname: lift_into_path_pair(temp_asset_spec)}
+    rgc.genomes[gname] = bind_to_assets({aname: lift_into_path_pair(temp_asset_spec)})
     with open(temp_asset_spec, 'w'):
         pass
     with ExpectContext(get_exp_from_path(temp_asset_spec), _get_asset) as ctx:
@@ -102,7 +104,7 @@ def test_tar_check(rgc, temp_asset_spec, extension, strict, ctx, err, get_msg,
                    exp_in_msg):
     """ Asset fetch checks for TAR variant of true asset path value. """
     gname, aname = "tmpgen", "testasset"
-    rgc.genomes[gname] = {aname: lift_into_path_pair(temp_asset_spec)}
+    rgc.genomes[gname] = bind_to_assets({aname: lift_into_path_pair(temp_asset_spec)})
     tarpath = temp_asset_spec + extension
     with open(tarpath, 'w'):
         pass
@@ -120,9 +122,9 @@ def test_asset_already_exists(tmpdir, strict_exists):
     cfgdat = {
         CFG_FOLDER_KEY: tmpdir.strpath,
         CFG_SERVER_KEY: DEFAULT_SERVER,
-        CFG_GENOMES_KEY: {genome: {a_key: {CFG_ASSET_PATH_KEY: a_path}}}}
+        CFG_GENOMES_KEY: {genome: bind_to_assets({a_key: {CFG_ASSET_PATH_KEY: a_path}})}}
     rgc = RefGenConf(cfgdat)
-    assert a_path == rgc[CFG_GENOMES_KEY][genome][a_key][CFG_ASSET_PATH_KEY]
+    assert a_path == rgc[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][a_key][CFG_ASSET_PATH_KEY]
     assert not os.path.exists(a_path)
     def folder():
         return rgc[CFG_FOLDER_KEY]

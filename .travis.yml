@@ -10,6 +10,8 @@ install:
   - pip install -r requirements/requirements-dev.txt
 #  - pip install -r requirements/requirements-test.txt
 #script: pytest --remote-data --cov=refgenconf
+script:
+  - echo "skipping tests"
 branches:
   only:
     - dev

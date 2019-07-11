@@ -242,7 +242,8 @@ class RefGenConf(yacman.YacAttMap):
             will be returned.
         """
         return self._invert_genomes(order) if not asset else \
-            sorted([g for g, am in self[CFG_GENOMES_KEY].items() if asset in am], key=order)
+            sorted([g for g, data in self[CFG_GENOMES_KEY].items()
+                    if asset in data.get(CFG_ASSETS_KEY)], key=order)
 
     def list_local(self, order=None):
         """

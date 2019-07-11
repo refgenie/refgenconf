@@ -2,7 +2,7 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format. 
 
-## [0.2.1] - Unreleased
+## [0.2.1] - 2019-07-11
 ### Changed
 - Favor asset path relative to genome config rather than local folder in case both exist.
 - `update_genomes` method renamed to `update_assets`

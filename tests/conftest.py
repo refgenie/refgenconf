@@ -7,6 +7,7 @@ import string
 import pytest
 import yaml
 from attmap import PathExAttMap
+from refgenconf import __version__ as package_version
 from refgenconf import RefGenConf
 from refgenconf.const import *
 
@@ -38,8 +39,10 @@ def lift_into_path_pair(name):
     return {"path": name}
 
 
-CONF_DATA = [(g, PathExAttMap(_bind_to_path(data))) for g, data in
-             [("hg38", HG38_DATA), ("mm10", MM10_DATA), ("rCRSd", MITO_DATA)]]
+CONF_DATA = [
+    (g, {CFG_ASSETS_KEY: PathExAttMap(_bind_to_path(data))}) for g, data
+    in [("hg38", HG38_DATA), ("mm10", MM10_DATA), ("rCRSd", MITO_DATA)]
+]
 
 
 def get_conf_genomes():
@@ -83,6 +86,7 @@ def made_genome_config_file(temp_genome_config_file):
     genome_folder = os.path.dirname(temp_genome_config_file)
     extra_kv_lines = ["{}: {}".format(CFG_FOLDER_KEY, genome_folder),
                       "{}: {}".format(CFG_SERVER_KEY, DEFAULT_SERVER),
+                      "{}: {}".format(CFG_VERSION_KEY, package_version),
                       "{}:".format(CFG_GENOMES_KEY)]
     gen_data_lines = PathExAttMap(CONF_DATA).get_yaml_lines()
     fp = temp_genome_config_file

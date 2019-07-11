@@ -3,6 +3,7 @@
 from collections import OrderedDict
 from operator import itemgetter
 import pytest
+from refgenconf import CFG_ASSETS_KEY
 from tests.conftest import CONF_DATA, HG38_DATA, MM10_DATA, MITO_DATA
 
 __author__ = "Vince Reuter"
@@ -15,7 +16,7 @@ HISAT2_EXP = ["hg38"]
 BLACKLIST_EXP = ["mm10"]
 TSS_EXP = ["hg38"]
 GTF_EXP = ["hg38"]
-SORT_CONF_DATA = [(g, sorted(assets.keys())) for g, assets in
+SORT_CONF_DATA = [(g, sorted(data[CFG_ASSETS_KEY].keys())) for g, data in
                   sorted(CONF_DATA, key=itemgetter(0))]
 
 
@@ -25,7 +26,7 @@ def _ord_exp_map(m):
 
 def test_assets_dict(rgc):
     """ Verify mapping of genome name to assets key-value collection. """
-    exp = _ord_exp_map({g: list(am.keys()) for g, am in CONF_DATA})
+    exp = _ord_exp_map({g: list(data[CFG_ASSETS_KEY].keys()) for g, data in CONF_DATA})
     assert exp == rgc.assets_dict()
 
 
@@ -37,7 +38,7 @@ def test_assets_dict(rgc):
       "\n".join("{}: {}".format(g, ", ".join(assets))
                 for g, assets in SORT_CONF_DATA)),
      ({"asset_sep": ","},
-      "\n".join("  " + "{}: {}".format(g, ",".join(assets)) 
+      "\n".join("  " + "{}: {}".format(g, ",".join(assets))
                 for g, assets in SORT_CONF_DATA)),
      ({"genome_assets_delim": " -- "},
       "\n".join("  " + "{} -- {}".format(g, ", ".join(assets))
@@ -52,7 +53,8 @@ def test_assets_str(rgc, kwargs, expected):
     ("hg38", sorted([a for a, _ in HG38_DATA])),
     ("mm10", sorted([a for a, _ in MM10_DATA])),
     ("rCRSd", sorted([a for a, _ in MITO_DATA])),
-    (None, _ord_exp_map({g: list(assets.keys()) for g, assets in CONF_DATA}))
+    (None, _ord_exp_map({g: list(data[CFG_ASSETS_KEY].keys())
+                         for g, data in CONF_DATA}))
 ])
 def test_list_assets_by_genome(rgc, gname, expected):
     """ Verify listing of asset name/key/type, possible for one/all genomes. """

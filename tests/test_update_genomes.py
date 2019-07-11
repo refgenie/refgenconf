@@ -25,7 +25,7 @@ def rgc(tmpdir):
 def test_new_genome(rgc, assembly, validate):
     """ update_genomes can insert new assembly. """
     assert assembly not in rgc[CFG_GENOMES_KEY]
-    rgc.update_genomes(assembly)
+    rgc.update_assets(assembly)
     assert validate(assembly, rgc)
 
 
@@ -38,7 +38,7 @@ def test_new_asset(rgc, assembly, asset, validate):
     """ update_genomes can insert new asset for existing assembly. """
     assert assembly in rgc[CFG_GENOMES_KEY]
     assert asset not in rgc[CFG_GENOMES_KEY][assembly]
-    rgc.update_genomes(assembly, asset)
+    rgc.update_assets(assembly, asset)
     assert validate(asset, assembly, rgc)
 
 
@@ -53,7 +53,7 @@ def test_new_asset(rgc, assembly, asset, validate):
 def test_new_genome_and_asset(rgc, assembly, asset, validate):
     """ update_genomes can insert assembly and asset. """
     assert assembly not in rgc[CFG_GENOMES_KEY]
-    rgc.update_genomes(assembly, asset)
+    rgc.update_assets(assembly, asset)
     assert validate(asset, assembly, rgc)
 
 
@@ -74,7 +74,7 @@ def test_update_asset_data(tmpdir, old_data, new_data, expected):
              CFG_FOLDER_KEY: tmpdir.strpath,
              CFG_SERVER_KEY: DEFAULT_SERVER})
     assert expected != c[CFG_GENOMES_KEY][assembly][asset].to_dict()
-    c.update_genomes(assembly, asset, new_data)
+    c.update_assets(assembly, asset, new_data)
     assert expected == c[CFG_GENOMES_KEY][assembly][asset].to_dict()
 
 
@@ -84,4 +84,4 @@ def test_update_asset_data(tmpdir, old_data, new_data, expected):
 def test_illegal_argtype(rgc, args):
     """ update_genomes accurately restricts argument types. """
     with pytest.raises(TypeError):
-        rgc.update_genomes(*args)
+        rgc.update_assets(*args)

@@ -1,5 +1,5 @@
-pytest>=3.0.7
-pytest-remotedata
+#pytest>=3.0.7
+#pytest-remotedata
 pyyaml>=5
 ubiquerg>=0.3
-veracitools
+#veracitools

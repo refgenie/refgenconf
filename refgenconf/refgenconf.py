@@ -214,7 +214,7 @@ class RefGenConf(yacman.YacAttMap):
             collection available asset type names
         """
         return self.assets_dict(order) if genome is None \
-            else sorted(list(self[CFG_GENOMES_KEY][genome].keys()), key=order)
+            else sorted(list(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY].keys()), key=order)
 
     def list_genomes_by_asset(self, asset=None, order=None):
         """

@@ -99,9 +99,8 @@ class RefGenConf(yacman.YacAttMap):
         :return Mapping[str, Iterable[str]]: mapping from assembly name to
             collection of available asset names.
         """
-        refgens = sorted(self.genomes.keys(), key=order)
-        return OrderedDict([(g, sorted(list(self.genomes[g].keys()), key=order))
-                            for g in refgens])
+        refgens = sorted(self[CFG_GENOMES_KEY].keys(), key=order)
+        return OrderedDict([(g, sorted(list(self[CFG_GENOMES_KEY][g][CFG_ASSETS_KEY].keys()), key=order)) for g in refgens])
 
     def assets_str(self, offset_text="  ", asset_sep=", ", genome_assets_delim=": ", order=None):
         """
@@ -120,7 +119,7 @@ class RefGenConf(yacman.YacAttMap):
         make_line = partial(_make_genome_assets_line, offset_text=offset_text,
                             genome_assets_delim=genome_assets_delim, asset_sep=asset_sep, order=order)
         refgens = sorted(self[CFG_GENOMES_KEY].keys(), key=order)
-        return "\n".join([make_line(g, self[CFG_GENOMES_KEY][g]) for g in refgens])
+        return "\n".join([make_line(g, self[CFG_GENOMES_KEY][g][CFG_ASSETS_KEY]) for g in refgens])
 
     def filepath(self, genome, asset, ext=".tar"):
         """
@@ -140,7 +139,7 @@ class RefGenConf(yacman.YacAttMap):
         :return Iterable[str]: list of this configuration's reference genome
             assembly IDs
         """
-        return sorted(list(self.genomes.keys()), key=order)
+        return sorted(list(self[CFG_GENOMES_KEY].keys()), key=order)
 
     def genomes_str(self, order=None):
         """
@@ -175,7 +174,7 @@ class RefGenConf(yacman.YacAttMap):
                      format(asset_name, genome_name))
         if not callable(check_exist) or len(finspect(check_exist).args) != 1:
             raise TypeError("Asset existence check must be a one-arg function.")
-        path = _genome_asset_path(self.genomes, genome_name, asset_name)
+        path = _genome_asset_path(self[CFG_GENOMES_KEY], genome_name, asset_name)
         if os.path.isabs(path) and check_exist(path):
             return path
         _LOGGER.debug("Relative or nonexistent path: {}".format(path))
@@ -215,7 +214,7 @@ class RefGenConf(yacman.YacAttMap):
             collection available asset type names
         """
         return self.assets_dict(order) if genome is None \
-            else sorted(list(self.genomes[genome].keys()), key=order)
+            else sorted(list(self[CFG_GENOMES_KEY][genome].keys()), key=order)
 
     def list_genomes_by_asset(self, asset=None, order=None):
         """
@@ -231,7 +230,7 @@ class RefGenConf(yacman.YacAttMap):
             will be returned.
         """
         return self._invert_genomes(order) if not asset else \
-            sorted([g for g, am in self.genomes.items() if asset in am], key=order)
+            sorted([g for g, am in self[CFG_GENOMES_KEY].items() if asset in am], key=order)
 
     def list_local(self, order=None):
         """
@@ -406,11 +405,11 @@ class RefGenConf(yacman.YacAttMap):
             return True
 
         if check(genome, str, "genome"):
-            self[CFG_GENOMES_KEY].setdefault(genome, PXAM())
+            self[CFG_GENOMES_KEY].setdefault(genome, PXAM({CFG_ASSETS_KEY: PXAM()}))
             if check(asset, str, "asset"):
-                self[CFG_GENOMES_KEY][genome].setdefault(asset, PXAM())
+                self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY].setdefault(asset, PXAM())
                 if check(data, Mapping, "data"):
-                    self[CFG_GENOMES_KEY][genome][asset].update(data)
+                    self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset].update(data)
         return self
 
     def _invert_genomes(self, order=None):
@@ -429,8 +428,8 @@ class RefGenConf(yacman.YacAttMap):
             asset type is available
         """
         genomes = {}
-        for g, am in self.genomes.items():
-            for a in am.keys():
+        for g, am in self[CFG_GENOMES_KEY].items():
+            for a in am[CFG_ASSETS_KEY].keys():
                 genomes.setdefault(a, []).append(g)
         assets = sorted(genomes.keys(), key=order)
         return OrderedDict([(a, sorted(genomes[a], key=order)) for a in assets])
@@ -504,7 +503,7 @@ def _genome_asset_path(genomes, gname, aname):
     except KeyError:
         raise MissingGenomeError("Your genomes do not include {}".format(gname))
     try:
-        asset_data = genome[aname]
+        asset_data = genome[CFG_ASSETS_KEY][aname]
     except KeyError:
         raise MissingAssetError(
             "Genome '{}' exists, but index '{}' is missing".format(gname, aname))
@@ -543,9 +542,7 @@ def _list_remote(url, order=None):
     """
     genomes_data = _read_remote_data(url)
     refgens = sorted(genomes_data.keys(), key=order)
-    return ", ".join(refgens), \
-           "\n".join([_make_genome_assets_line(g, genomes_data[g], order=order)
-                      for g in refgens])
+    return ", ".join(refgens), "\n".join([_make_genome_assets_line(g, genomes_data[g], order=order) for g in refgens])
 
 
 def _make_genome_assets_line(

@@ -71,11 +71,15 @@ class RefGenConf(yacman.YacAttMap):
             if genomes:
                 _LOGGER.warning(
                     "'{k}' value is a {t_old}, not a {t_new}; setting to empty {t_new}".
-                    format(k=CFG_GENOMES_KEY, t_old=type(genomes).__name__, t_new=PXAM.__name__))
+                        format(k=CFG_GENOMES_KEY, t_old=type(genomes).__name__, t_new=PXAM.__name__))
             self[CFG_GENOMES_KEY] = PXAM()
         if CFG_FOLDER_KEY not in self:
-            self[CFG_FOLDER_KEY] = os.path.dirname(entries) \
-                if isinstance(entries, str) else os.getcwd()
+            self[CFG_FOLDER_KEY] = os.path.dirname(entries) if isinstance(entries, str) else os.getcwd()
+        if CFG_VERSION_KEY in self and float(self[CFG_VERSION_KEY]) < REQ_CFG_VERSION:
+            msg = "This genome config (v{}) is not compliant with v{} standards. To use it, please downgrade " \
+                  "refgenie: 'pip install refgenie==0.4.4'.\n".format(self[CFG_VERSION_KEY], str(REQ_CFG_VERSION))
+            raise ConfigNotCompliantError(msg)
+        _LOGGER.debug("Config version is correct: {}".format(self[CFG_VERSION_KEY]))
         try:
             self[CFG_SERVER_KEY] = self[CFG_SERVER_KEY].rstrip("/")
         except KeyError:
@@ -99,8 +103,7 @@ class RefGenConf(yacman.YacAttMap):
         return OrderedDict([(g, sorted(list(self.genomes[g].keys()), key=order))
                             for g in refgens])
 
-    def assets_str(self, offset_text="  ", asset_sep=", ",
-                   genome_assets_delim=": ", order=None):
+    def assets_str(self, offset_text="  ", asset_sep=", ", genome_assets_delim=": ", order=None):
         """
         Create a block of text representing genome-to-asset mapping.
 
@@ -115,10 +118,9 @@ class RefGenConf(yacman.YacAttMap):
         :return str: text representing genome-to-asset mapping
         """
         make_line = partial(_make_genome_assets_line, offset_text=offset_text,
-                            genome_assets_delim=genome_assets_delim,
-                            asset_sep=asset_sep, order=order)
-        refgens = sorted(self.genomes.keys(), key=order)
-        return "\n".join([make_line(g, self.genomes[g]) for g in refgens])
+                            genome_assets_delim=genome_assets_delim, asset_sep=asset_sep, order=order)
+        refgens = sorted(self[CFG_GENOMES_KEY].keys(), key=order)
+        return "\n".join([make_line(g, self[CFG_GENOMES_KEY][g]) for g in refgens])
 
     def filepath(self, genome, asset, ext=".tar"):
         """

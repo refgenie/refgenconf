@@ -13,7 +13,7 @@ else:
     install_aliases()
     from inspect import getargspec as finspect
     from urllib2 import HTTPError
-    from urllib import ContentTooShortError
+    from urllib.error import ContentTooShortError
     ConnectionRefusedError = Exception
 
 import urllib.request
@@ -621,3 +621,4 @@ def _check_insert_data(obj, datatype, name):
         raise TypeError("{} must be {}; got {}".format(
             name, datatype.__name__, type(obj).__name__))
     return True
+97

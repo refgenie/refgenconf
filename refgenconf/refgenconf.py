@@ -335,6 +335,7 @@ class RefGenConf(yacman.YacAttMap):
             def preserve():
                 _LOGGER.debug("Preserving existing: {}".format(filepath))
                 return asset, filepath
+
             def msg_overwrite():
                 _LOGGER.debug("Overwriting: {}".format(filepath))
             if force is False:
@@ -416,11 +417,31 @@ class RefGenConf(yacman.YacAttMap):
         if _check_insert_data(genome, str, "genome"):
             self[CFG_GENOMES_KEY].setdefault(genome, PXAM({CFG_ASSETS_KEY: PXAM()}))
             if _check_insert_data(asset, str, "asset"):
-                # DEBUG
-                print("{} data: {}".format(genome, self[CFG_GENOMES_KEY][genome]))
                 self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY].setdefault(asset, PXAM())
                 if _check_insert_data(data, Mapping, "data"):
                     self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset].update(data)
+        return self
+
+    def remove_assets(self, genome, assets):
+        """
+        Remove assets. If no more assets are defined for the selected genome after asset removal,
+        the genome key will be removed as well
+
+        :param str genome: genome to be removed
+        :param str | list[str] assets: assets to be removed
+        :raise TypeError: if genome argument type is not a list or str
+        :return RefGenConf: updated object
+        """
+        assets = [assets] if isinstance(assets, str) else assets
+        if not isinstance(assets, list):
+            raise TypeError("assets arg has to be a str or list[str]")
+        for asset in assets:
+            if _check_insert_data(genome, str, "genome"):
+                self[CFG_GENOMES_KEY].setdefault(genome, PXAM({CFG_ASSETS_KEY: PXAM()}))
+                if _check_insert_data(asset, str, "asset"):
+                    del self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]
+        if len(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY]) == 0:
+            del self[CFG_GENOMES_KEY][genome]
         return self
 
     def update_genomes(self, genome, data=None):

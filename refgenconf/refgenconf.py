@@ -86,7 +86,6 @@ class RefGenConf(yacman.YacAttMap):
                 _LOGGER.warning("Cannot parse as numeric: {}".format(version))
             else:
                 if version < REQ_CFG_VERSION:
-                    # TODO: what's special about 0.4.4 of refgenie? Can we store that value as an indicatively named constant?
                     msg = "This genome config (v{}) is not compliant with v{} standards. To use it, please downgrade " \
                           "refgenie: 'pip install refgenie==0.4.4'.".format(self[CFG_VERSION_KEY], str(REQ_CFG_VERSION))
                     raise ConfigNotCompliantError(msg)
@@ -103,18 +102,20 @@ class RefGenConf(yacman.YacAttMap):
 
     __nonzero__ = __bool__
 
-    def assets_dict(self, order=None):
+    def assets_dict(self, genome=None, order=None):
         """
         Map each assembly name to a list of available asset names.
 
-        :param order: function(str) -> object how to key genome IDs for sort
+        :param function(str) -> object order: how to key genome IDs for sort
+        :param list[str] | str genome: genomes that the assets should be found for
         :return Mapping[str, Iterable[str]]: mapping from assembly name to
             collection of available asset names.
         """
-        refgens = sorted(self[CFG_GENOMES_KEY].keys(), key=order)
-        return OrderedDict([(g, sorted(list(self[CFG_GENOMES_KEY][g][CFG_ASSETS_KEY].keys()), key=order)) for g in refgens])
+        refgens = _select_genomes(sorted(self[CFG_GENOMES_KEY].keys(), key=order), genome)
+        return OrderedDict([(g, sorted(list(self[CFG_GENOMES_KEY][g][CFG_ASSETS_KEY].keys()), key=order))
+                            for g in refgens])
 
-    def assets_str(self, offset_text="  ", asset_sep=", ", genome_assets_delim=": ", order=None):
+    def assets_str(self, offset_text="  ", asset_sep=", ", genome_assets_delim=": ", genome=None, order=None):
         """
         Create a block of text representing genome-to-asset mapping.
 
@@ -124,20 +125,21 @@ class RefGenConf(yacman.YacAttMap):
             within each genome line
         :param str genome_assets_delim: the delimiter to place between
             reference genome assembly name and its list of asset names
+        :param list[str] | str genome: genomes that the assets should be found for
         :param order: function(str) -> object how to key genome IDs and asset
             names for sort
         :return str: text representing genome-to-asset mapping
         """
-        make_line = partial(_make_genome_assets_line, offset_text=offset_text,
-                            genome_assets_delim=genome_assets_delim, asset_sep=asset_sep, order=order)
-        refgens = sorted(self[CFG_GENOMES_KEY].keys(), key=order)
+        refgens = _select_genomes(sorted(self[CFG_GENOMES_KEY].keys(), key=order), genome)
+        make_line = partial(_make_genome_assets_line, offset_text=offset_text, genome_assets_delim=genome_assets_delim,
+                            asset_sep=asset_sep, order=order)
         return "\n".join([make_line(g, self[CFG_GENOMES_KEY][g][CFG_ASSETS_KEY]) for g in refgens])
 
     def filepath(self, genome, asset, ext=".tar"):
         """
         Determine path to a particular asset for a particular genome.
 
-        :param str genome: reference genome iD
+        :param str genome: reference genome ID
         :param str asset: asset name
         :param str ext: file extension
         :return str: path to asset for given genome and asset kind/name
@@ -225,8 +227,7 @@ class RefGenConf(yacman.YacAttMap):
             one is provided, else the full mapping between assembly ID and
             collection available asset type names
         """
-        return self.assets_dict(order) if genome is None \
-            else sorted(list(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY].keys()), key=order)
+        return self.assets_dict(genome, order)[genome] if genome is not None else self.assets_dict(order)
 
     def list_genomes_by_asset(self, asset=None, order=None):
         """
@@ -245,30 +246,33 @@ class RefGenConf(yacman.YacAttMap):
             sorted([g for g, data in self[CFG_GENOMES_KEY].items()
                     if asset in data.get(CFG_ASSETS_KEY)], key=order)
 
-    def list_local(self, order=None):
+    def list_local(self, genome=None, order=None):
         """
         List locally available reference genome IDs and assets by ID.
 
+        :param list[str] | str genome: genomes that the assets should be found for
         :param order: function(str) -> object how to key genome IDs and asset
             names for sort
         :return str, str: text reps of locally available genomes and assets
         """
-        return self.genomes_str(order=order), self.assets_str(order=order)
+        genomes_str = self.genomes_str(order=order) if genome is None \
+            else ", ".join(_select_genomes(sorted(self[CFG_GENOMES_KEY].keys(), key=order), genome))
+        return genomes_str, self.assets_str(genome=genome, order=order)
 
-    def list_remote(self, get_url=lambda rgc: "{}/assets".format(rgc.genome_server),
-                    order=None):
+    def list_remote(self, get_url=lambda rgc: "{}/assets".format(rgc.genome_server), genome=None, order=None):
         """
         List genomes and assets available remotely.
 
         :param function(refgenconf.RefGenConf) -> str get_url: how to determine
             URL request, given RefGenConf instance
+        :param list[str] | str genome: genomes that the assets should be found for
         :param order: function(str) -> object how to key genome IDs and asset
             names for sort
         :return str, str: text reps of remotely available genomes and assets
         """
         url = get_url(self)
         _LOGGER.info("Querying available assets from server: {}".format(url))
-        genomes, assets = _list_remote(url, order)
+        genomes, assets = _list_remote(url, genome, order)
         return genomes, assets
 
     def pull_asset(self, genome, assets, genome_config, unpack=True, force=None,
@@ -549,11 +553,10 @@ def _is_large_archive(size):
     :return bool: the decision
     """
     _LOGGER.debug("Checking archive size: '{}'".format(size))
-    return size.endswith("TB") or (
-            size.endswith("GB") and float("".join(c for c in size if c in '0123456789.')) > 5)
+    return size.endswith("TB") or (size.endswith("GB") and float("".join(c for c in size if c in '0123456789.')) > 5)
 
 
-def _list_remote(url, order=None):
+def _list_remote(url, genome, order=None):
     """
     List genomes and assets available remotely.
 
@@ -563,15 +566,14 @@ def _list_remote(url, order=None):
     :return str, str: text reps of remotely available genomes and assets
     """
     genomes_data = _read_remote_data(url)
-    refgens = sorted(genomes_data.keys(), key=order)
-    asset_texts = [_make_genome_assets_line(g, genomes_data[g][CFG_ASSETS_KEY], order=order)
-                   for g in refgens]
+    refgens = _select_genomes(sorted(genomes_data.keys(), key=order), genome)
+    print("refgens: {}".format(refgens))
+    asset_texts = [_make_genome_assets_line(g, genomes_data[g], order=order) for g in refgens]
     return ", ".join(refgens), "\n".join(asset_texts)
 
 
 def _make_genome_assets_line(
-        gen, assets, offset_text="  ", genome_assets_delim=": ", asset_sep=", ",
-        order=None):
+        gen, assets, offset_text="  ", genome_assets_delim=": ", asset_sep=", ", order=None):
     """
     Build a line of text for display of assets by genome
 
@@ -584,8 +586,7 @@ def _make_genome_assets_line(
     :param order: function(str) -> object how to key asset names for sort
     :return str: text representation of a single assembly's name and assets
     """
-    return offset_text + "{}{}{}".format(
-        gen, genome_assets_delim, asset_sep.join(sorted(list(assets), key=order)))
+    return offset_text + "{}{}{}".format(gen, genome_assets_delim, asset_sep.join(sorted(list(assets), key=order)))
 
 
 def _read_remote_data(url):
@@ -621,4 +622,19 @@ def _check_insert_data(obj, datatype, name):
         raise TypeError("{} must be {}; got {}".format(
             name, datatype.__name__, type(obj).__name__))
     return True
-97
+
+
+def _select_genomes(genomes, genome=None):
+    """
+    Safely select a subset of genomes
+
+    :param list[str] | str genome: genomes that the assets should be found for
+    :raise TypeError: if genome argument type is not a list or str
+    :return list: selected subset of genomes
+    """
+    if genome:
+        if isinstance(genome, str):
+            genome = [genome]
+        elif not isinstance(genome, list) or not all(isinstance(i, str) for i in genome):
+            raise TypeError("genome has to be a list[str] or a str, got '{}'".format(genome.__class__.__name__))
+    return genomes if (genome is None or not all(x in genomes for x in genome)) else genome

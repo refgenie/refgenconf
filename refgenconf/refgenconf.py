@@ -567,7 +567,6 @@ def _list_remote(url, genome, order=None):
     """
     genomes_data = _read_remote_data(url)
     refgens = _select_genomes(sorted(genomes_data.keys(), key=order), genome)
-    print("refgens: {}".format(refgens))
     asset_texts = [_make_genome_assets_line(g, genomes_data[g], order=order) for g in refgens]
     return ", ".join(refgens), "\n".join(asset_texts)
 

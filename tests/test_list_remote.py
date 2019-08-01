@@ -16,12 +16,11 @@ def test_list_remote(rgc, tmpdir):
     print("NEW RGC KEYS: {}".format(list(new_rgc.keys())))
     with mock.patch("refgenconf.refgenconf._read_remote_data",
                     return_value=rgc.genomes):
-        genomes, assets = new_rgc.list_remote(get_url=lambda _: "irrelevant")
+        genomes, assets = new_rgc.list_remote()
     _assert_eq_as_sets(rgc.genomes_str(), genomes)
-    _assert_eq_as_sets(rgc.assets_str(), assets)
 
 
 def _assert_eq_as_sets(a, b):
-    """ Collections are equivalent as sets iff they're equal in size and element's collective identity. """
+    """ Collections are equivalent as sets if they're equal in size and element's collective identity. """
     assert len(a) == len(b)
     assert set(a) == set(b)

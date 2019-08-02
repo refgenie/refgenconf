@@ -2,6 +2,16 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format. 
 
+## [0.4.0] - unreleased
+
+### Added
+- `remove_assets` method
+- local and remote listing restriction by genome. These methods accept an optional `genome` argument:
+    - `list_local`
+    - `list_remote`
+    - `assets_dict`
+    - `assets_str`
+
 ## [0.3.0] - 2019-07-11
 ### Changed
 - Favor asset path relative to genome config rather than local folder in case both exist.

@@ -322,7 +322,7 @@ class RefGenConf(yacman.YacAttMap):
         _LOGGER.info("Starting pull for '{}'".format(bundle_name))
 
         def raise_unpack_error():
-            raise NotImplementedError("The option for not extracting the tarballs is not yet supported.")
+            raise NotImplementedError("Option to not extract tarballs is not yet supported.")
 
         unpack or raise_unpack_error()
 
@@ -353,6 +353,23 @@ class RefGenConf(yacman.YacAttMap):
             else get_main_url(self.genome_server, genome, asset)
 
         archive_data = _download_json(url_json)
+
+        # Check to make sure the server genome checksum matches the local genome
+        # checksum
+        genome_metadata_url = get_json_url(self.genome_server, "genome", genome)  # server needs to be corrected
+
+        genome_metadata = _download_json(genome_metadata_url)
+
+        if 'checksum' in self.genomes[genome].checksum:
+            if self.genomes[genome].checksum != genome_metadata['checksum']:
+                _LOGGER.error("Checksum mismatch:\n"
+                    "Local genome: {}: '{}'\n"
+                    "Remote genome: {}: '{}'".format(genome, self.genomes[genome].checksum,
+                        genome, genome_metadata['checksum']))
+                raise KeyError("Checksum mismatch")
+            else:
+                _LOGGER.debug("Genome checksum match: {}".format(genome_metadata['checksum']))
+
         if not os.path.exists(outdir):
             _LOGGER.debug("Creating directory: {}".format(outdir))
             os.makedirs(outdir)
@@ -481,6 +498,10 @@ class RefGenConf(yacman.YacAttMap):
         assets = sorted(genomes.keys(), key=order)
         return OrderedDict([(a, sorted(genomes[a], key=order)) for a in assets])
 
+lookup = {}
+for x in rgc.genomes:
+    if 'checksum' in rgc.genomes[x]:
+        lookup[rgc.genomes[x].checksum] = x
 
 class DownloadProgressBar(tqdm):
     """

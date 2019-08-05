@@ -13,7 +13,7 @@ __email__ = "vreuter@virginia.edu"
 
 FIXED_KV_PAIRS = [
     (CFG_ASSET_SIZE_KEY, "1G"), (CFG_ARCHIVE_SIZE_KEY, "2G"),
-    (CFG_CHECKSUM_KEY, "dummy-checksum")]
+    (CFG_ARCHIVE_CHECKSUM_KEY, "dummy-checksum")]
 
 
 @pytest.fixture

@@ -71,7 +71,7 @@ def test_pull_asset_updates_genome_config(
     with mock.patch.object(
         refgenconf.refgenconf, "_download_json",
         return_value=YacAttMap({
-            CFG_CHECKSUM_KEY: checksum_tmpval,
+            CFG_ARCHIVE_CHECKSUM_KEY: checksum_tmpval,
             CFG_ARCHIVE_SIZE_KEY: "0 GB",
             CFG_ASSET_PATH_KEY: "testpath"})), \
          mock.patch.object(refgenconf.refgenconf, "checksum",
@@ -96,7 +96,7 @@ def test_pull_asset_returns_key_value_pair(
     with mock.patch.object(
             refgenconf.refgenconf, "_download_json",
             return_value=YacAttMap({
-                CFG_CHECKSUM_KEY: checksum_tmpval,
+                CFG_ARCHIVE_CHECKSUM_KEY: checksum_tmpval,
                 CFG_ARCHIVE_SIZE_KEY: "0 GB",
                 CFG_ASSET_PATH_KEY: "testpath"})), \
          mock.patch.object(refgenconf.refgenconf, "checksum",
@@ -138,7 +138,7 @@ def test_pull_asset_pull_error(
             raise SubErr()
         with mock.patch.object(
                 refgenconf.refgenconf, "_download_json",
-                return_value=YacAttMap({CFG_CHECKSUM_KEY: "not-a-checksum",
+                return_value=YacAttMap({CFG_ARCHIVE_CHECKSUM_KEY: "not-a-checksum",
                                         CFG_ARCHIVE_SIZE_KEY: "0 GB"})), \
              mock.patch(DOWNLOAD_FUNCTION, side_effect=raise_error):
             res = rgc.pull_asset(*args, **kwargs)
@@ -163,7 +163,7 @@ def test_pull_asset_checksum_mismatch(
     """ Checksum mismatch short-circuits asset pull, returning null value. """
     with mock.patch.object(
         refgenconf.refgenconf, "_download_json",
-        return_value=YacAttMap({CFG_CHECKSUM_KEY: "not-a-checksum",
+        return_value=YacAttMap({CFG_ARCHIVE_CHECKSUM_KEY: "not-a-checksum",
                                 CFG_ARCHIVE_SIZE_KEY: "0 GB"})), \
         mock.patch(DOWNLOAD_FUNCTION, side_effect=lambda _1, _2, _3: None), \
         mock.patch.object(
@@ -181,7 +181,7 @@ def test_negative_response_to_large_download_prompt(
     """ Test responsiveness to user abortion of pull request. """
     with mock.patch.object(
             refgenconf.refgenconf, "_download_json",
-            return_value=YacAttMap({CFG_CHECKSUM_KEY: "not-a-checksum",
+            return_value=YacAttMap({CFG_ARCHIVE_CHECKSUM_KEY: "not-a-checksum",
                                     CFG_ARCHIVE_SIZE_KEY: "1M"})), \
         mock.patch("refgenconf.refgenconf._is_large_archive", return_value=True), \
         mock.patch("refgenconf.refgenconf.query_yes_no", return_value=False):
@@ -201,7 +201,7 @@ def test_download_interruption(
         os.kill(os.getpid(), signal.SIGINT)
     with mock.patch.object(refgenconf.refgenconf, "_download_json",
                            return_value=YacAttMap({
-                               CFG_CHECKSUM_KEY: "dummy",
+                               CFG_ARCHIVE_CHECKSUM_KEY: "dummy",
                                CFG_ARCHIVE_SIZE_KEY: "1M"})),\
          mock.patch(DOWNLOAD_FUNCTION, side_effect=kill_download), \
          caplog.at_level(logging.WARNING), \
@@ -276,7 +276,7 @@ class PreexistingAssetTests:
         assert os.path.isfile(fp)
         with mock.patch.object(
                 refgenconf.refgenconf, "_download_json", return_value=YacAttMap({
-                    CFG_CHECKSUM_KEY: "fixed_value",
+                    CFG_ARCHIVE_CHECKSUM_KEY: "fixed_value",
                     CFG_ARCHIVE_SIZE_KEY: "1M",
                     CFG_ASSET_PATH_KEY: fp
                 })), \

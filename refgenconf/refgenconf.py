@@ -498,10 +498,10 @@ class RefGenConf(yacman.YacAttMap):
         assets = sorted(genomes.keys(), key=order)
         return OrderedDict([(a, sorted(genomes[a], key=order)) for a in assets])
 
-lookup = {}
-for x in rgc.genomes:
-    if 'checksum' in rgc.genomes[x]:
-        lookup[rgc.genomes[x].checksum] = x
+# lookup = {}
+# for x in rgc.genomes:
+#     if 'checksum' in rgc.genomes[x]:
+#         lookup[rgc.genomes[x].checksum] = x
 
 class DownloadProgressBar(tqdm):
     """

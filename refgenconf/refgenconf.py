@@ -476,6 +476,16 @@ class RefGenConf(yacman.YacAttMap):
                 self[CFG_GENOMES_KEY][genome].update(data)
         return self
 
+    def get_genome_attributes(self, genome):
+        """
+        Get the dictionary attributes, like checksum, contents, description. Does not return the assets.
+
+        :param str genome: genome to get the attributes dict for
+        :return Mapping[str, str]: available genome attributes
+        """
+        return {k: self[CFG_GENOMES_KEY][genome][k] for k in CFG_GENOME_ATTRS_KEYS
+                if hasattr(self[CFG_GENOMES_KEY][genome], k)}
+
     def _invert_genomes(self, order=None):
         """ Map each asset type/kind/name to a collection of assemblies.
 

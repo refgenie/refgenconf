@@ -355,7 +355,7 @@ class RefGenConf(yacman.YacAttMap):
         archive_data = _download_json(url_json)
 
         # Check to make sure the server genome checksum matches the local genome checksum
-        genome_checksum = _download_json("{}/genome/{}/checksum".format(self.genome_server, genome))
+        genome_checksum = _download_json("{}/genome/{}/{}".format(self.genome_server, genome, CFG_CHECKSUM_KEY))
         if hasattr(self[CFG_GENOMES_KEY][genome], CFG_CHECKSUM_KEY):
             if self[CFG_GENOMES_KEY][genome][CFG_CHECKSUM_KEY] != genome_checksum:
                 _LOGGER.error("Checksum mismatch for genome '{}':\nLocal genome: '{}'\nRemote genome: '{}'".

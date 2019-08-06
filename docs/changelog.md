@@ -6,6 +6,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 - method for genome attributes fetching (`get_genome_attributes`)
+- genome checksum match assurance (server vs. local) before `pull`
 
 ### Changed
 - config file format; added genome-level attributes: `checksum` and `contents`

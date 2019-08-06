@@ -354,21 +354,15 @@ class RefGenConf(yacman.YacAttMap):
 
         archive_data = _download_json(url_json)
 
-        # Check to make sure the server genome checksum matches the local genome
-        # checksum
-        genome_metadata_url = get_json_url(self.genome_server, "genome", genome)  # server needs to be corrected
-
-        genome_metadata = _download_json(genome_metadata_url)
-
-        if 'checksum' in self.genomes[genome].checksum:
-            if self.genomes[genome].checksum != genome_metadata['checksum']:
-                _LOGGER.error("Checksum mismatch:\n"
-                    "Local genome: {}: '{}'\n"
-                    "Remote genome: {}: '{}'".format(genome, self.genomes[genome].checksum,
-                        genome, genome_metadata['checksum']))
-                raise KeyError("Checksum mismatch")
+        # Check to make sure the server genome checksum matches the local genome checksum
+        genome_checksum = _download_json("{}/genome/{}/checksum".format(self.genome_server, genome))
+        if hasattr(self[CFG_GENOMES_KEY][genome], CFG_CHECKSUM_KEY):
+            if self[CFG_GENOMES_KEY][genome][CFG_CHECKSUM_KEY] != genome_checksum:
+                _LOGGER.error("Checksum mismatch for genome '{}':\nLocal genome: '{}'\nRemote genome: '{}'".
+                              format(genome, self[CFG_GENOMES_KEY][genome][CFG_CHECKSUM_KEY], genome_checksum))
+                raise KeyError("Checksum mismatch for genome '{}'".format(genome))
             else:
-                _LOGGER.debug("Genome checksum match: {}".format(genome_metadata['checksum']))
+                _LOGGER.debug("Genome checksum match: {}".format(genome_checksum))
 
         if not os.path.exists(outdir):
             _LOGGER.debug("Creating directory: {}".format(outdir))

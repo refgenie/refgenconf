@@ -290,7 +290,7 @@ class RefGenConf(yacman.YacAttMap):
         """
         _assert_gat_exists(self[CFG_GENOMES_KEY], genome, asset, tag)
         if hasattr(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset], DEFAULT_TAG_NAME):
-            if not query_yes_no("You have already '{}' asset tagged as '{}', "
+            if not query_yes_no("You already have one '{}' asset tagged as '{}', "
                                 "do you wish to override?".format(asset, DEFAULT_TAG_NAME)):
                 _LOGGER.info("Action aborted by the user")
                 return

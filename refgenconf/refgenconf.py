@@ -419,42 +419,61 @@ class RefGenConf(yacman.YacAttMap):
         self.write(genome_config)
         return asset, result
 
-    def update_assets(self, genome, asset=None, data=None):
+    def update_assets(self, genome, asset=None, tag=None, data=None):
         """
         Updates the genomes in RefGenConf object at any level.
         If a requested genome-asset mapping is missing, it will be created
 
         :param str genome: genome to be added/updated
         :param str asset: asset to be added/updated
+        :param str tag: tag to be added/updated
         :param Mapping data: data to be added/updated
         :return RefGenConf: updated object
         """
+        tag = tag or DEFAULT_TAG_NAME  # might be encoded in the signature
         if _check_insert_data(genome, str, "genome"):
             self[CFG_GENOMES_KEY].setdefault(genome, PXAM({CFG_ASSETS_KEY: PXAM()}))
             if _check_insert_data(asset, str, "asset"):
                 self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY].setdefault(asset, PXAM())
-                if _check_insert_data(data, Mapping, "data"):
-                    self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset].update(data)
+                if _check_insert_data(tag, str, "tag"):
+                    self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset].setdefault(tag, PXAM())
+                    if _check_insert_data(data, Mapping, "data"):
+                        self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][tag].update(data)
         return self
 
-    def remove_assets(self, genome, assets):
+    def remove_assets(self, genome, assets, tags=None):
         """
-        Remove assets. If no more assets are defined for the selected genome after asset removal,
-        the genome key will be removed as well
+        Remove data associated with a specified genome:asset:tag combination.
+        If no tags are specified, the entire asset is removed from the genome.
+
+        If no more tags are defined for the selected genome:asset after tag removal,
+        the parent asset will be removed as well
+        If no more assets are defined for the selected genome after asset removal,
+        the parent genome will be removed as well
 
         :param str genome: genome to be removed
         :param str | list[str] assets: assets to be removed
+        :param str | list[str] tags: tags to be removed
         :raise TypeError: if genome argument type is not a list or str
         :return RefGenConf: updated object
         """
+        # TODO: add unit tests
         assets = [assets] if isinstance(assets, str) else assets
+        tags = [tags] if isinstance(tags, str) else tags
         if not isinstance(assets, list):
             raise TypeError("assets arg has to be a str or list[str]")
         for asset in assets:
             if _check_insert_data(genome, str, "genome"):
-                self[CFG_GENOMES_KEY].setdefault(genome, PXAM({CFG_ASSETS_KEY: PXAM()}))
                 if _check_insert_data(asset, str, "asset"):
-                    del self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]
+                    if tags is None:
+                        del self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]
+                    else:
+                        for tag in tags:
+                            if _check_insert_data(tag, str, "tag"):
+                                del self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][tag]
+            if hasattr(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY], asset) and \
+                    len(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]) == 0:
+                del self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]
         if len(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY]) == 0:
             del self[CFG_GENOMES_KEY][genome]
         return self

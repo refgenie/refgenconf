@@ -188,8 +188,8 @@ class RefGenConf(yacman.YacAttMap):
             this configuration instance, but the requested asset is unknown
         """
         _LOGGER.debug("Getting asset '{}' for genome '{}'".format(asset_name, genome_name))
-        seek_key = str(seek_key) if seek_key is not None else asset_name
-        tag_name = str(tag_name) if tag_name is not None else DEFAULT_TAG_NAME
+        seek_key = seek_key or asset_name
+        tag_name = tag_name or DEFAULT_TAG_NAME
         if not callable(check_exist) or len(finspect(check_exist).args) != 1:
             raise TypeError("Asset existence check must be a one-arg function.")
         path = _genome_asset_path(self[CFG_GENOMES_KEY], genome_name, asset_name, tag_name, seek_key)
@@ -598,9 +598,9 @@ def _genome_asset_path(genomes, gname, aname, tname, seek_key):
     _assert_gat_exists(genomes, gname, aname, tname)
     try:
         asset_tag_data = genomes[gname][CFG_ASSETS_KEY][aname][tname]
-        seek_key = asset_tag_data[CFG_SEEK_KEYS_KEY][seek_key]
+        seek_key_value = asset_tag_data[CFG_SEEK_KEYS_KEY][seek_key]
         if seek_key != ".":
-            return os.path.join(asset_tag_data[CFG_ASSET_PATH_KEY], asset_tag_data[CFG_SEEK_KEYS_KEY][seek_key])
+            return os.path.join(asset_tag_data[CFG_ASSET_PATH_KEY], seek_key_value)
         return asset_tag_data[CFG_ASSET_PATH_KEY]
     except KeyError:
         raise MissingAssetError("genome/asset:tag bundle '{}/{}:{}' exists, "

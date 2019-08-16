@@ -297,14 +297,14 @@ class RefGenConf(yacman.YacAttMap):
         self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][DEFAULT_TAG_NAME] = \
             self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][tag]
 
-    def pull_asset(self, genome, assets, tag, genome_config, unpack=True, force=None,
+    def pull_asset(self, genome, asset, tag, genome_config, unpack=True, force=None,
                    get_json_url=lambda base, g, a, t: "{}/asset/{}/{}/{}".format(base, g, a, t),
                    get_main_url=None, build_signal_handler=_handle_sigint):
         """
         Download and possibly unpack one or more assets for a given ref gen.
 
         :param str genome: name of a reference genome assembly of interest
-        :param str assets: name(s) of particular asset(s) to fetch
+        :param str asset: name of particular asset to fetch
         :param str tag: name of particular tag to fetch
         :param str genome_config: path to genome configuration file to update
         :param bool unpack: whether to unpack a tarball
@@ -319,27 +319,14 @@ class RefGenConf(yacman.YacAttMap):
         :param function(str) -> function build_signal_handler: how to create
             a signal handler to use during the download; the single argument
             to this function factory is the download filepath
-        :return Iterable[(str, str | NoneType)]: collection of pairs of asset
-            name and folder name (key-value pair with which genome config file
+        :return a pairs of asset name and folder name (key-value pair with which genome config file
             is updated) if pull succeeds, else asset key and a null value.
-        :raise TypeError: if the assets argument is neither string nor other
-            Iterable
         :raise refgenconf.UnboundEnvironmentVariablesError: if genome folder
             path contains any env. var. that's unbound
         """
         missing_vars = unbound_env_vars(self.genome_folder)
         if missing_vars:
             raise UnboundEnvironmentVariablesError(", ".join(missing_vars))
-        if isinstance(assets, str):
-            assets = [assets]
-        elif not isinstance(assets, Iterable):
-            raise TypeError("Assets to pull should be single name or collection of names; got {} ({})".
-                            format(assets, type(assets)))
-        return [self._pull_asset(genome, a, tag, genome_config, unpack, force, get_json_url, get_main_url,
-                                 build_signal_handler) for a in assets]
-
-    def _pull_asset(self, genome, asset, tag, genome_config, unpack, force, get_json_url, get_main_url,
-                    build_signal_handler):
 
         tag = tag or DEFAULT_TAG_NAME
         bundle_name = '{}/{}:{}'.format(genome, asset, tag)

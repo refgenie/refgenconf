@@ -279,14 +279,33 @@ class RefGenConf(yacman.YacAttMap):
         genomes, assets = _list_remote(url, genome, order)
         return genomes, assets
 
-    def pull_asset(self, genome, assets, genome_config, unpack=True, force=None,
-                   get_json_url=lambda base, g, a: "{}/asset/{}/{}".format(base, g, a),
+    def set_default_asset(self, genome, asset, tag):
+        """
+        Sets the asset selected by the tag as the default one.
+        Prompts if default already exists and overrides upon confirmation.
+
+        :param str genome: name of a reference genome assembly of interest
+        :param str asset: name of particular asset of interest
+        :param str tag: name of particular tag to be set as the default one
+        """
+        _assert_gat_exists(self[CFG_GENOMES_KEY], genome, asset, tag)
+        if hasattr(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset], DEFAULT_TAG_NAME):
+            if not query_yes_no("You have already '{}' asset tagged as '{}', "
+                                "do you wish to override?".format(asset, DEFAULT_TAG_NAME)):
+                _LOGGER.info("Action aborted by the user")
+                return
+        self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][DEFAULT_TAG_NAME] = \
+            self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][tag]
+
+    def pull_asset(self, genome, assets, tag, genome_config, unpack=True, force=None,
+                   get_json_url=lambda base, g, a, t: "{}/asset/{}/{}/{}".format(base, g, a, t),
                    get_main_url=None, build_signal_handler=_handle_sigint):
         """
         Download and possibly unpack one or more assets for a given ref gen.
 
         :param str genome: name of a reference genome assembly of interest
         :param str assets: name(s) of particular asset(s) to fetch
+        :param str tag: name of particular tag to fetch
         :param str genome_config: path to genome configuration file to update
         :param bool unpack: whether to unpack a tarball
         :param bool | NoneType force: how to handle case in which asset path
@@ -314,15 +333,16 @@ class RefGenConf(yacman.YacAttMap):
         if isinstance(assets, str):
             assets = [assets]
         elif not isinstance(assets, Iterable):
-            raise TypeError("Assets to pull should be single name or collection "
-                            "of names; got {} ({})".format(assets, type(assets)))
-        return [self._pull_asset(genome, a, genome_config, unpack, force,
-                                 get_json_url, get_main_url, build_signal_handler)
-                for a in assets]
+            raise TypeError("Assets to pull should be single name or collection of names; got {} ({})".
+                            format(assets, type(assets)))
+        return [self._pull_asset(genome, a, tag, genome_config, unpack, force, get_json_url, get_main_url,
+                                 build_signal_handler) for a in assets]
 
-    def _pull_asset(self, genome, asset, genome_config, unpack, force,
-                    get_json_url, get_main_url, build_signal_handler):
-        bundle_name = '{}/{}'.format(genome, asset)
+    def _pull_asset(self, genome, asset, tag, genome_config, unpack, force, get_json_url, get_main_url,
+                    build_signal_handler):
+
+        tag = tag or DEFAULT_TAG_NAME
+        bundle_name = '{}/{}:{}'.format(genome, asset, tag)
         _LOGGER.info("Starting pull for '{}'".format(bundle_name))
 
         def raise_unpack_error():
@@ -352,9 +372,8 @@ class RefGenConf(yacman.YacAttMap):
             else:
                 msg_overwrite()
 
-        url_json = get_json_url(self.genome_server, genome, asset)
-        url = url_json + "/archive" if get_main_url is None \
-            else get_main_url(self.genome_server, genome, asset)
+        url_json = get_json_url(self.genome_server, genome, asset, tag)
+        url = url_json + "/archive" if get_main_url is None else get_main_url(self.genome_server, genome, asset)
 
         archive_data = _download_json(url_json)
 
@@ -388,8 +407,7 @@ class RefGenConf(yacman.YacAttMap):
             return asset, None
         except ConnectionRefusedError as e:
             _LOGGER.error(str(e))
-            _LOGGER.error("Server {} refused download. Check your internet settings".
-                          format(self.genome_server))
+            _LOGGER.error("Server {} refused download. Check your internet settings".format(self.genome_server))
             return asset, None
         except ContentTooShortError as e:
             _LOGGER.error(str(e))
@@ -401,8 +419,7 @@ class RefGenConf(yacman.YacAttMap):
         new_checksum = checksum(filepath)
         old_checksum = archive_data and archive_data.get(CFG_CHECKSUM_KEY)
         if old_checksum and new_checksum != old_checksum:
-            _LOGGER.error(
-                "Checksum mismatch: ({}, {})".format(new_checksum, old_checksum))
+            _LOGGER.error("Checksum mismatch: ({}, {})".format(new_checksum, old_checksum))
             return asset, None
         else:
             _LOGGER.debug("Matched checksum: '{}'".format(old_checksum))
@@ -589,9 +606,40 @@ def _genome_asset_path(genomes, gname, aname, tname, seek_key):
         the given asset name as a key
     :raise GenomeConfigFormatError: if it's discovered during the query that
         the structure of the given genomes mapping suggests that it was
-        parsd from an improperly formatted/structured genome config gile.
+        parsed from an improperly formatted/structured genome config file.
     """
-    # wrap the repeating try-catch statements into a function as they repeat several times
+    _assert_gat_exists(genomes, gname, aname, tname)
+    try:
+        asset_tag_data = genomes[gname][CFG_ASSETS_KEY][aname][tname]
+        seek_key = asset_tag_data[CFG_SEEK_KEYS_KEY][seek_key]
+        if seek_key != ".":
+            return os.path.join(asset_tag_data[CFG_ASSET_PATH_KEY], asset_tag_data[CFG_SEEK_KEYS_KEY][seek_key])
+        return asset_tag_data[CFG_ASSET_PATH_KEY]
+    except KeyError:
+        raise MissingAssetError("genome/asset:tag bundle '{}/{}:{}' exists, "
+                                "but seek_key '{}' is missing".format(gname, aname, tname, seek_key))
+
+
+def _assert_gat_exists(genomes, gname, aname, tname):
+    """
+    Make sure the genome/asset:tag combination exists in the provided mapping
+
+    :param Mapping[str, Mapping[str, Mapping[str, object]]] genomes: nested
+        collection of key-value pairs, keyed at top level on genome ID, then by
+        asset name, then by asset attribute
+    :param str gname: top level key to query -- genome ID, e.g. mm10
+    :param str aname: second-level key to query -- asset name, e.g. fasta
+    :param str tname: third-level key to query -- tag name, e.g. default
+    :raise MissingGenomeError: if the given key-value pair collection does not
+        contain as a top-level key the given genome ID
+    :raise MissingAssetError: if the given key-value pair colelction does
+        contain the given genome ID, but that key's mapping doesn't contain
+        the given asset name as a key
+    :raise GenomeConfigFormatError: if it's discovered during the query that
+        the structure of the given genomes mapping suggests that it was
+        parsed from an improperly formatted/structured genome config file.
+    :return:
+    """
     try:
         genome = genomes[gname]
     except KeyError:
@@ -602,15 +650,10 @@ def _genome_asset_path(genomes, gname, aname, tname, seek_key):
         raise MissingAssetError(
             "Genome '{}' exists, but index '{}' is missing".format(gname, aname))
     try:
-        asset_tag_data = asset_data[tname]
+        asset_data[tname]
     except KeyError:
         raise MissingAssetError(
-            "genome:asset bundle '{}:{}' exists, but tag '{}' is missing".format(gname, aname, tname))
-    try:
-        return os.path.join(asset_tag_data[CFG_ASSET_PATH_KEY], asset_tag_data[CFG_SEEK_KEYS_KEY][seek_key])
-    except KeyError:
-        raise MissingAssetError("genome:asset:tag bundle '{}:{}:{}' exists, "
-                                "but seek_key '{}' is missing".format(gname, aname, tname, seek_key))
+            "genome/asset bundle '{}/{}' exists, but tag '{}' is missing".format(gname, aname, tname))
 
 
 def _is_large_archive(size):

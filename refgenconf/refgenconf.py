@@ -462,7 +462,7 @@ class RefGenConf(yacman.YacAttMap):
                         self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][tag].update(data)
         return self
 
-    def remove_assets(self, genome, assets, tags=None):
+    def remove_assets(self, genome, asset, seek_key, tag=None):
         """
         Remove data associated with a specified genome:asset:tag combination.
         If no tags are specified, the entire asset is removed from the genome.
@@ -473,30 +473,41 @@ class RefGenConf(yacman.YacAttMap):
         the parent genome will be removed as well
 
         :param str genome: genome to be removed
-        :param str | list[str] assets: assets to be removed
-        :param str | list[str] tags: tags to be removed
+        :param str asset: asset to be removed
+        :param str tag: tag to be removed
         :raise TypeError: if genome argument type is not a list or str
         :return RefGenConf: updated object
         """
         # TODO: add unit tests
-        assets = [assets] if isinstance(assets, str) else assets
-        tags = [tags] if isinstance(tags, str) else tags
-        if not isinstance(assets, list):
-            raise TypeError("assets arg has to be a str or list[str]")
-        for asset in assets:
-            if _check_insert_data(genome, str, "genome"):
-                if _check_insert_data(asset, str, "asset"):
-                    if tags is None:
-                        del self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]
-                    else:
-                        for tag in tags:
-                            if _check_insert_data(tag, str, "tag"):
-                                del self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][tag]
-            if hasattr(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY], asset) and \
-                    len(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]) == 0:
-                del self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]
-        if len(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY]) == 0:
-            del self[CFG_GENOMES_KEY][genome]
+        def _del_if_empty(obj, attr, alt=None):
+            """
+            Internal function for Mapping attribute deleting.
+            Check if attribute exists and delete it if its length is zero.
+
+            :param Mapping obj: an object to check
+            :param str attr: Mapping attribute of interest
+            :param list[Mapping, str] alt: a list of length 2 that indicates alternative
+            Mapping-attribute combination to remove
+            """
+            if hasattr(obj, attr) and len(getattr(obj, attr)) == 0:
+                if alt is None:
+                    del obj[attr]
+                else:
+                    if hasattr(*alt):
+                        del alt[0][alt[1]]
+
+        tag = tag or DEFAULT_TAG_NAME
+        if _check_insert_data(genome, str, "genome"):
+            if _check_insert_data(asset, str, "asset"):
+                if _check_insert_data(tag, str, "tag"):
+                    if _check_insert_data(seek_key, str, "seek_key"):
+                        del self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][tag][CFG_SEEK_KEYS_KEY][seek_key]
+
+        _del_if_empty(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][tag], CFG_SEEK_KEYS_KEY,
+                      [self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset], tag])
+        _del_if_empty(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY], asset)
+        _del_if_empty(self[CFG_GENOMES_KEY][genome], CFG_ASSETS_KEY)
+        _del_if_empty(self[CFG_GENOMES_KEY], genome)
         return self
 
     def update_genomes(self, genome, data=None):

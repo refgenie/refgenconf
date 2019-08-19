@@ -423,6 +423,23 @@ class RefGenConf(yacman.YacAttMap):
         self.write(genome_config)
         return asset, result
 
+    def update_seek_keys(self, genome, asset=None, tag=None, keys=None):
+        """
+        A convenience method which wraps the update assets and uses it to update the seek keys for a tagged asset.
+
+        :param str genome: genome to be added/updated
+        :param str asset: asset to be added/updated
+        :param str tag: tag to be added/updated
+        :param Mapping keys: seek_keys to be added/updated
+        :return RefGenConf: updated object
+        """
+        tag = tag or DEFAULT_TAG_NAME  # might be encoded in the signature
+        if _check_insert_data(keys, Mapping, "keys"):
+            self.update_assets(genome, asset, tag)  # creates/asserts the genome/asset:tag combination
+            self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][tag].setdefault(CFG_SEEK_KEYS_KEY, PXAM())
+            self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][tag][CFG_SEEK_KEYS_KEY].update(keys)
+        return self
+
     def update_assets(self, genome, asset=None, tag=None, data=None):
         """
         Updates the genomes in RefGenConf object at any level.

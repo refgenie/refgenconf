@@ -453,8 +453,9 @@ class RefGenConf(yacman.YacAttMap):
         """
         tag = tag or DEFAULT_TAG_NAME  # might be encoded in the signature
         if _check_insert_data(genome, str, "genome"):
-            self[CFG_GENOMES_KEY].setdefault(genome, PXAM({CFG_ASSETS_KEY: PXAM()}))
+            self[CFG_GENOMES_KEY].setdefault(genome, PXAM())
             if _check_insert_data(asset, str, "asset"):
+                self[CFG_GENOMES_KEY][genome].setdefault(CFG_ASSETS_KEY, PXAM())
                 self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY].setdefault(asset, PXAM())
                 if _check_insert_data(tag, str, "tag"):
                     self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset].setdefault(tag, PXAM())
@@ -462,7 +463,7 @@ class RefGenConf(yacman.YacAttMap):
                         self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][tag].update(data)
         return self
 
-    def remove_assets(self, genome, asset, seek_key, tag=None):
+    def remove_assets(self, genome, asset, tag=None, seek_key=None):
         """
         Remove data associated with a specified genome:asset:tag combination.
         If no tags are specified, the entire asset is removed from the genome.
@@ -473,8 +474,9 @@ class RefGenConf(yacman.YacAttMap):
         the parent genome will be removed as well
 
         :param str genome: genome to be removed
-        :param str asset: asset to be removed
+        :param str asset: asset package to be removed
         :param str tag: tag to be removed
+        :param str seek_key: seek key for the asset to be removed
         :raise TypeError: if genome argument type is not a list or str
         :return RefGenConf: updated object
         """
@@ -500,11 +502,12 @@ class RefGenConf(yacman.YacAttMap):
         if _check_insert_data(genome, str, "genome"):
             if _check_insert_data(asset, str, "asset"):
                 if _check_insert_data(tag, str, "tag"):
-                    if _check_insert_data(seek_key, str, "seek_key"):
+                    if seek_key is not None:
                         del self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][tag][CFG_SEEK_KEYS_KEY][seek_key]
-
-        _del_if_empty(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][tag], CFG_SEEK_KEYS_KEY,
-                      [self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset], tag])
+                        _del_if_empty(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][tag], CFG_SEEK_KEYS_KEY,
+                                      [self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset], tag])
+                    else:
+                        del self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][tag]
         _del_if_empty(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY], asset)
         _del_if_empty(self[CFG_GENOMES_KEY][genome], CFG_ASSETS_KEY)
         _del_if_empty(self[CFG_GENOMES_KEY], genome)
@@ -627,7 +630,7 @@ def _genome_asset_path(genomes, gname, aname, tname, seek_key):
     try:
         asset_tag_data = genomes[gname][CFG_ASSETS_KEY][aname][tname]
         seek_key_value = asset_tag_data[CFG_SEEK_KEYS_KEY][seek_key]
-        if seek_key != ".":
+        if seek_key_value != ".":
             return os.path.join(asset_tag_data[CFG_ASSET_PATH_KEY], seek_key_value)
         return asset_tag_data[CFG_ASSET_PATH_KEY]
     except KeyError:

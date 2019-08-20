@@ -187,8 +187,7 @@ class RefGenConf(yacman.YacAttMap):
         :raise refgenconf.MissingAssetError: if the names assembly is known to
             this configuration instance, but the requested asset is unknown
         """
-        _LOGGER.debug("Getting asset '{}' for genome '{}'".format(asset_name, genome_name))
-        seek_key = seek_key or asset_name
+        _LOGGER.debug("getting asset: '{}/{}.{}:{}'".format(genome_name, asset_name, seek_key, tag_name))
         tag_name = tag_name or DEFAULT_TAG_NAME
         if not callable(check_exist) or len(finspect(check_exist).args) != 1:
             raise TypeError("Asset existence check must be a one-arg function.")
@@ -627,12 +626,16 @@ def _genome_asset_path(genomes, gname, aname, tname, seek_key):
         parsed from an improperly formatted/structured genome config file.
     """
     _assert_gat_exists(genomes, gname, aname, tname)
+    asset_tag_data = genomes[gname][CFG_ASSETS_KEY][aname][tname]
+    if seek_key is None:
+        if asset_tag_data[CFG_SEEK_KEYS_KEY][aname] == ".":
+            seek_key = aname
+        else:
+            return os.path.join(asset_tag_data[CFG_ASSET_PATH_KEY], tname)
     try:
-        asset_tag_data = genomes[gname][CFG_ASSETS_KEY][aname][tname]
         seek_key_value = asset_tag_data[CFG_SEEK_KEYS_KEY][seek_key]
-        if seek_key_value != ".":
-            return os.path.join(asset_tag_data[CFG_ASSET_PATH_KEY], seek_key_value)
-        return asset_tag_data[CFG_ASSET_PATH_KEY]
+        appendix = "" if seek_key_value == "." else seek_key_value
+        return os.path.join(asset_tag_data[CFG_ASSET_PATH_KEY], tname, appendix)
     except KeyError:
         raise MissingAssetError("genome/asset:tag bundle '{}/{}:{}' exists, "
                                 "but seek_key '{}' is missing".format(gname, aname, tname, seek_key))

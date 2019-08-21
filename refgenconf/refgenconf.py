@@ -278,22 +278,23 @@ class RefGenConf(yacman.YacAttMap):
         genomes, assets = _list_remote(url, genome, order)
         return genomes, assets
 
-    def set_default_asset(self, genome, asset, tag):
+    def tag_asset(self, genome, asset, tag, new_tag):
         """
         Sets the asset selected by the tag as the default one.
         Prompts if default already exists and overrides upon confirmation.
 
         :param str genome: name of a reference genome assembly of interest
         :param str asset: name of particular asset of interest
-        :param str tag: name of particular tag to be set as the default one
+        :param str tag: name of the tag that identifies the asset of interest
+        :param str new_tag: name of particular the new tag
         """
         _assert_gat_exists(self[CFG_GENOMES_KEY], genome, asset, tag)
-        if hasattr(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset], DEFAULT_TAG_NAME):
-            if not query_yes_no("You already have one '{}' asset tagged as '{}', "
-                                "do you wish to override?".format(asset, DEFAULT_TAG_NAME)):
+        if hasattr(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset], new_tag):
+            if not query_yes_no("You already have a '{}' asset tagged as '{}', "
+                                "do you wish to override?".format(asset, new_tag)):
                 _LOGGER.info("Action aborted by the user")
                 return
-        self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][DEFAULT_TAG_NAME] = \
+        self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][new_tag] = \
             self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][tag]
 
     def pull_asset(self, genome, asset, tag, genome_config, unpack=True, force=None,

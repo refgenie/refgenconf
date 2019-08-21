@@ -28,6 +28,9 @@ CFG_ASSET_DESC_KEY = "asset_description"
 CFG_ARCHIVE_SIZE_KEY = "archive_size"
 CFG_ARCHIVE_CHECKSUM_KEY = "archive_checksum"
 CFG_SEEK_KEYS_KEY = "seek_keys"
+CFG_ASSET_PARENTS_KEY = "asset_parents"
+CFG_ASSET_CHILDREN_KEY = "asset_children"
+
 
 CFG_TOP_LEVEL_KEYS = [
     CFG_FOLDER_KEY, CFG_SERVER_KEY, CFG_ARCHIVE_KEY, CFG_GENOMES_KEY, CFG_VERSION_KEY]
@@ -39,7 +42,8 @@ CFG_SINGLE_ASSET_SECTION_KEYS = [CFG_ASSET_PATH_KEY, CFG_ASSET_DESC_KEY, CFG_ASS
 CFG_KEY_NAMES = [
     "CFG_FOLDER_KEY", "CFG_SERVER_KEY", "CFG_GENOMES_KEY",
     "CFG_ASSET_PATH_KEY", "CFG_ASSET_DESC_KEY", "CFG_ARCHIVE_KEY", "CFG_ARCHIVE_SIZE_KEY", "CFG_SEEK_KEYS_KEY",
-    "CFG_ASSET_SIZE_KEY", "CFG_CHECKSUM_KEY", "CFG_ARCHIVE_CHECKSUM_KEY", "CFG_VERSION_KEY"]
+    "CFG_ASSET_SIZE_KEY", "CFG_CHECKSUM_KEY", "CFG_ARCHIVE_CHECKSUM_KEY", "CFG_VERSION_KEY", "CFG_ASSET_PARENTS_KEY",
+    "CFG_ASSET_CHILDREN_KEY"]
 
 
 """
@@ -61,6 +65,8 @@ CFG_KEY_NAMES = [
                     {archive_checksum}: 2220349234n20349280345mv2035
                     {asset_size}: 32G
                     {archive_size}: 7G
+                    {asset_parents}:
+                    {asset_children}: ["bowtie2_index.bowtie2_index:default"]
                     {seek_keys}:
                         fasta: hg38.fa.gz
                         fai: hg38.fa.fai
@@ -79,7 +85,7 @@ CFG_KEY_NAMES = [
            archive=CFG_ARCHIVE_KEY, checksum=CFG_CHECKSUM_KEY, genomes=CFG_GENOMES_KEY,
            desc_genome=CFG_GENOME_DESC_KEY, asset_path=CFG_ASSET_PATH_KEY, desc_asset=CFG_ASSET_DESC_KEY,
            archive_checksum=CFG_ARCHIVE_CHECKSUM_KEY, asset_size=CFG_ASSET_SIZE_KEY, archive_size=CFG_ARCHIVE_SIZE_KEY,
-           seek_keys=CFG_SEEK_KEYS_KEY)
+           seek_keys=CFG_SEEK_KEYS_KEY, asset_parents=CFG_ASSET_PARENTS_KEY, asset_children=CFG_ASSET_CHILDREN_KEY)
 
 # other consts
 REQ_CFG_VERSION = 0.3

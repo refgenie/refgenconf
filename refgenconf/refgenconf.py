@@ -423,6 +423,34 @@ class RefGenConf(yacman.YacAttMap):
         self.write(genome_config)
         return asset, result
 
+    def update_relatives_assets(self, genome, asset, tag=None, data=None, children=False):
+        """
+        A convenience method which wraps the update assets and uses it to update the asset relatives of an asset.
+
+        :param str genome: genome to be added/updated
+        :param str asset: asset to be added/updated
+        :param str tag: tag to be added/updated
+        :param list data: asset parents to be added/updated
+        :param bool children: a logical indicating whether the relationship to be added is 'children'
+        :return RefGenConf: updated object
+        """
+        def _extend_unique(l1, l2):
+            """
+            Extend a list with no duplicates
+
+            :param list l1: original list
+            :param list l2: list with items to add
+            :return list: an extended list
+            """
+            return l1 + list(set(l2) - set(l1))
+        tag = tag or DEFAULT_TAG_NAME  # might be encoded in the signature
+        relationship = CFG_ASSET_CHILDREN_KEY if children else CFG_ASSET_PARENTS_KEY
+        if _check_insert_data(data, list, "data"):
+            self.update_assets(genome, asset, tag)  # creates/asserts the genome/asset:tag combination
+            self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][tag].setdefault(relationship, list())
+            self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][tag][relationship] = \
+                _extend_unique(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][tag][relationship], data)
+
     def update_seek_keys(self, genome, asset=None, tag=None, keys=None):
         """
         A convenience method which wraps the update assets and uses it to update the seek keys for a tagged asset.

@@ -24,7 +24,7 @@ import signal
 import warnings
 
 from attmap import PathExAttMap as PXAM
-from ubiquerg import checksum, is_url, query_yes_no
+from ubiquerg import checksum, is_url, query_yes_no, parse_registry_path as prp
 from tqdm import tqdm
 import yacman
 
@@ -280,8 +280,13 @@ class RefGenConf(yacman.YacAttMap):
 
     def tag_asset(self, genome, asset, tag, new_tag):
         """
-        Sets the asset selected by the tag as the default one.
+        Retags the asset selected by the tag with the new_tag.
         Prompts if default already exists and overrides upon confirmation.
+
+        This method does not override the original asset entry in the RefGenConf object. It creates its copy and tags
+        it with the new_tag. Client applications can decide whether to remove the original with remove_assets() method.
+        Additionally, if the retagged asset has any children their parent will be retagged as new_tag that was
+        introduced upon this method execution.
 
         :param str genome: name of a reference genome assembly of interest
         :param str asset: name of particular asset of interest
@@ -294,8 +299,44 @@ class RefGenConf(yacman.YacAttMap):
                                 "do you wish to override?".format(asset, new_tag)):
                 _LOGGER.info("Action aborted by the user")
                 return
+        if hasattr(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][tag], CFG_ASSET_CHILDREN_KEY):
+            children = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][tag][CFG_ASSET_CHILDREN_KEY]
+            if not query_yes_no("The asset '{}/{}:{}' has {} children. Refgenie will update their parent data. "
+                                "Do you want to proceed?".format(genome, asset, tag, len(children))):
+                _LOGGER.info("Action aborted by the user")
+                return
+            self._update_parents_tags(genome, asset, tag, new_tag, children)
         self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][new_tag] = \
             self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][tag]
+
+    def _update_parents_tags(self, genome, asset, tag, new_tag, children):
+        """
+        Internal method used for tags updating in the 'asset_parents' section in the list of children.
+
+        :param str genome: name of a reference genome assembly of interest
+        :param str asset: name of particular asset of interest
+        :param str tag: name of the tag that identifies the asset of interest
+        :param str new_tag: name of particular the new tag
+        :param list[str] children: children to be updated. Format: ["asset_name:tag", "asset_name1:tag1"]
+        """
+        updated_parents = []
+        for child in children:
+            _LOGGER.debug("updating parent section in '{}'".format(child))
+            child_data = prp(child)
+            if hasattr(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][child_data["item"]][child_data["tag"]],
+                       CFG_ASSET_PARENTS_KEY):
+                parents_data = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][child_data["item"]][child_data["tag"]][
+                    CFG_ASSET_PARENTS_KEY]
+                for parent in parents_data:
+                    ori_parent_data = prp(parent)
+                    if ori_parent_data["item"] == asset and ori_parent_data["tag"] == tag:
+                        ori_parent_data["tag"] = new_tag
+                        updated_parents.append("{}:{}".format(asset, new_tag))
+                    else:
+                        updated_parents.append("{}:{}".format(ori_parent_data["item"], ori_parent_data["tag"]))
+            self.update_relatives_assets(genome, child_data["item"], child_data["tag"], updated_parents)
+            self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][child_data["item"]][child_data["tag"]][
+                CFG_ASSET_PARENTS_KEY] = updated_parents
 
     def pull_asset(self, genome, asset, tag, genome_config, unpack=True, force=None,
                    get_json_url=lambda base, g, a, t: "{}/asset/{}/{}/{}".format(base, g, a, t),

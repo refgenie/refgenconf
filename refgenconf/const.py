@@ -10,7 +10,7 @@ CFG_NAME = "genome configuration"
 CFG_ENV_VARS = ["REFGENIE"]
 CFG_CONST = ["CFG_NAME", "CFG_ENV_VARS"]
 DEFAULT_SERVER = "http://refgenomes.databio.org"
-CFG_ASSET_DEFAULT_TAG_KEY = "default"
+DEFAULT_TAG = "default"
 
 CFG_FOLDER_KEY = "genome_folder"
 CFG_SERVER_KEY = "genome_server"
@@ -30,6 +30,7 @@ CFG_ARCHIVE_CHECKSUM_KEY = "archive_checksum"
 CFG_SEEK_KEYS_KEY = "seek_keys"
 CFG_ASSET_PARENTS_KEY = "asset_parents"
 CFG_ASSET_CHILDREN_KEY = "asset_children"
+CFG_ASSET_DEFAULT_TAG_KEY = "default_tag"
 
 
 CFG_TOP_LEVEL_KEYS = [

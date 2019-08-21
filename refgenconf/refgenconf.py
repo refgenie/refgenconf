@@ -226,7 +226,12 @@ class RefGenConf(yacman.YacAttMap):
         :param str asset: name of the particular asset of interest
         :return str: name of the tag to use as the default one
         """
-        _assert_gat_exists(self[CFG_GENOMES_KEY], genome, asset)
+        try:
+            _assert_gat_exists(self[CFG_GENOMES_KEY], genome, asset)
+        except (MissingGenomeError, MissingAssetError):
+            _LOGGER.info("genome/asset combination '{}/{}' not found in the genome config; "
+                         "initializing with '{}' as the default tag.".format(genome, asset, DEFAULT_TAG))
+            return DEFAULT_TAG
         try:
             return self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_DEFAULT_TAG_KEY]
         except KeyError:
@@ -751,6 +756,7 @@ def _assert_gat_exists(genomes, gname, aname, tname=None):
         the structure of the given genomes mapping suggests that it was
         parsed from an improperly formatted/structured genome config file.
     """
+    _LOGGER.debug("checking existence of: {}/{}:{}".format(gname, aname, tname))
     try:
         genome = genomes[gname]
     except KeyError:
@@ -758,8 +764,7 @@ def _assert_gat_exists(genomes, gname, aname, tname=None):
     try:
         asset_data = genome[CFG_ASSETS_KEY][aname]
     except KeyError:
-        raise MissingAssetError(
-            "Genome '{}' exists, but index '{}' is missing".format(gname, aname))
+        raise MissingAssetError("Genome '{}' exists, but index '{}' is missing".format(gname, aname))
     if tname is not None:
         try:
             asset_data[tname]

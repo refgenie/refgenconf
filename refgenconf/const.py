@@ -10,7 +10,7 @@ CFG_NAME = "genome configuration"
 CFG_ENV_VARS = ["REFGENIE"]
 CFG_CONST = ["CFG_NAME", "CFG_ENV_VARS"]
 DEFAULT_SERVER = "http://refgenomes.databio.org"
-DEFAULT_TAG_NAME = "default"
+CFG_ASSET_DEFAULT_TAG_KEY = "default"
 
 CFG_FOLDER_KEY = "genome_folder"
 CFG_SERVER_KEY = "genome_server"
@@ -59,7 +59,8 @@ CFG_KEY_NAMES = [
         {checksum}: 1110349234n20349280345df5035
         {assets}:
             fasta:
-                default:
+                {default}: tag_name
+                tag_name:
                     {asset_path}: fasta
                     {desc_asset}: Genome index for bowtie2, produced with bowtie2-build
                     {archive_checksum}: 2220349234n20349280345mv2035
@@ -85,11 +86,12 @@ CFG_KEY_NAMES = [
            archive=CFG_ARCHIVE_KEY, checksum=CFG_CHECKSUM_KEY, genomes=CFG_GENOMES_KEY,
            desc_genome=CFG_GENOME_DESC_KEY, asset_path=CFG_ASSET_PATH_KEY, desc_asset=CFG_ASSET_DESC_KEY,
            archive_checksum=CFG_ARCHIVE_CHECKSUM_KEY, asset_size=CFG_ASSET_SIZE_KEY, archive_size=CFG_ARCHIVE_SIZE_KEY,
-           seek_keys=CFG_SEEK_KEYS_KEY, asset_parents=CFG_ASSET_PARENTS_KEY, asset_children=CFG_ASSET_CHILDREN_KEY)
+           seek_keys=CFG_SEEK_KEYS_KEY, asset_parents=CFG_ASSET_PARENTS_KEY, asset_children=CFG_ASSET_CHILDREN_KEY,
+           default=CFG_ASSET_DEFAULT_TAG_KEY)
 
 # other consts
 REQ_CFG_VERSION = 0.3
 REFGENIE_BY_CFG = {"0.3": "0.6.1", "0.2": "0.6.0"}  # should probably switch to 0.7.0
 
-__all__ = CFG_CONST + CFG_KEY_NAMES + ["DEFAULT_SERVER", "DEFAULT_TAG_NAME", "CFG_KEY_NAMES", "CFG_GENOME_DESC_KEY",
+__all__ = CFG_CONST + CFG_KEY_NAMES + ["DEFAULT_SERVER", "CFG_ASSET_DEFAULT_TAG_KEY", "CFG_KEY_NAMES", "CFG_GENOME_DESC_KEY",
                                        "REQ_CFG_VERSION", "CFG_ASSETS_KEY", "CFG_GENOME_ATTRS_KEYS", "REFGENIE_BY_CFG"]

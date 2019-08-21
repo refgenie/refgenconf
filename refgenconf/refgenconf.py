@@ -187,8 +187,8 @@ class RefGenConf(yacman.YacAttMap):
         :raise refgenconf.MissingAssetError: if the names assembly is known to
             this configuration instance, but the requested asset is unknown
         """
+        tag_name = tag_name or self.get_default_tag(genome_name, asset_name)
         _LOGGER.debug("getting asset: '{}/{}.{}:{}'".format(genome_name, asset_name, seek_key, tag_name))
-        tag_name = tag_name or DEFAULT_TAG_NAME
         if not callable(check_exist) or len(finspect(check_exist).args) != 1:
             raise TypeError("Asset existence check must be a one-arg function.")
         path = _genome_asset_path(self[CFG_GENOMES_KEY], genome_name, asset_name, tag_name, seek_key)
@@ -216,6 +216,27 @@ class RefGenConf(yacman.YacAttMap):
         else:
             warnings.warn(msg, RuntimeWarning)
         return path
+
+    def get_default_tag(self, genome, asset):
+        """
+        Determine the asset tag to use as default. The one indicated by the 'default' key in the asset section is returned.
+        If no 'default' key is found, the first listed tag is returned with a RuntimeWarning.
+
+        :param str genome: name of a reference genome assembly of interest
+        :param str asset: name of the particular asset of interest
+        :return str: name of the tag to use as the default one
+        """
+        _assert_gat_exists(self[CFG_GENOMES_KEY], genome, asset)
+        try:
+            return self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_DEFAULT_TAG_KEY]
+        except KeyError:
+            alt = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset].keys()[0]
+            if isinstance(alt, str):
+                warnings.warn("Could not find the '{}' key for asset '{}/{}'. "
+                              "Used the first one in the config instead: '{}'. "
+                              "Make sure it does not corrupt your workflow."
+                              .format(CFG_ASSET_DEFAULT_TAG_KEY, genome, asset, alt), RuntimeWarning)
+                return alt
 
     def list_assets_by_genome(self, genome=None, order=None):
         """
@@ -369,7 +390,7 @@ class RefGenConf(yacman.YacAttMap):
         if missing_vars:
             raise UnboundEnvironmentVariablesError(", ".join(missing_vars))
 
-        tag = tag or DEFAULT_TAG_NAME
+        tag = tag or self.get_default_tag(genome, asset)
         bundle_name = '{}/{}:{}'.format(genome, asset, tag)
         _LOGGER.info("Starting pull for '{}'".format(bundle_name))
 
@@ -484,7 +505,7 @@ class RefGenConf(yacman.YacAttMap):
             :return list: an extended list
             """
             return l1 + list(set(l2) - set(l1))
-        tag = tag or DEFAULT_TAG_NAME  # might be encoded in the signature
+        tag = tag or self.get_default_tag(genome, asset)
         relationship = CFG_ASSET_CHILDREN_KEY if children else CFG_ASSET_PARENTS_KEY
         if _check_insert_data(data, list, "data"):
             self.update_assets(genome, asset, tag)  # creates/asserts the genome/asset:tag combination
@@ -502,7 +523,7 @@ class RefGenConf(yacman.YacAttMap):
         :param Mapping keys: seek_keys to be added/updated
         :return RefGenConf: updated object
         """
-        tag = tag or DEFAULT_TAG_NAME  # might be encoded in the signature
+        tag = tag or self.get_default_tag(genome, asset)
         if _check_insert_data(keys, Mapping, "keys"):
             self.update_assets(genome, asset, tag)  # creates/asserts the genome/asset:tag combination
             self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][tag].setdefault(CFG_SEEK_KEYS_KEY, PXAM())
@@ -520,7 +541,7 @@ class RefGenConf(yacman.YacAttMap):
         :param Mapping data: data to be added/updated
         :return RefGenConf: updated object
         """
-        tag = tag or DEFAULT_TAG_NAME  # might be encoded in the signature
+        tag = tag or self.get_default_tag(genome, asset)
         if _check_insert_data(genome, str, "genome"):
             self[CFG_GENOMES_KEY].setdefault(genome, PXAM())
             if _check_insert_data(asset, str, "asset"):
@@ -567,7 +588,7 @@ class RefGenConf(yacman.YacAttMap):
                     if hasattr(*alt):
                         del alt[0][alt[1]]
 
-        tag = tag or DEFAULT_TAG_NAME
+        tag = tag or self.get_default_tag(genome, asset)
         if _check_insert_data(genome, str, "genome"):
             if _check_insert_data(asset, str, "asset"):
                 if _check_insert_data(tag, str, "tag"):
@@ -711,7 +732,7 @@ def _genome_asset_path(genomes, gname, aname, tname, seek_key):
                                 "but seek_key '{}' is missing".format(gname, aname, tname, seek_key))
 
 
-def _assert_gat_exists(genomes, gname, aname, tname):
+def _assert_gat_exists(genomes, gname, aname, tname=None):
     """
     Make sure the genome/asset:tag combination exists in the provided mapping
 
@@ -729,7 +750,6 @@ def _assert_gat_exists(genomes, gname, aname, tname):
     :raise GenomeConfigFormatError: if it's discovered during the query that
         the structure of the given genomes mapping suggests that it was
         parsed from an improperly formatted/structured genome config file.
-    :return:
     """
     try:
         genome = genomes[gname]
@@ -740,11 +760,12 @@ def _assert_gat_exists(genomes, gname, aname, tname):
     except KeyError:
         raise MissingAssetError(
             "Genome '{}' exists, but index '{}' is missing".format(gname, aname))
-    try:
-        asset_data[tname]
-    except KeyError:
-        raise MissingAssetError(
-            "genome/asset bundle '{}/{}' exists, but tag '{}' is missing".format(gname, aname, tname))
+    if tname is not None:
+        try:
+            asset_data[tname]
+        except KeyError:
+            raise MissingAssetError(
+                "genome/asset bundle '{}/{}' exists, but tag '{}' is missing".format(gname, aname, tname))
 
 
 def _is_large_archive(size):

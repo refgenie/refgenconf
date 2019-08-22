@@ -256,7 +256,7 @@ class RefGenConf(yacman.YacAttMap):
         if not hasattr(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset], CFG_ASSET_DEFAULT_TAG_KEY) or \
                 len(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_DEFAULT_TAG_KEY]) == 0 or force:
             self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_DEFAULT_TAG_KEY] = tag
-            _LOGGER.debug("default tag for '{}/{}' changed to: {}".format(genome, asset, tag))
+            _LOGGER.info("Default tag for '{}/{}' changed to: {}".format(genome, asset, tag))
 
     def list_assets_by_genome(self, genome=None, order=None):
         """
@@ -380,7 +380,7 @@ class RefGenConf(yacman.YacAttMap):
                 CFG_ASSET_PARENTS_KEY] = updated_parents
 
     def pull_asset(self, genome, asset, tag, genome_config, unpack=True, force=None,
-                   get_json_url=lambda base, g, a, m, t: "{}/asset/{}/{}{}?tag={}".format(base, g, a, m, t),
+                   get_json_url=lambda base, g, a: "{}/asset/{}/{}".format(base, g, a),
                    build_signal_handler=_handle_sigint):
         """
         Download and possibly unpack one or more assets for a given ref gen.
@@ -410,15 +410,17 @@ class RefGenConf(yacman.YacAttMap):
         if missing_vars:
             raise UnboundEnvironmentVariablesError(", ".join(missing_vars))
 
-        tag = tag or DEFAULT_TAG
-        bundle_name = '{}/{}:{}'.format(genome, asset, tag)
-        _LOGGER.info("Starting pull for '{}'".format(bundle_name))
-
         def raise_unpack_error():
             raise NotImplementedError("Option to not extract tarballs is not yet supported.")
 
+        tag = _download_json(get_json_url(self.genome_server, genome, asset) + "/default_tag") if tag is None else tag
+        tag_query_param = "?tag={}".format(tag)
+        _LOGGER.debug("Determined tag: '{}'".format(tag))
         unpack or raise_unpack_error()
+        url_attrs = get_json_url(self.genome_server, genome, asset) + tag_query_param
+        url_archive = get_json_url(self.genome_server, genome, asset) + "/archive" + tag_query_param
 
+        archive_data = _download_json(url_attrs)
         # local file to save as
         filepath = self.filepath(genome, asset, tag)
         outdir = os.path.dirname(filepath)
@@ -440,10 +442,8 @@ class RefGenConf(yacman.YacAttMap):
                     msg_overwrite()
             else:
                 msg_overwrite()
-        url_json = get_json_url(self.genome_server, genome, asset, "", tag)
-        url = get_json_url(self.genome_server, genome, asset, "/archive", tag)
 
-        archive_data = _download_json(url_json)
+        bundle_name = '{}/{}:{}'.format(genome, asset, tag)
 
         # Check to make sure the server genome checksum matches the local genome checksum
         if hasattr(self[CFG_GENOMES_KEY], genome):
@@ -467,10 +467,10 @@ class RefGenConf(yacman.YacAttMap):
             return asset, None
 
         # Download the file from `url` and save it locally under `filepath`:
-        _LOGGER.info("Downloading URL: {}".format(url))
+        _LOGGER.info("Downloading URL: {}".format(url_archive))
         try:
             signal.signal(signal.SIGINT, build_signal_handler(filepath))
-            _download_url_progress(url, filepath, bundle_name)
+            _download_url_progress(url_archive, filepath, bundle_name)
         except HTTPError as e:
             _LOGGER.error("File not found on server: {}".format(e))
             return asset, None

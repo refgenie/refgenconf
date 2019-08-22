@@ -93,7 +93,9 @@ CFG_KEY_NAMES = [
 # other consts
 REQ_CFG_VERSION = 0.3
 REFGENIE_BY_CFG = {"0.3": "0.6.1", "0.2": "0.6.0"}  # should probably switch to 0.7.0
+ATTRS_COPY_PULL = [CFG_ASSET_DESC_KEY, CFG_SEEK_KEYS_KEY, CFG_ASSET_PARENTS_KEY, CFG_ASSET_CHILDREN_KEY,
+                   CFG_ASSET_PATH_KEY]
 
 __all__ = CFG_CONST + CFG_KEY_NAMES + ["DEFAULT_SERVER", "CFG_ASSET_DEFAULT_TAG_KEY", "CFG_KEY_NAMES",
                                        "CFG_GENOME_DESC_KEY", "REQ_CFG_VERSION", "CFG_ASSETS_KEY",
-                                       "CFG_GENOME_ATTRS_KEYS", "REFGENIE_BY_CFG", "DEFAULT_TAG"]
+                                       "CFG_GENOME_ATTRS_KEYS", "REFGENIE_BY_CFG", "DEFAULT_TAG", "ATTRS_COPY_PULL"]

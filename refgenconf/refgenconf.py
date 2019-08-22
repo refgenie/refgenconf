@@ -136,7 +136,7 @@ class RefGenConf(yacman.YacAttMap):
                             asset_sep=asset_sep, order=order)
         return "\n".join([make_line(g, self[CFG_GENOMES_KEY][g][CFG_ASSETS_KEY]) for g in refgens])
 
-    def filepath(self, genome, asset, ext=".tar"):
+    def filepath(self, genome, asset, tag, ext=".tar"):
         """
         Determine path to a particular asset for a particular genome.
 
@@ -145,7 +145,7 @@ class RefGenConf(yacman.YacAttMap):
         :param str ext: file extension
         :return str: path to asset for given genome and asset kind/name
         """
-        return os.path.join(self[CFG_FOLDER_KEY], genome, asset + ext)
+        return os.path.join(self[CFG_FOLDER_KEY], genome, asset, tag + ext)
 
     def genomes_list(self, order=None):
         """
@@ -380,8 +380,8 @@ class RefGenConf(yacman.YacAttMap):
                 CFG_ASSET_PARENTS_KEY] = updated_parents
 
     def pull_asset(self, genome, asset, tag, genome_config, unpack=True, force=None,
-                   get_json_url=lambda base, g, a, t: "{}/asset/{}/{}/{}".format(base, g, a, t),
-                   get_main_url=None, build_signal_handler=_handle_sigint):
+                   get_json_url=lambda base, g, a, m, t: "{}/asset/{}/{}{}?tag={}".format(base, g, a, m, t),
+                   build_signal_handler=_handle_sigint):
         """
         Download and possibly unpack one or more assets for a given ref gen.
 
@@ -410,7 +410,7 @@ class RefGenConf(yacman.YacAttMap):
         if missing_vars:
             raise UnboundEnvironmentVariablesError(", ".join(missing_vars))
 
-        tag = tag or self.get_default_tag(genome, asset)
+        tag = tag or DEFAULT_TAG
         bundle_name = '{}/{}:{}'.format(genome, asset, tag)
         _LOGGER.info("Starting pull for '{}'".format(bundle_name))
 
@@ -420,7 +420,7 @@ class RefGenConf(yacman.YacAttMap):
         unpack or raise_unpack_error()
 
         # local file to save as
-        filepath = self.filepath(genome, asset)
+        filepath = self.filepath(genome, asset, tag)
         outdir = os.path.dirname(filepath)
 
         if os.path.exists(filepath):
@@ -440,21 +440,21 @@ class RefGenConf(yacman.YacAttMap):
                     msg_overwrite()
             else:
                 msg_overwrite()
-
-        url_json = get_json_url(self.genome_server, genome, asset, tag)
-        url = url_json + "/archive" if get_main_url is None else get_main_url(self.genome_server, genome, asset)
+        url_json = get_json_url(self.genome_server, genome, asset, "", tag)
+        url = get_json_url(self.genome_server, genome, asset, "/archive", tag)
 
         archive_data = _download_json(url_json)
 
         # Check to make sure the server genome checksum matches the local genome checksum
-        genome_checksum = _download_json("{}/genome/{}/{}".format(self.genome_server, genome, CFG_CHECKSUM_KEY))
-        if hasattr(self[CFG_GENOMES_KEY][genome], CFG_CHECKSUM_KEY):
-            if self[CFG_GENOMES_KEY][genome][CFG_CHECKSUM_KEY] != genome_checksum:
-                _LOGGER.error("Checksum mismatch for genome '{}':\nLocal genome: '{}'\nRemote genome: '{}'".
-                              format(genome, self[CFG_GENOMES_KEY][genome][CFG_CHECKSUM_KEY], genome_checksum))
-                raise KeyError("Checksum mismatch for genome '{}'".format(genome))
-            else:
-                _LOGGER.debug("Genome checksum match: {}".format(genome_checksum))
+        if hasattr(self[CFG_GENOMES_KEY], genome):
+            genome_checksum = _download_json("{}/genome/{}/{}".format(self.genome_server, genome, CFG_CHECKSUM_KEY))
+            if hasattr(self[CFG_GENOMES_KEY][genome], CFG_CHECKSUM_KEY):
+                if self[CFG_GENOMES_KEY][genome][CFG_CHECKSUM_KEY] != genome_checksum:
+                    _LOGGER.error("Checksum mismatch for genome '{}':\nLocal genome: '{}'\nRemote genome: '{}'".
+                                  format(genome, self[CFG_GENOMES_KEY][genome][CFG_CHECKSUM_KEY], genome_checksum))
+                    raise KeyError("Checksum mismatch for genome '{}'".format(genome))
+                else:
+                    _LOGGER.debug("Genome checksum match: {}".format(genome_checksum))
 
         if not os.path.exists(outdir):
             _LOGGER.debug("Creating directory: {}".format(outdir))
@@ -501,7 +501,9 @@ class RefGenConf(yacman.YacAttMap):
             _untar(filepath, outdir)
             _LOGGER.debug("Unpacked archive into: {}".format(outdir))
         _LOGGER.info("Writing genome config file: {}".format(genome_config))
-        self.update_assets(genome, asset, {CFG_ASSET_PATH_KEY: result})
+        self.update_assets(genome, asset, tag, {attr: archive_data[attr] for attr in ATTRS_COPY_PULL
+                                                if attr in archive_data})
+        self.set_default_pointer(genome, asset, tag)
         self.write(genome_config)
         return asset, result
 

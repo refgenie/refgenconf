@@ -243,19 +243,20 @@ class RefGenConf(yacman.YacAttMap):
                               .format(CFG_ASSET_DEFAULT_TAG_KEY, genome, asset, alt), RuntimeWarning)
                 return alt
 
-    def set_default_pointer(self, genome, asset, tag):
+    def set_default_pointer(self, genome, asset, tag, force=False):
         """
         Point to the selected tag by default
 
         :param str genome: name of a reference genome assembly of interest
         :param str asset: name of the particular asset of interest
         :param str tag: name of the particular asset tag to point to by default
+        :param bool force: whether the default tag change should be forced (even if it exists)
         """
         _assert_gat_exists(self[CFG_GENOMES_KEY], genome, asset)
         if not hasattr(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset], CFG_ASSET_DEFAULT_TAG_KEY) or \
-                len(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_DEFAULT_TAG_KEY]) == 0:
+                len(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_DEFAULT_TAG_KEY]) == 0 or force:
             self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_DEFAULT_TAG_KEY] = tag
-            _LOGGER.info("default tag for '{}/{}' changed to: {}".format(genome, asset, tag))
+            _LOGGER.debug("default tag for '{}/{}' changed to: {}".format(genome, asset, tag))
 
     def list_assets_by_genome(self, genome=None, order=None):
         """

@@ -20,7 +20,7 @@ CFG_GENOMES_KEY = "genomes"
 
 CFG_CHECKSUM_KEY = "genome_checksum"
 CFG_GENOME_DESC_KEY = "genome_description"
-CFG_ASSETS_KEY = "asset_packages"
+CFG_ASSETS_KEY = "assets"
 
 CFG_ASSET_PATH_KEY = "asset_path"
 CFG_ASSET_SIZE_KEY = "asset_size"

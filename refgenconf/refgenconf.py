@@ -575,7 +575,7 @@ class RefGenConf(yacman.YacAttMap):
                         self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][tag].update(data)
         return self
 
-    def remove_assets(self, genome, asset, tag=None, seek_key=None):
+    def remove_assets(self, genome, asset, tag=None):
         """
         Remove data associated with a specified genome:asset:tag combination.
         If no tags are specified, the entire asset is removed from the genome.
@@ -588,41 +588,32 @@ class RefGenConf(yacman.YacAttMap):
         :param str genome: genome to be removed
         :param str asset: asset package to be removed
         :param str tag: tag to be removed
-        :param str seek_key: seek key for the asset to be removed
         :raise TypeError: if genome argument type is not a list or str
         :return RefGenConf: updated object
         """
         # TODO: add unit tests
-        def _del_if_empty(obj, attr, alt=None):
+        def _del_if_empty(obj, attr):
             """
             Internal function for Mapping attribute deleting.
             Check if attribute exists and delete it if its length is zero.
 
             :param Mapping obj: an object to check
             :param str attr: Mapping attribute of interest
-            :param list[Mapping, str] alt: a list of length 2 that indicates alternative
-            Mapping-attribute combination to remove
             """
-            if hasattr(obj, attr) and len(getattr(obj, attr)) == 0:
-                if alt is None:
-                    del obj[attr]
-                else:
-                    if hasattr(*alt):
-                        del alt[0][alt[1]]
+            if hasattr(obj, attr) and \
+                    (len(getattr(obj, attr)) == 0 or getattr(obj, attr).keys()[0] == CFG_ASSET_DEFAULT_TAG_KEY):
+                del obj[attr]
 
         tag = tag or self.get_default_tag(genome, asset)
         if _check_insert_data(genome, str, "genome"):
             if _check_insert_data(asset, str, "asset"):
                 if _check_insert_data(tag, str, "tag"):
-                    if seek_key is not None:
-                        del self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][tag][CFG_SEEK_KEYS_KEY][seek_key]
-                        _del_if_empty(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][tag], CFG_SEEK_KEYS_KEY,
-                                      [self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset], tag])
-                    else:
-                        del self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][tag]
+                    del self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][tag]
         _del_if_empty(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY], asset)
         _del_if_empty(self[CFG_GENOMES_KEY][genome], CFG_ASSETS_KEY)
         _del_if_empty(self[CFG_GENOMES_KEY], genome)
+        if len(self[CFG_GENOMES_KEY]) == 0:
+            self[CFG_GENOMES_KEY] = None
         return self
 
     def update_genomes(self, genome, data=None):

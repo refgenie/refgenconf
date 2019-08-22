@@ -229,8 +229,8 @@ class RefGenConf(yacman.YacAttMap):
         try:
             _assert_gat_exists(self[CFG_GENOMES_KEY], genome, asset)
         except (MissingGenomeError, MissingAssetError):
-            _LOGGER.info("genome/asset combination '{}/{}' not found in the genome config; "
-                         "initializing with '{}' as the default tag.".format(genome, asset, DEFAULT_TAG))
+            _LOGGER.debug("genome/asset combination '{}/{}' not found in the genome config; using"
+                         "'{}' as the default tag.".format(genome, asset, DEFAULT_TAG))
             return DEFAULT_TAG
         try:
             return self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_DEFAULT_TAG_KEY]

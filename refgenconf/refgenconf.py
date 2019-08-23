@@ -103,16 +103,21 @@ class RefGenConf(yacman.YacAttMap):
 
     __nonzero__ = __bool__
 
-    def assets_dict(self, genome=None, order=None):
+    def assets_dict(self, genome=None, order=None, include_tags=False):
         """
         Map each assembly name to a list of available asset names.
 
         :param function(str) -> object order: how to key genome IDs for sort
         :param list[str] | str genome: genomes that the assets should be found for
+        :param bool include_tags: whether asset tags should be included in the returned dict
         :return Mapping[str, Iterable[str]]: mapping from assembly name to
             collection of available asset names.
         """
         refgens = _select_genomes(sorted(self[CFG_GENOMES_KEY].keys(), key=order), genome)
+        if include_tags:
+            return OrderedDict(
+                [(g, sorted(_make_asset_tags_product(self[CFG_GENOMES_KEY][g][CFG_ASSETS_KEY], ":"), key=order))
+                 for g in refgens])
         return OrderedDict([(g, sorted(list(self[CFG_GENOMES_KEY][g][CFG_ASSETS_KEY].keys()), key=order))
                             for g in refgens])
 
@@ -807,8 +812,8 @@ def _list_remote(url, genome, order=None):
     return ", ".join(refgens), "\n".join(asset_texts)
 
 
-def _make_genome_assets_line(
-        gen, assets, offset_text="  ", genome_assets_delim=": ", asset_sep=", ", order=None, genome_tag_delim=":"):
+def _make_genome_assets_line(gen, assets, offset_text="  ", genome_assets_delim=": ", asset_sep=", ", order=None,
+                             genome_tag_delim=":"):
     """
     Build a line of text for display of assets by genome
 
@@ -821,10 +826,22 @@ def _make_genome_assets_line(
     :param order: function(str) -> object how to key asset names for sort
     :return str: text representation of a single assembly's name and assets
     """
+    tagged_assets = asset_sep.join(sorted(_make_asset_tags_product(assets, genome_tag_delim), key=order))
+    return offset_text + "{}{}{}".format(gen, genome_assets_delim, tagged_assets)
+
+
+def _make_asset_tags_product(assets, genome_tag_delim):
+    """
+    Make a product of assets and tags avaialable in the provided mapping
+
+    :param Mapping assets: the assets for a selected genome
+    :param str genome_tag_delim: how to represent the asset-tag link
+    :return list: list representation of tagged assets
+    """
     tagged_assets = []
-    for asset, name in assets.items():
+    for name, asset in assets.items():
         tagged_assets.extend([genome_tag_delim.join(i) for i in itertools.product([name], get_asset_tags(asset))])
-    return offset_text + "{}{}{}".format(gen, genome_assets_delim, asset_sep.join(sorted(tagged_assets, key=order)))
+    return tagged_assets
 
 
 def _read_remote_data(url):
@@ -884,7 +901,7 @@ def get_asset_tags(asset):
 
     These need an accession function since under the tag name key there are not only tag names, but also the
      default tag pointer
-    :param str asset: name of the particular asset of interest
+    :param Mapping asset: a single asset part of the RefGenConf
     :return list: asset tags
     """
     return [t for t in asset if t != CFG_ASSET_DEFAULT_TAG_KEY]

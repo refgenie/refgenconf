@@ -18,7 +18,7 @@ CFG_ARCHIVE_KEY = "genome_archive"
 CFG_VERSION_KEY = "config_version"
 CFG_GENOMES_KEY = "genomes"
 
-CFG_CHECKSUM_KEY = "genome_checksum"
+CFG_CHECKSUM_KEY = "genome_digest"
 CFG_GENOME_DESC_KEY = "genome_description"
 CFG_ASSETS_KEY = "assets"
 
@@ -26,13 +26,13 @@ CFG_ASSET_PATH_KEY = "asset_path"
 CFG_ASSET_SIZE_KEY = "asset_size"
 CFG_ASSET_DESC_KEY = "asset_description"
 CFG_ARCHIVE_SIZE_KEY = "archive_size"
-CFG_ARCHIVE_CHECKSUM_KEY = "archive_checksum"
+CFG_ARCHIVE_CHECKSUM_KEY = "archive_digest"
 CFG_SEEK_KEYS_KEY = "seek_keys"
 CFG_ASSET_PARENTS_KEY = "asset_parents"
 CFG_ASSET_CHILDREN_KEY = "asset_children"
 CFG_ASSET_DEFAULT_TAG_KEY = "default_tag"
 CFG_ASSET_TAGS_KEY = "tags"
-CFG_ASSET_CHECKSUM_KEY = "asset_checksum"
+CFG_ASSET_CHECKSUM_KEY = "asset_digest"
 CFG_TAG_DESC_KEY = "tag_description"
 
 CFG_TOP_LEVEL_KEYS = [
@@ -59,7 +59,7 @@ CFG_KEY_NAMES = [
 {genomes}:
     hg38:
         {desc_genome}: Reference assembly GRCh38, released in Dec 2013
-        {checksum}: 1110349234n20349280345df5035
+        {digest}: 1110349234n20349280345df5035
         {assets}:
             bowtie2_index:
                 {default}: tag_name
@@ -68,8 +68,8 @@ CFG_KEY_NAMES = [
                     tag_name:
                         {asset_path}: bowtie2_index
                         {tag_description}: produced with this settings/version of the bowtie2 software
-                        {archive_checksum}: 2220349234n20349280345mv2035
-                        {asset_checksum}: 4420349234n20349jkn5jk4nj34n
+                        {archive_digest}: 2220349234n20349280345mv2035
+                        {asset_digest}: 4420349234n20349jkn5jk4nj34n
                         {asset_size}: 32G
                         {archive_size}: 7G
                         {asset_parents}:
@@ -79,11 +79,11 @@ CFG_KEY_NAMES = [
                             fai: hg38.fa.fai
                             chrom_sizes: sizes.txt
 """.format(folder=CFG_FOLDER_KEY, server=CFG_SERVER_KEY, version=CFG_VERSION_KEY, assets=CFG_ASSETS_KEY,
-           archive=CFG_ARCHIVE_KEY, checksum=CFG_CHECKSUM_KEY, genomes=CFG_GENOMES_KEY,
+           archive=CFG_ARCHIVE_KEY, digest=CFG_CHECKSUM_KEY, genomes=CFG_GENOMES_KEY,
            desc_genome=CFG_GENOME_DESC_KEY, asset_path=CFG_ASSET_PATH_KEY, desc_asset=CFG_ASSET_DESC_KEY,
-           archive_checksum=CFG_ARCHIVE_CHECKSUM_KEY, asset_size=CFG_ASSET_SIZE_KEY, archive_size=CFG_ARCHIVE_SIZE_KEY,
+           archive_digest=CFG_ARCHIVE_CHECKSUM_KEY, asset_size=CFG_ASSET_SIZE_KEY, archive_size=CFG_ARCHIVE_SIZE_KEY,
            seek_keys=CFG_SEEK_KEYS_KEY, asset_parents=CFG_ASSET_PARENTS_KEY, asset_children=CFG_ASSET_CHILDREN_KEY,
-           default=CFG_ASSET_DEFAULT_TAG_KEY, tags=CFG_ASSET_TAGS_KEY, asset_checksum=CFG_ASSET_CHECKSUM_KEY,
+           default=CFG_ASSET_DEFAULT_TAG_KEY, tags=CFG_ASSET_TAGS_KEY, asset_digest=CFG_ASSET_CHECKSUM_KEY,
            tag_description=CFG_TAG_DESC_KEY)
 
 # other consts

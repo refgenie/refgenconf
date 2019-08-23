@@ -224,8 +224,9 @@ class RefGenConf(yacman.YacAttMap):
 
     def get_default_tag(self, genome, asset):
         """
-        Determine the asset tag to use as default. The one indicated by the 'default' key in the asset section is returned.
-        If no 'default' key is found, the first listed tag is returned with a RuntimeWarning.
+        Determine the asset tag to use as default. The one indicated by the 'default_tag' key in the asset
+        section is returned.
+        If no 'default_tag' key is found, the first listed tag is returned with a RuntimeWarning.
 
         :param str genome: name of a reference genome assembly of interest
         :param str asset: name of the particular asset of interest
@@ -233,14 +234,14 @@ class RefGenConf(yacman.YacAttMap):
         """
         try:
             _assert_gat_exists(self[CFG_GENOMES_KEY], genome, asset)
-        except (MissingGenomeError, MissingAssetError):
-            _LOGGER.debug("genome/asset combination '{}/{}' not found in the genome config; using"
-                         "'{}' as the default tag.".format(genome, asset, DEFAULT_TAG))
+        except Exception as e:
+            _LOGGER.debug("Got '{}'; genome/asset combination '{}/{}' not found in the genome config; using '{}' "
+                          "as the default tag.".format(e.__class__.__name__, genome, asset, DEFAULT_TAG))
             return DEFAULT_TAG
         try:
             return self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_DEFAULT_TAG_KEY]
         except KeyError:
-            alt = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset].keys()[0]
+            alt = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY].keys()[0]
             if isinstance(alt, str):
                 warnings.warn("Could not find the '{}' key for asset '{}/{}'. "
                               "Used the first one in the config instead: '{}'. "
@@ -263,7 +264,7 @@ class RefGenConf(yacman.YacAttMap):
             self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_DEFAULT_TAG_KEY] = tag
             _LOGGER.info("Default tag for '{}/{}' changed to: {}".format(genome, asset, tag))
 
-    def list_assets_by_genome(self, genome=None, order=None):
+    def list_assets_by_genome(self, genome=None, order=None, include_tags=False):
         """
         List types/names of assets that are available for one--or all--genomes.
 
@@ -271,12 +272,14 @@ class RefGenConf(yacman.YacAttMap):
             if omitted, the full mapping from genome to asset names
         :param order: function(str) -> object how to key genome IDs and asset
             names for sort
+        :param bool include_tags: whether asset tags should be included in the returned dict
         :return Iterable[str] | Mapping[str, Iterable[str]]: collection of
             asset type names available for particular reference assembly if
             one is provided, else the full mapping between assembly ID and
             collection available asset type names
         """
-        return self.assets_dict(genome, order)[genome] if genome is not None else self.assets_dict(order)
+        return self.assets_dict(genome, order, include_tags=include_tags)[genome] if genome is not None \
+            else self.assets_dict(order, include_tags=include_tags)
 
     def list_genomes_by_asset(self, asset=None, order=None):
         """
@@ -330,7 +333,7 @@ class RefGenConf(yacman.YacAttMap):
         Prompts if default already exists and overrides upon confirmation.
 
         This method does not override the original asset entry in the RefGenConf object. It creates its copy and tags
-        it with the new_tag. Client applications can decide whether to remove the original with remove_assets() method.
+        it with the new_tag.
         Additionally, if the retagged asset has any children their parent will be retagged as new_tag that was
         introduced upon this method execution.
 
@@ -340,20 +343,24 @@ class RefGenConf(yacman.YacAttMap):
         :param str new_tag: name of particular the new tag
         """
         _assert_gat_exists(self[CFG_GENOMES_KEY], genome, asset, tag)
-        if hasattr(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset], new_tag):
+        if hasattr(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY], new_tag):
             if not query_yes_no("You already have a '{}' asset tagged as '{}', "
                                 "do you wish to override?".format(asset, new_tag)):
                 _LOGGER.info("Action aborted by the user")
                 return
-        if hasattr(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][tag], CFG_ASSET_CHILDREN_KEY):
-            children = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][tag][CFG_ASSET_CHILDREN_KEY]
+        if hasattr(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag], CFG_ASSET_CHILDREN_KEY):
+            children = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_CHILDREN_KEY]
             if not query_yes_no("The asset '{}/{}:{}' has {} children. Refgenie will update their parent data. "
                                 "Do you want to proceed?".format(genome, asset, tag, len(children))):
                 _LOGGER.info("Action aborted by the user")
                 return
             self._update_parents_tags(genome, asset, tag, new_tag, children)
-        self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][new_tag] = \
-            self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][tag]
+        self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][new_tag] = \
+            self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag]
+        asset_mapping = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]
+        if hasattr(asset_mapping, CFG_ASSET_DEFAULT_TAG_KEY) and asset_mapping[CFG_ASSET_DEFAULT_TAG_KEY] == tag:
+            self.set_default_pointer(genome, asset, new_tag, force=True)
+        self.remove_assets(genome, asset, tag)
 
     def _update_parents_tags(self, genome, asset, tag, new_tag, children):
         """
@@ -369,9 +376,9 @@ class RefGenConf(yacman.YacAttMap):
         for child in children:
             _LOGGER.debug("updating parent section in '{}'".format(child))
             child_data = prp(child)
-            if hasattr(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][child_data["item"]][child_data["tag"]],
+            if hasattr(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][child_data["item"]][CFG_ASSET_TAGS_KEY][child_data["tag"]],
                        CFG_ASSET_PARENTS_KEY):
-                parents_data = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][child_data["item"]][child_data["tag"]][
+                parents_data = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][child_data["item"]][CFG_ASSET_TAGS_KEY][child_data["tag"]][
                     CFG_ASSET_PARENTS_KEY]
                 for parent in parents_data:
                     ori_parent_data = prp(parent)
@@ -381,7 +388,7 @@ class RefGenConf(yacman.YacAttMap):
                     else:
                         updated_parents.append("{}:{}".format(ori_parent_data["item"], ori_parent_data["tag"]))
             self.update_relatives_assets(genome, child_data["item"], child_data["tag"], updated_parents)
-            self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][child_data["item"]][child_data["tag"]][
+            self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][child_data["item"]][CFG_ASSET_TAGS_KEY][child_data["tag"]][
                 CFG_ASSET_PARENTS_KEY] = updated_parents
 
     def pull_asset(self, genome, asset, tag, genome_config, unpack=True, force=None,
@@ -506,8 +513,8 @@ class RefGenConf(yacman.YacAttMap):
             _untar(filepath, outdir)
             _LOGGER.debug("Unpacked archive into: {}".format(outdir))
         _LOGGER.info("Writing genome config file: {}".format(genome_config))
-        self.update_assets(genome, asset, tag, {attr: archive_data[attr] for attr in ATTRS_COPY_PULL
-                                                if attr in archive_data})
+        self.update_tags(genome, asset, tag, {attr: archive_data[attr] for attr in ATTRS_COPY_PULL
+                                              if attr in archive_data})
         self.set_default_pointer(genome, asset, tag)
         self.write(genome_config)
         return asset, result
@@ -535,10 +542,10 @@ class RefGenConf(yacman.YacAttMap):
         tag = tag or self.get_default_tag(genome, asset)
         relationship = CFG_ASSET_CHILDREN_KEY if children else CFG_ASSET_PARENTS_KEY
         if _check_insert_data(data, list, "data"):
-            self.update_assets(genome, asset, tag)  # creates/asserts the genome/asset:tag combination
-            self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][tag].setdefault(relationship, list())
-            self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][tag][relationship] = \
-                _extend_unique(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][tag][relationship], data)
+            self.update_tags(genome, asset, tag)  # creates/asserts the genome/asset:tag combination
+            self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag].setdefault(relationship, list())
+            self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag][relationship] = \
+                _extend_unique(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag][relationship], data)
 
     def update_seek_keys(self, genome, asset=None, tag=None, keys=None):
         """
@@ -552,15 +559,15 @@ class RefGenConf(yacman.YacAttMap):
         """
         tag = tag or self.get_default_tag(genome, asset)
         if _check_insert_data(keys, Mapping, "keys"):
-            self.update_assets(genome, asset, tag)  # creates/asserts the genome/asset:tag combination
-            self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][tag].setdefault(CFG_SEEK_KEYS_KEY, PXAM())
-            self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][tag][CFG_SEEK_KEYS_KEY].update(keys)
+            self.update_tags(genome, asset, tag)  # creates/asserts the genome/asset:tag combination
+            self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag].setdefault(CFG_SEEK_KEYS_KEY, PXAM())
+            self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag][CFG_SEEK_KEYS_KEY].update(keys)
         return self
 
-    def update_assets(self, genome, asset=None, tag=None, data=None):
+    def update_tags(self, genome, asset=None, tag=None, data=None):
         """
         Updates the genomes in RefGenConf object at any level.
-        If a requested genome-asset mapping is missing, it will be created
+        If a requested genome-asset-tag mapping is missing, it will be created
 
         :param str genome: genome to be added/updated
         :param str asset: asset to be added/updated
@@ -568,16 +575,35 @@ class RefGenConf(yacman.YacAttMap):
         :param Mapping data: data to be added/updated
         :return RefGenConf: updated object
         """
-        tag = tag or self.get_default_tag(genome, asset)
         if _check_insert_data(genome, str, "genome"):
             self[CFG_GENOMES_KEY].setdefault(genome, PXAM())
             if _check_insert_data(asset, str, "asset"):
                 self[CFG_GENOMES_KEY][genome].setdefault(CFG_ASSETS_KEY, PXAM())
                 self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY].setdefault(asset, PXAM())
                 if _check_insert_data(tag, str, "tag"):
-                    self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset].setdefault(tag, PXAM())
+                    self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset].setdefault(CFG_ASSET_TAGS_KEY, PXAM())
+                    self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY].setdefault(tag, PXAM())
                     if _check_insert_data(data, Mapping, "data"):
-                        self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][tag].update(data)
+                        self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag].update(data)
+        return self
+
+    def update_assets(self, genome, asset=None, data=None):
+        """
+        Updates the genomes in RefGenConf object at any level.
+        If a requested genome-asset mapping is missing, it will be created
+
+        :param str genome: genome to be added/updated
+        :param str asset: asset to be added/updated
+        :param Mapping data: data to be added/updated
+        :return RefGenConf: updated object
+        """
+        if _check_insert_data(genome, str, "genome"):
+            self[CFG_GENOMES_KEY].setdefault(genome, PXAM())
+            if _check_insert_data(asset, str, "asset"):
+                self[CFG_GENOMES_KEY][genome].setdefault(CFG_ASSETS_KEY, PXAM())
+                self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY].setdefault(asset, PXAM())
+                if _check_insert_data(data, Mapping, "data"):
+                    self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset].update(data)
         return self
 
     def remove_assets(self, genome, asset, tag=None):
@@ -597,28 +623,38 @@ class RefGenConf(yacman.YacAttMap):
         :return RefGenConf: updated object
         """
         # TODO: add unit tests
-        def _del_if_empty(obj, attr):
+        def _del_if_empty(obj, attr, alt=None):
             """
             Internal function for Mapping attribute deleting.
             Check if attribute exists and delete it if its length is zero.
 
             :param Mapping obj: an object to check
             :param str attr: Mapping attribute of interest
+            :param list[Mapping, str] alt: a list of length 2 that indicates alternative
+            Mapping-attribute combination to remove
             """
-            if hasattr(obj, attr) and \
-                    (len(getattr(obj, attr)) == 0 or getattr(obj, attr).keys()[0] == CFG_ASSET_DEFAULT_TAG_KEY):
-                del obj[attr]
+            if hasattr(obj, attr) and len(getattr(obj, attr)) == 0:
+                if alt is None:
+                    del obj[attr]
+                else:
+                    if hasattr(*alt):
+                        del alt[0][alt[1]]
 
         tag = tag or self.get_default_tag(genome, asset)
         if _check_insert_data(genome, str, "genome"):
             if _check_insert_data(asset, str, "asset"):
                 if _check_insert_data(tag, str, "tag"):
-                    del self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][tag]
-        _del_if_empty(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY], asset)
-        _del_if_empty(self[CFG_GENOMES_KEY][genome], CFG_ASSETS_KEY)
-        _del_if_empty(self[CFG_GENOMES_KEY], genome)
-        if len(self[CFG_GENOMES_KEY]) == 0:
-            self[CFG_GENOMES_KEY] = None
+                    del self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag]
+                    _del_if_empty(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset], CFG_ASSET_TAGS_KEY,
+                                  [self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY], asset])
+                    _del_if_empty(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY], asset)
+                    _del_if_empty(self[CFG_GENOMES_KEY][genome], CFG_ASSETS_KEY)
+                    _del_if_empty(self[CFG_GENOMES_KEY], genome)
+                    if hasattr(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset], CFG_ASSET_DEFAULT_TAG_KEY) \
+                            and self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_DEFAULT_TAG_KEY] == tag:
+                        del self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_DEFAULT_TAG_KEY]
+                    if len(self[CFG_GENOMES_KEY]) == 0:
+                        self[CFG_GENOMES_KEY] = None
         return self
 
     def update_genomes(self, genome, data=None):
@@ -735,7 +771,7 @@ def _genome_asset_path(genomes, gname, aname, tname, seek_key):
         parsed from an improperly formatted/structured genome config file.
     """
     _assert_gat_exists(genomes, gname, aname, tname)
-    asset_tag_data = genomes[gname][CFG_ASSETS_KEY][aname][tname]
+    asset_tag_data = genomes[gname][CFG_ASSETS_KEY][aname][CFG_ASSET_TAGS_KEY][tname]
     if seek_key is None:
         if asset_tag_data[CFG_SEEK_KEYS_KEY][aname] == ".":
             seek_key = aname
@@ -746,7 +782,7 @@ def _genome_asset_path(genomes, gname, aname, tname, seek_key):
         appendix = "" if seek_key_value == "." else seek_key_value
         return os.path.join(asset_tag_data[CFG_ASSET_PATH_KEY], tname, appendix)
     except KeyError:
-        raise MissingAssetError("genome/asset:tag bundle '{}/{}:{}' exists, "
+        raise MissingSeekKeyError("genome/asset:tag bundle '{}/{}:{}' exists, "
                                 "but seek_key '{}' is missing".format(gname, aname, tname, seek_key))
 
 
@@ -780,9 +816,9 @@ def _assert_gat_exists(genomes, gname, aname, tname=None):
         raise MissingAssetError("Genome '{}' exists, but index '{}' is missing".format(gname, aname))
     if tname is not None:
         try:
-            asset_data[tname]
+            asset_data[CFG_ASSET_TAGS_KEY][tname]
         except KeyError:
-            raise MissingAssetError(
+            raise MissingTagError(
                 "genome/asset bundle '{}/{}' exists, but tag '{}' is missing".format(gname, aname, tname))
 
 
@@ -904,4 +940,4 @@ def get_asset_tags(asset):
     :param Mapping asset: a single asset part of the RefGenConf
     :return list: asset tags
     """
-    return [t for t in asset if t != CFG_ASSET_DEFAULT_TAG_KEY]
+    return [t for t in asset[CFG_ASSET_TAGS_KEY]]

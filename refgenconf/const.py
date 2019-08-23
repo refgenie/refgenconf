@@ -31,7 +31,9 @@ CFG_SEEK_KEYS_KEY = "seek_keys"
 CFG_ASSET_PARENTS_KEY = "asset_parents"
 CFG_ASSET_CHILDREN_KEY = "asset_children"
 CFG_ASSET_DEFAULT_TAG_KEY = "default_tag"
-
+CFG_ASSET_TAGS_KEY = "tags"
+CFG_ASSET_CHECKSUM_KEY = "asset_checksum"
+CFG_TAG_DESC_KEY = "tag_description"
 
 CFG_TOP_LEVEL_KEYS = [
     CFG_FOLDER_KEY, CFG_SERVER_KEY, CFG_ARCHIVE_KEY, CFG_GENOMES_KEY, CFG_VERSION_KEY]
@@ -44,7 +46,7 @@ CFG_KEY_NAMES = [
     "CFG_FOLDER_KEY", "CFG_SERVER_KEY", "CFG_GENOMES_KEY",
     "CFG_ASSET_PATH_KEY", "CFG_ASSET_DESC_KEY", "CFG_ARCHIVE_KEY", "CFG_ARCHIVE_SIZE_KEY", "CFG_SEEK_KEYS_KEY",
     "CFG_ASSET_SIZE_KEY", "CFG_CHECKSUM_KEY", "CFG_ARCHIVE_CHECKSUM_KEY", "CFG_VERSION_KEY", "CFG_ASSET_PARENTS_KEY",
-    "CFG_ASSET_CHILDREN_KEY"]
+    "CFG_ASSET_CHILDREN_KEY", "CFG_TAG_DESC_KEY", "CFG_ASSET_CHECKSUM_KEY", "CFG_ASSET_TAGS_KEY"]
 
 
 """
@@ -59,42 +61,36 @@ CFG_KEY_NAMES = [
         {desc_genome}: Reference assembly GRCh38, released in Dec 2013
         {checksum}: 1110349234n20349280345df5035
         {assets}:
-            fasta:
+            bowtie2_index:
                 {default}: tag_name
-                tag_name:
-                    {asset_path}: fasta
-                    {desc_asset}: Genome index for bowtie2, produced with bowtie2-build
-                    {archive_checksum}: 2220349234n20349280345mv2035
-                    {asset_size}: 32G
-                    {archive_size}: 7G
-                    {asset_parents}:
-                    {asset_children}: ["bowtie2_index.bowtie2_index:default"]
-                    {seek_keys}:
-                        fasta: hg38.fa.gz
-                        fai: hg38.fa.fai
-                        chrom_sizes: sizes.txt
-                old_version:
-                    {asset_path}: fasta
-                    {desc_asset}: Genome index for bowtie2, produced with bowtie2-build
-                    {archive_checksum}: 4545n49234n2034928dmasn4n5jn5
-                    {asset_size}: 32G
-                    {archive_size}: 7G
-                    {seek_keys}:
-                        fasta: hg38.fa.gz
-                        fai: hg38.fa.fai
-                        chrom_sizes: sizes.txt
+                {desc_asset}: Genome index for bowtie2, produced with bowtie2-build
+                {tags}:
+                    tag_name:
+                        {asset_path}: bowtie2_index
+                        {tag_description}: produced with this settings/version of the bowtie2 software
+                        {archive_checksum}: 2220349234n20349280345mv2035
+                        {asset_checksum}: 4420349234n20349jkn5jk4nj34n
+                        {asset_size}: 32G
+                        {archive_size}: 7G
+                        {asset_parents}:
+                        {asset_children}: ["fasta:default"]
+                        {seek_keys}:
+                            fasta: hg38.fa.gz
+                            fai: hg38.fa.fai
+                            chrom_sizes: sizes.txt
 """.format(folder=CFG_FOLDER_KEY, server=CFG_SERVER_KEY, version=CFG_VERSION_KEY, assets=CFG_ASSETS_KEY,
            archive=CFG_ARCHIVE_KEY, checksum=CFG_CHECKSUM_KEY, genomes=CFG_GENOMES_KEY,
            desc_genome=CFG_GENOME_DESC_KEY, asset_path=CFG_ASSET_PATH_KEY, desc_asset=CFG_ASSET_DESC_KEY,
            archive_checksum=CFG_ARCHIVE_CHECKSUM_KEY, asset_size=CFG_ASSET_SIZE_KEY, archive_size=CFG_ARCHIVE_SIZE_KEY,
            seek_keys=CFG_SEEK_KEYS_KEY, asset_parents=CFG_ASSET_PARENTS_KEY, asset_children=CFG_ASSET_CHILDREN_KEY,
-           default=CFG_ASSET_DEFAULT_TAG_KEY)
+           default=CFG_ASSET_DEFAULT_TAG_KEY, tags=CFG_ASSET_TAGS_KEY, asset_checksum=CFG_ASSET_CHECKSUM_KEY,
+           tag_description=CFG_TAG_DESC_KEY)
 
 # other consts
 REQ_CFG_VERSION = 0.3
 REFGENIE_BY_CFG = {"0.3": "0.6.1", "0.2": "0.6.0"}  # should probably switch to 0.7.0
 ATTRS_COPY_PULL = [CFG_ASSET_DESC_KEY, CFG_SEEK_KEYS_KEY, CFG_ASSET_PARENTS_KEY, CFG_ASSET_CHILDREN_KEY,
-                   CFG_ASSET_PATH_KEY]
+                   CFG_ASSET_PATH_KEY, CFG_ASSET_CHECKSUM_KEY, CFG_TAG_DESC_KEY]
 
 __all__ = CFG_CONST + CFG_KEY_NAMES + ["DEFAULT_SERVER", "CFG_ASSET_DEFAULT_TAG_KEY", "CFG_KEY_NAMES",
                                        "CFG_GENOME_DESC_KEY", "REQ_CFG_VERSION", "CFG_ASSETS_KEY",

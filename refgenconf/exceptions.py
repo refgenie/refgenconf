@@ -3,7 +3,7 @@
 import abc
 
 __all__ = ["DownloadJsonError", "GenomeConfigFormatError", "MissingAssetError",
-           "MissingConfigDataError", "MissingGenomeError",
+           "MissingConfigDataError", "MissingGenomeError", "MissingSeekKeyError", "MissingTagError",
            "RefgenconfError", "UnboundEnvironmentVariablesError", "ConfigNotCompliantError"]
 
 DOC_URL = "http://refgenie.databio.org/en/latest/genome_config/"
@@ -33,6 +33,16 @@ class GenomeConfigFormatError(RefgenconfError):
 
 class MissingAssetError(RefgenconfError):
     """ Error type for request of an unavailable genome asset. """
+    pass
+
+
+class MissingTagError(RefgenconfError):
+    """ Error type for request of an unavailable asset tag. """
+    pass
+
+
+class MissingSeekKeyError(RefgenconfError):
+    """ Error type for request of an unavailable asset seek key. """
     pass
 
 

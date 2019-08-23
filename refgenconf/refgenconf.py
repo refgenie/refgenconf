@@ -808,7 +808,7 @@ def _list_remote(url, genome, order=None):
 
 
 def _make_genome_assets_line(
-        gen, assets, offset_text="  ", genome_assets_delim=": ", asset_sep=", ", order=None):
+        gen, assets, offset_text="  ", genome_assets_delim=": ", asset_sep=", ", order=None, genome_tag_delim=":"):
     """
     Build a line of text for display of assets by genome
 
@@ -821,7 +821,10 @@ def _make_genome_assets_line(
     :param order: function(str) -> object how to key asset names for sort
     :return str: text representation of a single assembly's name and assets
     """
-    return offset_text + "{}{}{}".format(gen, genome_assets_delim, asset_sep.join(sorted(list(assets), key=order)))
+    tagged_assets = []
+    for asset, name in assets.items():
+        tagged_assets.extend([genome_tag_delim.join(i) for i in itertools.product([name], get_asset_tags(asset))])
+    return offset_text + "{}{}{}".format(gen, genome_assets_delim, asset_sep.join(sorted(tagged_assets, key=order)))
 
 
 def _read_remote_data(url):
@@ -873,3 +876,15 @@ def _select_genomes(genomes, genome=None):
         elif not isinstance(genome, list) or not all(isinstance(i, str) for i in genome):
             raise TypeError("genome has to be a list[str] or a str, got '{}'".format(genome.__class__.__name__))
     return genomes if (genome is None or not all(x in genomes for x in genome)) else genome
+
+
+def get_asset_tags(asset):
+    """
+    Return a list of asset tags.
+
+    These need an accession function since under the tag name key there are not only tag names, but also the
+     default tag pointer
+    :param str asset: name of the particular asset of interest
+    :return list: asset tags
+    """
+    return [t for t in asset if t != CFG_ASSET_DEFAULT_TAG_KEY]

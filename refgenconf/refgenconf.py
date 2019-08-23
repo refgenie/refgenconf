@@ -808,7 +808,7 @@ def _list_remote(url, genome, order=None):
     """
     genomes_data = _read_remote_data(url)
     refgens = _select_genomes(sorted(genomes_data.keys(), key=order), genome)
-    asset_texts = [_make_genome_assets_line(g, genomes_data[g], order=order) for g in refgens]
+    asset_texts = ["  {}: {}".format(g, ", ".join(a)) for g, a in genomes_data.items()]
     return ", ".join(refgens), "\n".join(asset_texts)
 
 

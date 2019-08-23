@@ -635,9 +635,11 @@ class RefGenConf(yacman.YacAttMap):
             """
             if hasattr(obj, attr) and len(getattr(obj, attr)) == 0:
                 if alt is None:
+                    _LOGGER.info("removing: {}".format(obj[attr]))
                     del obj[attr]
                 else:
                     if hasattr(*alt):
+                        _LOGGER.info("removing: {}".format(alt[0][alt[1]]))
                         del alt[0][alt[1]]
 
         tag = tag or self.get_default_tag(genome, asset)
@@ -650,9 +652,13 @@ class RefGenConf(yacman.YacAttMap):
                     _del_if_empty(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY], asset)
                     _del_if_empty(self[CFG_GENOMES_KEY][genome], CFG_ASSETS_KEY)
                     _del_if_empty(self[CFG_GENOMES_KEY], genome)
-                    if hasattr(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset], CFG_ASSET_DEFAULT_TAG_KEY) \
-                            and self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_DEFAULT_TAG_KEY] == tag:
-                        del self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_DEFAULT_TAG_KEY]
+                    try:
+                        default_tag = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_DEFAULT_TAG_KEY]
+                    except KeyError:
+                        pass
+                    else:
+                        if default_tag == tag:
+                            del self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_DEFAULT_TAG_KEY]
                     if len(self[CFG_GENOMES_KEY]) == 0:
                         self[CFG_GENOMES_KEY] = None
         return self

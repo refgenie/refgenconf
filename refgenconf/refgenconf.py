@@ -348,13 +348,22 @@ class RefGenConf(yacman.YacAttMap):
                                 "do you wish to override?".format(asset, new_tag)):
                 _LOGGER.info("Action aborted by the user")
                 return
+        children = []
+        parents = []
         if hasattr(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag], CFG_ASSET_CHILDREN_KEY):
             children = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_CHILDREN_KEY]
-            if not query_yes_no("The asset '{}/{}:{}' has {} children. Refgenie will update their parent data. "
-                                "Do you want to proceed?".format(genome, asset, tag, len(children))):
+        if hasattr(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag], CFG_ASSET_PARENTS_KEY):
+            parents = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_PARENTS_KEY]
+        if len(children) > 0 or len(parents) > 0:
+            if not query_yes_no("The asset '{}/{}:{}' has {} children and {} parents. Refgenie will update the "
+                                "relationship data. Do you want to proceed?".format(genome, asset, tag, len(children),
+                                                                                    len(parents))):
                 _LOGGER.info("Action aborted by the user")
                 return
-            self._update_parents_tags(genome, asset, tag, new_tag, children)
+            # updates children's parents
+            self._update_relatives_tags(genome, asset, tag, new_tag, children, update_children=False)
+            # updates parents' children
+            self._update_relatives_tags(genome, asset, tag, new_tag, parents, update_children=True)
         self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][new_tag] = \
             self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag]
         asset_mapping = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]
@@ -362,7 +371,7 @@ class RefGenConf(yacman.YacAttMap):
             self.set_default_pointer(genome, asset, new_tag, force=True)
         self.remove_assets(genome, asset, tag)
 
-    def _update_parents_tags(self, genome, asset, tag, new_tag, children):
+    def _update_relatives_tags(self, genome, asset, tag, new_tag, relatives, update_children):
         """
         Internal method used for tags updating in the 'asset_parents' section in the list of children.
 
@@ -370,26 +379,28 @@ class RefGenConf(yacman.YacAttMap):
         :param str asset: name of particular asset of interest
         :param str tag: name of the tag that identifies the asset of interest
         :param str new_tag: name of particular the new tag
-        :param list[str] children: children to be updated. Format: ["asset_name:tag", "asset_name1:tag1"]
+        :param list[str] relatives: relatives to be updated. Format: ["asset_name:tag", "asset_name1:tag1"]
+        :param bool update_children: whether the children of the selected relatives should be updated.
         """
-        updated_parents = []
-        for child in children:
-            _LOGGER.debug("updating parent section in '{}'".format(child))
-            child_data = prp(child)
-            if hasattr(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][child_data["item"]][CFG_ASSET_TAGS_KEY][child_data["tag"]],
-                       CFG_ASSET_PARENTS_KEY):
-                parents_data = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][child_data["item"]][CFG_ASSET_TAGS_KEY][child_data["tag"]][
-                    CFG_ASSET_PARENTS_KEY]
-                for parent in parents_data:
-                    ori_parent_data = prp(parent)
-                    if ori_parent_data["item"] == asset and ori_parent_data["tag"] == tag:
-                        ori_parent_data["tag"] = new_tag
-                        updated_parents.append("{}:{}".format(asset, new_tag))
+        updated_relatives = []
+        relative_key = CFG_ASSET_CHILDREN_KEY if update_children else CFG_ASSET_PARENTS_KEY
+        for r in relatives:
+            _LOGGER.debug("updating '{}' in '{}'".format("children" if update_children else "parents", r))
+            r_data = prp(r)
+            if hasattr(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][r_data["item"]][CFG_ASSET_TAGS_KEY][r_data["tag"]],
+                       relative_key):
+                relatives = \
+                    self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][r_data["item"]][CFG_ASSET_TAGS_KEY][r_data["tag"]][
+                    relative_key]
+                for relative in relatives:
+                    ori_relative_data = prp(relative)
+                    if ori_relative_data["item"] == asset and ori_relative_data["tag"] == tag:
+                        ori_relative_data["tag"] = new_tag
+                        updated_relatives.append("{}:{}".format(asset, new_tag))
                     else:
-                        updated_parents.append("{}:{}".format(ori_parent_data["item"], ori_parent_data["tag"]))
-            self.update_relatives_assets(genome, child_data["item"], child_data["tag"], updated_parents)
-            self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][child_data["item"]][CFG_ASSET_TAGS_KEY][child_data["tag"]][
-                CFG_ASSET_PARENTS_KEY] = updated_parents
+                        updated_relatives.append("{}:{}".format(ori_relative_data["item"], ori_relative_data["tag"]))
+            self.update_relatives_assets(genome, r_data["item"], r_data["tag"], updated_relatives, update_children)
+            self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][r_data["item"]][CFG_ASSET_TAGS_KEY][r_data["tag"]][relative_key] = updated_relatives
 
     def pull_asset(self, genome, asset, tag, genome_config, unpack=True, force=None,
                    get_json_url=lambda base, g, a: "{}/asset/{}/{}".format(base, g, a),

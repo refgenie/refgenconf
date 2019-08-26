@@ -384,7 +384,6 @@ class RefGenConf(yacman.YacAttMap):
         :param list[str] relatives: relatives to be updated. Format: ["asset_name:tag", "asset_name1:tag1"]
         :param bool update_children: whether the children of the selected relatives should be updated.
         """
-        updated_relatives = []
         relative_key = CFG_ASSET_CHILDREN_KEY if update_children else CFG_ASSET_PARENTS_KEY
         for r in relatives:
             _LOGGER.debug("updating '{}' in '{}'".format("children" if update_children else "parents", r))
@@ -392,8 +391,9 @@ class RefGenConf(yacman.YacAttMap):
             if hasattr(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][r_data["item"]][CFG_ASSET_TAGS_KEY][r_data["tag"]],
                        relative_key):
                 relatives = \
-                    self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][r_data["item"]][CFG_ASSET_TAGS_KEY][r_data["tag"]][
-                    relative_key]
+                    self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][r_data["item"]][CFG_ASSET_TAGS_KEY][r_data["tag"]]\
+                        [relative_key]
+                updated_relatives = []
                 for relative in relatives:
                     ori_relative_data = prp(relative)
                     if ori_relative_data["item"] == asset and ori_relative_data["tag"] == tag:
@@ -402,7 +402,8 @@ class RefGenConf(yacman.YacAttMap):
                     else:
                         updated_relatives.append("{}:{}".format(ori_relative_data["item"], ori_relative_data["tag"]))
             self.update_relatives_assets(genome, r_data["item"], r_data["tag"], updated_relatives, update_children)
-            self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][r_data["item"]][CFG_ASSET_TAGS_KEY][r_data["tag"]][relative_key] = updated_relatives
+            self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][r_data["item"]][CFG_ASSET_TAGS_KEY][r_data["tag"]]\
+                [relative_key] = updated_relatives
 
     def pull_asset(self, genome, asset, tag, genome_config, unpack=True, force=None,
                    get_json_url=lambda base, g, a: "{}/asset/{}/{}".format(base, g, a),

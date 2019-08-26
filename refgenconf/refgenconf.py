@@ -341,6 +341,7 @@ class RefGenConf(yacman.YacAttMap):
         :param str asset: name of particular asset of interest
         :param str tag: name of the tag that identifies the asset of interest
         :param str new_tag: name of particular the new tag
+        :return bool: a logical indicating whether the tagging was successful
         """
         _assert_gat_exists(self[CFG_GENOMES_KEY], genome, asset, tag)
         if hasattr(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY], new_tag):
@@ -359,7 +360,7 @@ class RefGenConf(yacman.YacAttMap):
                                 "relationship data. Do you want to proceed?".format(genome, asset, tag, len(children),
                                                                                     len(parents))):
                 _LOGGER.info("Action aborted by the user")
-                return
+                return False
             # updates children's parents
             self._update_relatives_tags(genome, asset, tag, new_tag, children, update_children=False)
             # updates parents' children
@@ -370,6 +371,7 @@ class RefGenConf(yacman.YacAttMap):
         if hasattr(asset_mapping, CFG_ASSET_DEFAULT_TAG_KEY) and asset_mapping[CFG_ASSET_DEFAULT_TAG_KEY] == tag:
             self.set_default_pointer(genome, asset, new_tag, force=True)
         self.remove_assets(genome, asset, tag)
+        return True
 
     def _update_relatives_tags(self, genome, asset, tag, new_tag, relatives, update_children):
         """
@@ -646,11 +648,9 @@ class RefGenConf(yacman.YacAttMap):
             """
             if hasattr(obj, attr) and len(getattr(obj, attr)) == 0:
                 if alt is None:
-                    _LOGGER.info("removing: {}".format(obj[attr]))
                     del obj[attr]
                 else:
                     if hasattr(*alt):
-                        _LOGGER.info("removing: {}".format(alt[0][alt[1]]))
                         del alt[0][alt[1]]
 
         tag = tag or self.get_default_tag(genome, asset)

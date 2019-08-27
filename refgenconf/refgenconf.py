@@ -147,10 +147,11 @@ class RefGenConf(yacman.YacAttMap):
 
         :param str genome: reference genome ID
         :param str asset: asset name
+        :param str tag: tag name
         :param str ext: file extension
         :return str: path to asset for given genome and asset kind/name
         """
-        return os.path.join(self[CFG_FOLDER_KEY], genome, asset, tag + ext)
+        return os.path.join(self[CFG_FOLDER_KEY], genome, asset, tag, asset + "__" + tag + ext)
 
     def genomes_list(self, order=None):
         """
@@ -443,6 +444,7 @@ class RefGenConf(yacman.YacAttMap):
         tag_query_param = "?tag={}".format(tag)
         _LOGGER.debug("Determined tag: '{}'".format(tag))
         unpack or raise_unpack_error()
+
         url_attrs = get_json_url(self.genome_server, genome, asset) + tag_query_param
         url_archive = get_json_url(self.genome_server, genome, asset) + "/archive" + tag_query_param
 
@@ -471,16 +473,8 @@ class RefGenConf(yacman.YacAttMap):
 
         bundle_name = '{}/{}:{}'.format(genome, asset, tag)
 
-        # Check to make sure the server genome checksum matches the local genome checksum
-        if hasattr(self[CFG_GENOMES_KEY], genome):
-            genome_checksum = _download_json("{}/genome/{}/{}".format(self.genome_server, genome, CFG_CHECKSUM_KEY))
-            if hasattr(self[CFG_GENOMES_KEY][genome], CFG_CHECKSUM_KEY):
-                if self[CFG_GENOMES_KEY][genome][CFG_CHECKSUM_KEY] != genome_checksum:
-                    _LOGGER.error("Checksum mismatch for genome '{}':\nLocal genome: '{}'\nRemote genome: '{}'".
-                                  format(genome, self[CFG_GENOMES_KEY][genome][CFG_CHECKSUM_KEY], genome_checksum))
-                    raise KeyError("Checksum mismatch for genome '{}'".format(genome))
-                else:
-                    _LOGGER.debug("Genome checksum match: {}".format(genome_checksum))
+        # check asset digests local-server match for each parent
+        [self._check_asset_digest(genome, x) for x in archive_data[CFG_ASSET_PARENTS_KEY]]
 
         if not os.path.exists(outdir):
             _LOGGER.debug("Creating directory: {}".format(outdir))
@@ -525,6 +519,8 @@ class RefGenConf(yacman.YacAttMap):
         if unpack and filepath.endswith(".tar") or filepath.endswith(".tgz"):
             _LOGGER.info("Extracting: {}".format(bundle_name))
             _untar(filepath, outdir)
+            if os.path.isfile(filepath):
+                os.remove(filepath)
             _LOGGER.debug("Unpacked archive into: {}".format(outdir))
         _LOGGER.info("Writing genome config file: {}".format(genome_config))
         self.update_tags(genome, asset, tag, {attr: archive_data[attr] for attr in ATTRS_COPY_PULL
@@ -721,6 +717,31 @@ class RefGenConf(yacman.YacAttMap):
                 genomes.setdefault(a, []).append(g)
         assets = sorted(genomes.keys(), key=order)
         return OrderedDict([(a, sorted(genomes[a], key=order)) for a in assets])
+
+    def _check_asset_digest(self, genome, remote_asset_name):
+        """
+        Check local asset digest against the remote one. In case the local asset does not exist,
+        the config is populated with the remote asset digest data
+
+        :param str genome: name of the genome to check the asset digests for
+        :param str remote_asset_name: asset and tag names, formatted like: asset:tag
+        :raise KeyError: if the local digest does not match its remote counterpart
+        """
+        remote_asset_data = prp(remote_asset_name)
+        asset = remote_asset_data["item"]
+        tag = remote_asset_data["tag"]
+        asset_digest_url = "{}/asset/{}/{}/{}/asset_digest".format(self.genome_server, genome, asset, tag)
+        remote_digest = _download_json(asset_digest_url)
+        try:
+            _assert_gat_exists(self[CFG_GENOMES_KEY], genome, asset, tag)
+        except (MissingAssetError, MissingGenomeError, MissingSeekKeyError):
+            self.update_tags(genome, asset, tag, {CFG_ASSET_CHECKSUM_KEY: remote_digest})
+            _LOGGER.info("No digest not found for '{}/{}:{}'. Populating with server data".format(genome, asset, tag))
+        else:
+            local_digest = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY]\
+                [tag][CFG_ASSET_CHECKSUM_KEY]
+            if remote_digest != local_digest:
+                raise KeyError("Digest mismatch for asset '{}'".format(asset))
 
 
 class DownloadProgressBar(tqdm):

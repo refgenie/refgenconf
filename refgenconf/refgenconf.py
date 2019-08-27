@@ -827,7 +827,8 @@ def _genome_asset_path(genomes, gname, aname, tname, seek_key):
 
 def _assert_gat_exists(genomes, gname, aname, tname=None):
     """
-    Make sure the genome/asset:tag combination exists in the provided mapping
+    Make sure the genome/asset:tag combination exists in the provided mapping and has any seek keys defined.
+    Seek keys are required for the asset completeness.
 
     :param Mapping[str, Mapping[str, Mapping[str, object]]] genomes: nested
         collection of key-value pairs, keyed at top level on genome ID, then by
@@ -855,10 +856,15 @@ def _assert_gat_exists(genomes, gname, aname, tname=None):
         raise MissingAssetError("Genome '{}' exists, but index '{}' is missing".format(gname, aname))
     if tname is not None:
         try:
-            asset_data[CFG_ASSET_TAGS_KEY][tname]
+            tag_data = asset_data[CFG_ASSET_TAGS_KEY][tname]
         except KeyError:
             raise MissingTagError(
                 "genome/asset bundle '{}/{}' exists, but tag '{}' is missing".format(gname, aname, tname))
+        try:
+            tag_data[CFG_SEEK_KEYS_KEY]
+        except KeyError:
+            raise MissingSeekKeyError("Asset incomplete. No seek keys are defined for '{}/{}:{}'. "
+                                      "Build or pull the asset again.".format(gname, aname, tname))
 
 
 def _is_large_archive(size):

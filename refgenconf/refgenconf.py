@@ -350,33 +350,37 @@ class RefGenConf(yacman.YacAttMap):
         :param str asset: name of particular asset of interest
         :param str tag: name of the tag that identifies the asset of interest
         :param str new_tag: name of particular the new tag
+        :raise ValueError: when the original tag is not specified
         :return bool: a logical indicating whether the tagging was successful
         """
         _assert_gat_exists(self[CFG_GENOMES_KEY], genome, asset, tag)
-        if hasattr(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY], new_tag):
-            if not query_yes_no("You already have a '{}' asset tagged as '{}', "
-                                "do you wish to override?".format(asset, new_tag)):
-                _LOGGER.info("Action aborted by the user")
+        asset_mapping = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]
+        if tag is None:
+            raise ValueError("You must specify the tag of the that you want to assign a new one to. Currently defined "
+                             "tags are: {}".format(", ".join(get_asset_tags(asset_mapping))))
+        if hasattr(asset_mapping[CFG_ASSET_TAGS_KEY], new_tag):
+            if not query_yes_no("You already have a '{}' asset tagged as '{}', do you wish to override?".
+                                format(asset, new_tag)):
+                _LOGGER.info("Tag action aborted by the user")
                 return
         children = []
         parents = []
-        if hasattr(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag], CFG_ASSET_CHILDREN_KEY):
-            children = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_CHILDREN_KEY]
-        if hasattr(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag], CFG_ASSET_PARENTS_KEY):
-            parents = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_PARENTS_KEY]
+        if hasattr(asset_mapping[CFG_ASSET_TAGS_KEY][tag], CFG_ASSET_CHILDREN_KEY):
+            children = asset_mapping[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_CHILDREN_KEY]
+        if hasattr(asset_mapping[CFG_ASSET_TAGS_KEY][tag], CFG_ASSET_PARENTS_KEY):
+            parents = asset_mapping[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_PARENTS_KEY]
         if len(children) > 0 or len(parents) > 0:
             if not query_yes_no("The asset '{}/{}:{}' has {} children and {} parents. Refgenie will update the "
                                 "relationship data. Do you want to proceed?".format(genome, asset, tag, len(children),
                                                                                     len(parents))):
-                _LOGGER.info("Action aborted by the user")
+                _LOGGER.info("Tag action aborted by the user")
                 return False
             # updates children's parents
             self._update_relatives_tags(genome, asset, tag, new_tag, children, update_children=False)
             # updates parents' children
             self._update_relatives_tags(genome, asset, tag, new_tag, parents, update_children=True)
         self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][new_tag] = \
-            self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag]
-        asset_mapping = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]
+            asset_mapping[CFG_ASSET_TAGS_KEY][tag]
         if hasattr(asset_mapping, CFG_ASSET_DEFAULT_TAG_KEY) and asset_mapping[CFG_ASSET_DEFAULT_TAG_KEY] == tag:
             self.set_default_pointer(genome, asset, new_tag, force=True)
         self.remove_assets(genome, asset, tag)

@@ -223,14 +223,17 @@ class RefGenConf(yacman.YacAttMap):
             warnings.warn(msg, RuntimeWarning)
         return path
 
-    def get_default_tag(self, genome, asset):
+    def get_default_tag(self, genome, asset, use_existing=True):
         """
         Determine the asset tag to use as default. The one indicated by the 'default_tag' key in the asset
         section is returned.
-        If no 'default_tag' key is found, the first listed tag is returned with a RuntimeWarning.
+        If no 'default_tag' key is found, by default the first listed tag is returned with a RuntimeWarning.
+        This behavior can be turned off with use_existing=False
 
         :param str genome: name of a reference genome assembly of interest
         :param str asset: name of the particular asset of interest
+        :param bool use_existing: whether the first tag in the config should be returned in case there is no default
+        tag defined for an asset
         :return str: name of the tag to use as the default one
         """
         try:
@@ -242,12 +245,18 @@ class RefGenConf(yacman.YacAttMap):
         try:
             return self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_DEFAULT_TAG_KEY]
         except KeyError:
-            alt = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY].keys()[0]
+            alt = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY].keys()[0] if use_existing\
+                else DEFAULT_TAG
             if isinstance(alt, str):
-                warnings.warn("Could not find the '{}' key for asset '{}/{}'. "
-                              "Used the first one in the config instead: '{}'. "
-                              "Make sure it does not corrupt your workflow."
-                              .format(CFG_ASSET_DEFAULT_TAG_KEY, genome, asset, alt), RuntimeWarning)
+                if alt != DEFAULT_TAG:
+                    warnings.warn("Could not find the '{}' key for asset '{}/{}'. "
+                                  "Used the first one in the config instead: '{}'. "
+                                  "Make sure it does not corrupt your workflow."
+                                  .format(CFG_ASSET_DEFAULT_TAG_KEY, genome, asset, alt), RuntimeWarning)
+                else:
+                    warnings.warn("Could not find the '{}' key for asset '{}/{}'. "
+                                  "Returning '{}' instead. Make sure it does not corrupt your workflow."
+                                  .format(CFG_ASSET_DEFAULT_TAG_KEY, genome, asset, alt), RuntimeWarning)
                 return alt
 
     def set_default_pointer(self, genome, asset, tag, force=False):

@@ -755,15 +755,20 @@ class RefGenConf(yacman.YacAttMap):
         asset_digest_url = "{}/asset/{}/{}/{}/asset_digest".format(self.genome_server, genome, asset, tag)
         remote_digest = _download_json(asset_digest_url)
         try:
-            _assert_gat_exists(self[CFG_GENOMES_KEY], genome, asset, tag)
-        except (MissingAssetError, MissingGenomeError, MissingSeekKeyError):
+            # we need to allow for missing seek_keys section so that the digest is respected even from the previously
+            # populated just asset_digest metadata from the server
+            _assert_gat_exists(self[CFG_GENOMES_KEY], genome, asset, tag,
+                               allow_incomplete=not self.is_asset_complete(genome, asset, tag))
+        except (KeyError, MissingAssetError, MissingGenomeError, MissingSeekKeyError):
             self.update_tags(genome, asset, tag, {CFG_ASSET_CHECKSUM_KEY: remote_digest})
             _LOGGER.info("No digest not found for '{}/{}:{}'. Populating with server data".format(genome, asset, tag))
         else:
             local_digest = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY]\
                 [tag][CFG_ASSET_CHECKSUM_KEY]
             if remote_digest != local_digest:
-                raise KeyError("Digest mismatch for asset '{}'".format(asset))
+                raise KeyError("The remote-local parent asset ('{}') digest mismatch: {}-{}. This means that the local "
+                               "parent asset is different than the one that was used to build your asset of interest".
+                               format(asset, local_digest, remote_digest))
 
 
 class DownloadProgressBar(tqdm):
@@ -847,7 +852,7 @@ def _genome_asset_path(genomes, gname, aname, tname, seek_key):
                                 "but seek_key '{}' is missing".format(gname, aname, tname, seek_key))
 
 
-def _assert_gat_exists(genomes, gname, aname, tname=None):
+def _assert_gat_exists(genomes, gname, aname, tname=None, allow_incomplete=False):
     """
     Make sure the genome/asset:tag combination exists in the provided mapping and has any seek keys defined.
     Seek keys are required for the asset completeness.
@@ -885,8 +890,9 @@ def _assert_gat_exists(genomes, gname, aname, tname=None):
         try:
             tag_data[CFG_SEEK_KEYS_KEY]
         except KeyError:
-            raise MissingSeekKeyError("Asset incomplete. No seek keys are defined for '{}/{}:{}'. "
-                                      "Build or pull the asset again.".format(gname, aname, tname))
+            if not allow_incomplete:
+                raise MissingSeekKeyError("Asset incomplete. No seek keys are defined for '{}/{}:{}'. "
+                                          "Build or pull the asset again.".format(gname, aname, tname))
 
 
 def _is_large_archive(size):

@@ -270,7 +270,7 @@ class RefGenConf(yacman.YacAttMap):
         _assert_gat_exists(self[CFG_GENOMES_KEY], genome, asset)
         if not hasattr(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset], CFG_ASSET_DEFAULT_TAG_KEY) or \
                 len(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_DEFAULT_TAG_KEY]) == 0 or force:
-            self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_DEFAULT_TAG_KEY] = tag
+            self.update_assets(genome, asset, {CFG_ASSET_DEFAULT_TAG_KEY: tag})
             _LOGGER.info("Default tag for '{}/{}' changed to: {}".format(genome, asset, tag))
 
     def list_assets_by_genome(self, genome=None, order=None, include_tags=False):

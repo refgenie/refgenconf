@@ -705,6 +705,19 @@ class RefGenConf(yacman.YacAttMap):
         return {k: self[CFG_GENOMES_KEY][genome][k] for k in CFG_GENOME_ATTRS_KEYS
                 if hasattr(self[CFG_GENOMES_KEY][genome], k)}
 
+    def is_asset_complete(self, genome, asset, tag):
+        """
+        Check whether all required tag attributes are defined in the RefGenConf object.
+        This is the way we determine tag completeness.
+
+        :param str genome: genome to be checked
+        :param str asset: asset package to be checked
+        :param str tag: tag to be checked
+        :return bool: the decision
+        """
+        tag_data = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag]
+        return all([r in tag_data for r in REQ_TAG_ATTRS])
+
     def _invert_genomes(self, order=None):
         """ Map each asset type/kind/name to a collection of assemblies.
 

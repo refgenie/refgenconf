@@ -239,8 +239,7 @@ class RefGenConf(yacman.YacAttMap):
         try:
             _assert_gat_exists(self[CFG_GENOMES_KEY], genome, asset)
         except Exception as e:
-            _LOGGER.debug("Got '{}'; genome/asset combination '{}/{}' not found in the genome config; using '{}' "
-                          "as the default tag.".format(e.__class__.__name__, genome, asset, DEFAULT_TAG))
+            _LOGGER.info("{}: using '{}' as the default tag".format(e.__class__.__name__, DEFAULT_TAG))
             return DEFAULT_TAG
         try:
             return self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_DEFAULT_TAG_KEY]
@@ -462,18 +461,17 @@ class RefGenConf(yacman.YacAttMap):
         filepath = self.filepath(genome, asset, tag)
         outdir = os.path.dirname(filepath)
 
-        if os.path.exists(filepath):
-            # TODO: how to best handle the result value when the asset exists?
+        if os.path.exists(outdir):
             def preserve():
-                _LOGGER.debug("Preserving existing: {}".format(filepath))
-                return asset, filepath
+                _LOGGER.debug("Preserving existing: {}".format(outdir))
+                return asset, outdir
 
             def msg_overwrite():
-                _LOGGER.debug("Overwriting: {}".format(filepath))
+                _LOGGER.debug("Overwriting: {}".format(outdir))
             if force is False:
                 return preserve()
             elif force is None:
-                if not query_yes_no("Replace existing ({})?".format(filepath), "no"):
+                if not query_yes_no("Replace existing ({})?".format(outdir), "no"):
                     return preserve()
                 else:
                     msg_overwrite()
@@ -490,8 +488,7 @@ class RefGenConf(yacman.YacAttMap):
             os.makedirs(outdir)
         archsize = archive_data[CFG_ARCHIVE_SIZE_KEY]
         _LOGGER.info("'{}' archive size: {}".format(bundle_name, archsize))
-        if _is_large_archive(archsize) and not \
-                query_yes_no("Are you sure you want to download this large archive?"):
+        if _is_large_archive(archsize) and not query_yes_no("Are you sure you want to download this large archive?"):
             _LOGGER.info("pull action aborted by user")
             return asset, None
 
@@ -526,12 +523,11 @@ class RefGenConf(yacman.YacAttMap):
 
         # successfully downloaded and moved tarball; untar it
         if unpack and filepath.endswith(".tar") or filepath.endswith(".tgz"):
-            _LOGGER.info("Extracting: {}".format(bundle_name))
+            _LOGGER.info("Extracting asset tarball to: {}".format(outdir))
             _untar(filepath, outdir)
             if os.path.isfile(filepath):
                 os.remove(filepath)
-            _LOGGER.debug("Unpacked archive into: {}".format(outdir))
-        _LOGGER.info("Writing genome config file: {}".format(genome_config))
+        _LOGGER.debug("Writing genome config file: {}".format(genome_config))
         self.update_tags(genome, asset, tag, {attr: archive_data[attr] for attr in ATTRS_COPY_PULL
                                               if attr in archive_data})
         self.set_default_pointer(genome, asset, tag)

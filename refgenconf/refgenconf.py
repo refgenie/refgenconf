@@ -566,7 +566,7 @@ class RefGenConf(yacman.YacAttMap):
             self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag][relationship] = \
                 _extend_unique(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag][relationship], data)
 
-    def update_seek_keys(self, genome, asset=None, tag=None, keys=None):
+    def update_seek_keys(self, genome, asset, tag=None, keys=None):
         """
         A convenience method which wraps the update assets and uses it to update the seek keys for a tagged asset.
 

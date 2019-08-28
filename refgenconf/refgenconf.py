@@ -271,7 +271,7 @@ class RefGenConf(yacman.YacAttMap):
         if not hasattr(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset], CFG_ASSET_DEFAULT_TAG_KEY) or \
                 len(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_DEFAULT_TAG_KEY]) == 0 or force:
             self.update_assets(genome, asset, {CFG_ASSET_DEFAULT_TAG_KEY: tag})
-            _LOGGER.info("Default tag for '{}/{}' changed to: {}".format(genome, asset, tag))
+            _LOGGER.info("Default tag for '{}/{}' set to: {}".format(genome, asset, tag))
 
     def list_assets_by_genome(self, genome=None, order=None, include_tags=False):
         """
@@ -839,7 +839,7 @@ def _genome_asset_path(genomes, gname, aname, tname, seek_key):
     _assert_gat_exists(genomes, gname, aname, tname)
     asset_tag_data = genomes[gname][CFG_ASSETS_KEY][aname][CFG_ASSET_TAGS_KEY][tname]
     if seek_key is None:
-        if asset_tag_data[CFG_SEEK_KEYS_KEY][aname] == ".":
+        if hasattr(asset_tag_data[CFG_SEEK_KEYS_KEY], aname) and asset_tag_data[CFG_SEEK_KEYS_KEY][aname] == ".":
             seek_key = aname
         else:
             return os.path.join(asset_tag_data[CFG_ASSET_PATH_KEY], tname)

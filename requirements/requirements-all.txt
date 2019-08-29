@@ -2,6 +2,6 @@ attmap>=0.12.5
 pyyaml
 requests
 tqdm
-ubiquerg>=0.4.3
+ubiquerg>=0.4.8
 yacman>=0.4
 future

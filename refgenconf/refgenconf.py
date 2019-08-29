@@ -485,7 +485,8 @@ class RefGenConf(yacman.YacAttMap):
         bundle_name = '{}/{}:{}'.format(genome, asset, tag)
 
         # check asset digests local-server match for each parent
-        [self._check_asset_digest(genome, x) for x in archive_data[CFG_ASSET_PARENTS_KEY]]
+        [self._check_asset_digest(genome, x) for x in archive_data[CFG_ASSET_PARENTS_KEY] if
+         hasattr(archive_data, CFG_ASSET_PARENTS_KEY)]
 
         if not os.path.exists(outdir):
             _LOGGER.debug("Creating directory: {}".format(outdir))

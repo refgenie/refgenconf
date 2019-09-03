@@ -419,7 +419,7 @@ class RefGenConf(yacman.YacAttMap):
                 [relative_key] = updated_relatives
 
     def pull_asset(self, genome, asset, tag, genome_config, unpack=True, force=None,
-                   get_json_url=lambda base, g, a: "{}/asset/{}/{}".format(base, g, a),
+                   get_json_url=lambda base, v, g, a: "{}/{}/asset/{}/{}".format(base, v, g, a),
                    build_signal_handler=_handle_sigint):
         """
         Download and possibly unpack one or more assets for a given ref gen.
@@ -452,13 +452,14 @@ class RefGenConf(yacman.YacAttMap):
         def raise_unpack_error():
             raise NotImplementedError("Option to not extract tarballs is not yet supported.")
 
-        tag = _download_json(get_json_url(self.genome_server, genome, asset) + "/default_tag") if tag is None else tag
+        tag = _download_json(get_json_url(self.genome_server, API_VERSION, genome, asset) + "/default_tag") \
+            if tag is None else tag
         tag_query_param = "?tag={}".format(tag)
         _LOGGER.debug("Determined tag: '{}'".format(tag))
         unpack or raise_unpack_error()
 
-        url_attrs = get_json_url(self.genome_server, genome, asset) + tag_query_param
-        url_archive = get_json_url(self.genome_server, genome, asset) + "/archive" + tag_query_param
+        url_attrs = get_json_url(self.genome_server, API_VERSION, genome, asset) + tag_query_param
+        url_archive = get_json_url(self.genome_server, API_VERSION, genome, asset) + "/archive" + tag_query_param
 
         archive_data = _download_json(url_attrs)
         # local file to save as
@@ -507,7 +508,7 @@ class RefGenConf(yacman.YacAttMap):
             return asset, None
         except ConnectionRefusedError as e:
             _LOGGER.error(str(e))
-            _LOGGER.error("Server {} refused download. Check your internet settings".format(self.genome_server))
+            _LOGGER.error("Server {}/{} refused download. Check your internet settings".format(self.genome_server, API_VERSION))
             return asset, None
         except ContentTooShortError as e:
             _LOGGER.error(str(e))
@@ -753,7 +754,8 @@ class RefGenConf(yacman.YacAttMap):
         remote_asset_data = prp(remote_asset_name)
         asset = remote_asset_data["item"]
         tag = remote_asset_data["tag"]
-        asset_digest_url = "{}/asset/{}/{}/{}/asset_digest".format(self.genome_server, genome, asset, tag)
+        asset_digest_url = "{}/{}/asset/{}/{}/{}/asset_digest".\
+            format(self.genome_server, API_VERSION, genome, asset, tag)
         remote_digest = _download_json(asset_digest_url)
         try:
             # we need to allow for missing seek_keys section so that the digest is respected even from the previously

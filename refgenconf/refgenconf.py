@@ -316,6 +316,8 @@ class RefGenConf(yacman.YacAttMap):
             names for sort
         :return str, str: text reps of locally available genomes and assets
         """
+        if genome is not None:
+            _assert_gat_exists(self[CFG_GENOMES_KEY], gname=genome)
         genomes_str = self.genomes_str(order=order) if genome is None \
             else ", ".join(_select_genomes(sorted(self[CFG_GENOMES_KEY].keys(), key=order), genome))
         return genomes_str, self.assets_str(genome=genome, order=order)
@@ -855,7 +857,7 @@ def _genome_asset_path(genomes, gname, aname, tname, seek_key):
                                 "but seek_key '{}' is missing".format(gname, aname, tname, seek_key))
 
 
-def _assert_gat_exists(genomes, gname, aname, tname=None, allow_incomplete=False):
+def _assert_gat_exists(genomes, gname, aname=None, tname=None, allow_incomplete=False):
     """
     Make sure the genome/asset:tag combination exists in the provided mapping and has any seek keys defined.
     Seek keys are required for the asset completeness.
@@ -880,22 +882,23 @@ def _assert_gat_exists(genomes, gname, aname, tname=None, allow_incomplete=False
         genome = genomes[gname]
     except KeyError:
         raise MissingGenomeError("Your genomes do not include {}".format(gname))
-    try:
-        asset_data = genome[CFG_ASSETS_KEY][aname]
-    except KeyError:
-        raise MissingAssetError("Genome '{}' exists, but index '{}' is missing".format(gname, aname))
-    if tname is not None:
+    if aname is not None:
         try:
-            tag_data = asset_data[CFG_ASSET_TAGS_KEY][tname]
+            asset_data = genome[CFG_ASSETS_KEY][aname]
         except KeyError:
-            raise MissingTagError(
-                "genome/asset bundle '{}/{}' exists, but tag '{}' is missing".format(gname, aname, tname))
-        try:
-            tag_data[CFG_SEEK_KEYS_KEY]
-        except KeyError:
-            if not allow_incomplete:
-                raise MissingSeekKeyError("Asset incomplete. No seek keys are defined for '{}/{}:{}'. "
-                                          "Build or pull the asset again.".format(gname, aname, tname))
+            raise MissingAssetError("Genome '{}' exists, but index '{}' is missing".format(gname, aname))
+        if tname is not None:
+            try:
+                tag_data = asset_data[CFG_ASSET_TAGS_KEY][tname]
+            except KeyError:
+                raise MissingTagError(
+                    "genome/asset bundle '{}/{}' exists, but tag '{}' is missing".format(gname, aname, tname))
+            try:
+                tag_data[CFG_SEEK_KEYS_KEY]
+            except KeyError:
+                if not allow_incomplete:
+                    raise MissingSeekKeyError("Asset incomplete. No seek keys are defined for '{}/{}:{}'. "
+                                              "Build or pull the asset again.".format(gname, aname, tname))
 
 
 def _is_large_archive(size):

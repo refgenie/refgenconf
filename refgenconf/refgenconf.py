@@ -320,7 +320,7 @@ class RefGenConf(yacman.YacAttMap):
             else ", ".join(_select_genomes(sorted(self[CFG_GENOMES_KEY].keys(), key=order), genome))
         return genomes_str, self.assets_str(genome=genome, order=order)
 
-    def list_remote(self, get_url=lambda rgc: "{}/assets".format(rgc.genome_server), genome=None, order=None):
+    def list_remote(self, get_url=lambda rgc, v: "{}/{}/assets".format(rgc.genome_server, v), genome=None, order=None):
         """
         List genomes and assets available remotely.
 
@@ -331,7 +331,7 @@ class RefGenConf(yacman.YacAttMap):
             names for sort
         :return str, str: text reps of remotely available genomes and assets
         """
-        url = get_url(self)
+        url = get_url(self, API_VERSION)
         _LOGGER.info("Querying available assets from server: {}".format(url))
         genomes, assets = _list_remote(url, genome, order)
         return genomes, assets

@@ -1,0 +1,59 @@
+config_version: 0.3
+genome_folder: /Users/mstolarczyk/Desktop/testing/genomes
+genome_server: http://localhost:80
+genomes:
+  rCRSd:
+    assets:
+      fasta:
+        tags:
+          default:
+            seek_keys:
+              fasta: rCRSd.fa
+              fai: rCRSd.fa.fai
+              chrom_sizes: rCRSd.chrom.sizes
+            asset_parents: []
+            asset_children: ['bowtie2_index:default']
+            asset_path: fasta
+            asset_digest: fe7fee65215463b42df192502ba97b62
+          test:
+            seek_keys:
+              fasta: rCRSd.fa
+              fai: rCRSd.fa.fai
+              chrom_sizes: rCRSd.chrom.sizes
+            asset_parents: []
+            asset_children: ['bowtie2_index:default']
+            asset_path: fasta
+            asset_digest: a3c46f201a3ce7831d85cf4a125aa334
+        default_tag: default
+      bowtie2_index:
+        tags:
+          default:
+            seek_keys:
+              bowtie2_index: .
+            asset_parents: ['fasta:test']
+            asset_path: bowtie2_index
+            asset_digest: 0f9217d44264ae2188fcf8e469d2bb38
+        default_tag: default
+  mouse_chrM2:
+    assets:
+      fasta:
+        tags:
+          default:
+            asset_digest: 05118abbf3538156a0c1897057be9884
+            seek_keys:
+              fasta: mouse_chrM2.fa
+              fai: mouse_chrM2.fa.fai
+              chrom_sizes: mouse_chrM2.chrom.sizes
+            asset_parents: []
+            asset_children: ['bowtie2_index:default']
+            asset_path: fasta
+        default_tag: default
+      bowtie2_index:
+        tags:
+          default:
+            seek_keys:
+              bowtie2_index: .
+            asset_parents: ['fasta:default']
+            asset_path: bowtie2_index
+            asset_digest: 4b26dbfd28a5c47109191dc56b8cd443
+        default_tag: default

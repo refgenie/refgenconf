@@ -35,19 +35,3 @@ def test_config_format_error_message_formatting(msg, exp, check):
     msg = str(GenomeConfigFormatError(msg))
     assert check(msg, exp)
 
-
-@pytest.mark.parametrize("genome", ["dm3", "mm10", "hg38"])
-@pytest.mark.parametrize("asset", ["bowtie2_index", "chrom_sizes", "epilog"])
-@pytest.mark.parametrize(
-    ["data", "message_content"],
-    [("just_text_no_path", "has raw string value")] +
-    [(dict(c),"lacks a '{}' entry".format(CFG_ASSET_PATH_KEY))
-     for c in powerset(FIXED_KV_PAIRS, nonempty=True)])
-@pytest.mark.parametrize("check_exist", [None, False, True])
-def test_genome_config_format_raising_is_sensitive(
-        rgc, genome, asset, data, message_content, check_exist):
-    """ Check that config format error occurs in expected cases. """
-    rgc[CFG_GENOMES_KEY][genome] = {CFG_ASSETS_KEY: {asset: data}}
-    with pytest.raises(GenomeConfigFormatError) as err_ctx:
-        rgc.get_asset(genome, asset, strict_exists=check_exist)
-    assert message_content in str(err_ctx.value)

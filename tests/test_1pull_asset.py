@@ -34,7 +34,7 @@ def test_no_unpack(rgc, genome, asset, tag, temp_genome_config_file):
         rgc.pull_asset(genome, asset, tag, temp_genome_config_file, unpack=False)
 
 
-@pytest.mark.parametrize(["gname", "aname", "tname"], [("rCRSd", "fasta", "test"), ("rCRSd", "fasta", "default"), ("mouse_chrM2", "fasta", "default")])
+@pytest.mark.parametrize(["gname", "aname", "tname"], [("rCRSd", "fasta", "test"), ("rCRSd", "fasta", "default"), ("mouse_chrM2x", "fasta", "default")])
 def test_pull_asset(my_rgc, cfg_file, gname, aname, tname):
     with mock.patch("refgenconf.refgenconf.query_yes_no", return_value=True):
         print("\nPulling; genome: {}, asset: {}, tag: {}\n".format(gname, aname, tname))

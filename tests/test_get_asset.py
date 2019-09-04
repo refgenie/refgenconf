@@ -32,7 +32,7 @@ class TestGetAsset:
 
     @pytest.mark.parametrize(
         ["gname", "aname", "tname"],
-        [("rCRSd", "fasta", "default"), ("rCRSd", "fasta", "test"), ("mouse_chrM2", "fasta", "default")])
+        [("rCRSd", "fasta", "default"), ("rCRSd", "fasta", "test"), ("mouse_chrM2x", "fasta", "default")])
     def test_result_correctness(self, my_rgc, gname, aname, tname):
         assert os.path.join(my_rgc[CFG_FOLDER_KEY], gname, aname, tname) == my_rgc.get_asset(gname, aname, tname)
 
@@ -40,7 +40,7 @@ class TestGetAsset:
         ["gname", "aname", "tname", "seek_key"],
         [("rCRSd", "fasta", "default", "fai"),
          ("rCRSd", "fasta", "test", "fai"),
-         ("mouse_chrM2", "fasta", "default", "fai")])
+         ("mouse_chrM2x", "fasta", "default", "fai")])
     def test_result_correctness_seek_keys(self, my_rgc, gname, aname, tname, seek_key):
         tag_data = my_rgc[CFG_GENOMES_KEY][gname][CFG_ASSETS_KEY][aname][CFG_ASSET_TAGS_KEY][tname]
         seek_key_value = tag_data[CFG_SEEK_KEYS_KEY][seek_key]

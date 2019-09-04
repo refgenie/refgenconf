@@ -947,7 +947,7 @@ def _make_genome_assets_line(gen, assets, offset_text="  ", genome_assets_delim=
 
 def _make_asset_tags_product(assets, genome_tag_delim):
     """
-    Make a product of assets and tags avaialable in the provided mapping
+    Make a product of assets and tags available in the provided mapping
 
     :param Mapping assets: the assets for a selected genome
     :param str genome_tag_delim: how to represent the asset-tag link

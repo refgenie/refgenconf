@@ -34,7 +34,7 @@ genomes:
             asset_path: bowtie2_index
             asset_digest: 0f9217d44264ae2188fcf8e469d2bb38
         default_tag: default
-  mouse_chrM2:
+  mouse_chrM2x:
     assets:
       fasta:
         tags:

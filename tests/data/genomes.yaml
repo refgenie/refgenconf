@@ -1,6 +1,6 @@
 config_version: 0.3
 genome_folder: /tmp
-genome_server: http://localhost:80
+genome_server: http://staging.refgenomes.databio.org
 genomes:
   rCRSd:
     assets:

@@ -60,7 +60,7 @@ REQ_TAG_ATTRS = [CFG_ASSET_PATH_KEY, CFG_SEEK_KEYS_KEY]
 __all__ = CFG_CONST + CFG_KEY_NAMES + ["DEFAULT_SERVER", "CFG_ASSET_DEFAULT_TAG_KEY", "CFG_KEY_NAMES",
                                        "CFG_GENOME_DESC_KEY", "REQ_CFG_VERSION", "CFG_ASSETS_KEY",
                                        "CFG_GENOME_ATTRS_KEYS", "REFGENIE_BY_CFG", "DEFAULT_TAG", "ATTRS_COPY_PULL",
-                                       "REQ_TAG_ATTRS", "API_VERSION"]
+                                       "REQ_TAG_ATTRS", "API_VERSION", "CONF_STRUCTURE"]
 
 CONF_STRUCTURE = """
 # example genome configuration structure

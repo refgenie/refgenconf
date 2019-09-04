@@ -31,9 +31,9 @@ MITO_DATA = [("bowtie2", IDX_BT2_VAL), ("bowtie", "indexed_bowtie")]
 
 
 REMOTE_ASSETS = {
-    "mm10": {"bowtie2": ".tar", "kallisto": ".tar"},
-    "hg38": {"bowtie2": ".tar", "epilog": ".tgz", "kallisto": ".tar"}}
-REQUESTS = [(g, a) for g, ext_by_asset in REMOTE_ASSETS.items() for a in ext_by_asset]
+    "rCRSd": {"bowtie2": ".tgz", "fasta": ".tgz"},
+    "mouse_chrM2": {"bowtie2": ".tgz", "fasta": ".tgz"}}
+REQUESTS = [(g, a, "default") for g, ext_by_asset in REMOTE_ASSETS.items() for a in ext_by_asset]
 URL_BASE = "https://raw.githubusercontent.com/databio/refgenieserver/master/files"
 
 
@@ -107,7 +107,7 @@ def get_get_url(genome, asset, base=URL_BASE):
         based on reference genome assembly ID, asset name, and one unused
         positional argument
     """
-    return (lambda _, g, a: "{base}/{g}/{fn}".format(base=base, g=genome, fn=a + REMOTE_ASSETS[g][asset]))
+    return (lambda _, v, g, a: "{base}/{g}/{fn}".format(base=base, v=API_VERSION, g=genome, fn=a + REMOTE_ASSETS[g][asset]))
 
 
 @pytest.fixture(scope="session")

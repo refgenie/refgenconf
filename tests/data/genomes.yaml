@@ -1,20 +1,11 @@
 config_version: 0.3
-genome_folder: /Users/mstolarczyk/Desktop/testing/genomes
+genome_folder: /tmp
 genome_server: http://localhost:80
 genomes:
   rCRSd:
     assets:
       fasta:
         tags:
-          default:
-            seek_keys:
-              fasta: rCRSd.fa
-              fai: rCRSd.fa.fai
-              chrom_sizes: rCRSd.chrom.sizes
-            asset_parents: []
-            asset_children: ['bowtie2_index:default']
-            asset_path: fasta
-            asset_digest: fe7fee65215463b42df192502ba97b62
           test:
             seek_keys:
               fasta: rCRSd.fa
@@ -24,6 +15,15 @@ genomes:
             asset_children: ['bowtie2_index:default']
             asset_path: fasta
             asset_digest: a3c46f201a3ce7831d85cf4a125aa334
+          default:
+            seek_keys:
+              fasta: rCRSd.fa
+              fai: rCRSd.fa.fai
+              chrom_sizes: rCRSd.chrom.sizes
+            asset_parents: []
+            asset_children: ['bowtie2_index:default']
+            asset_path: fasta
+            asset_digest: fe7fee65215463b42df192502ba97b62
         default_tag: default
       bowtie2_index:
         tags:

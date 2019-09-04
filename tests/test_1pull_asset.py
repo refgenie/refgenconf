@@ -49,7 +49,7 @@ def test_pull_asset_updates_genome_config(my_rgc, cfg_file, gname, aname, tname)
     with pytest.raises(RefgenconfError):
         my_rgc.get_asset(*args)
     with mock.patch("refgenconf.refgenconf.query_yes_no", return_value=True):
-        my_rgc.pull_asset(*args, cfg_file)
+        my_rgc.pull_asset(*args, genome_config=cfg_file)
     my_rgc.get_asset(*args)
 
 

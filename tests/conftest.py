@@ -75,6 +75,11 @@ def cfg_file(data_path):
 
 
 @pytest.fixture
+def cfg_file_old(data_path):
+    return os.path.join(data_path, "genomes_v2.yaml")
+
+
+@pytest.fixture
 def cfg_file_copy(cfg_file, tmpdir_factory):
     """ Provide test case with copied version of test session's genome config. """
     fn = "".join(random.choice(string.ascii_letters) for _ in range(15)) + ".yaml"

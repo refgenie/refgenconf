@@ -3,7 +3,7 @@
 import os
 import pytest
 from attmap import PathExAttMap
-from refgenconf import RefGenConf, MissingConfigDataError
+from refgenconf import RefGenConf, MissingConfigDataError, ConfigNotCompliantError
 from refgenconf.const import CFG_FOLDER_KEY, CFG_GENOMES_KEY, CFG_SERVER_KEY, \
     DEFAULT_SERVER
 
@@ -71,3 +71,7 @@ class TestRefGenConf:
         res = rgc[CFG_GENOMES_KEY]
         assert isinstance(res, PathExAttMap)
         assert 0 == len(res)
+
+    def test_errors_on_old_cfg(self, cfg_file_old):
+        with pytest.raises(ConfigNotCompliantError):
+            RefGenConf(cfg_file_old)

@@ -83,7 +83,7 @@ class RefGenConf(yacman.YacAttMap):
             try:
                 version = float(version)
             except ValueError:
-                _LOGGER.warning("Cannot parse as numeric: {}".format(version))
+                _LOGGER.warning("Cannot parse config version as numeric: {}".format(version))
             else:
                 if version < REQ_CFG_VERSION:
                     msg = "This genome config (v{}) is not compliant with v{} standards. To use it, please downgrade " \

@@ -1,0 +1,8 @@
+config_version: 0.2
+genome_folder: /tmp
+genome_server: http://refgenomes.databio.org
+genomes:
+  rCRSd:
+    assets:
+      bowtie2_index:
+        path: bowtie2_index

@@ -39,9 +39,6 @@ def test_pull_asset(my_rgc, cfg_file, gname, aname, tname):
     with mock.patch("refgenconf.refgenconf.query_yes_no", return_value=True):
         print("\nPulling; genome: {}, asset: {}, tag: {}\n".format(gname, aname, tname))
         my_rgc.pull_asset(gname, aname, tname, cfg_file)
-        print(my_rgc)
-        my_rgc.remove_assets(gname, aname, tname)
-        print(my_rgc)
 
 
 @pytest.mark.parametrize(["gname", "aname", "tname"], [("rCRSd", "fasta", "default")])

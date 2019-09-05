@@ -456,14 +456,13 @@ class RefGenConf(yacman.YacAttMap):
 
         tag = _download_json(get_json_url(self.genome_server, API_VERSION, genome, asset) + "/default_tag") \
             if tag is None else tag
-        tag_query_param = "?tag={}".format(tag)
         _LOGGER.debug("Determined tag: '{}'".format(tag))
         unpack or raise_unpack_error()
 
-        url_attrs = get_json_url(self.genome_server, API_VERSION, genome, asset) + tag_query_param
-        url_archive = get_json_url(self.genome_server, API_VERSION, genome, asset) + "/archive" + tag_query_param
+        url_attrs = get_json_url(self.genome_server, API_VERSION, genome, asset)
+        url_archive = get_json_url(self.genome_server, API_VERSION, genome, asset) + "/archive"
 
-        archive_data = _download_json(url_attrs)
+        archive_data = _download_json(url_attrs, params={"tag": tag})
 
         if sys.version_info[0] == 2:
             archive_data = asciify_dict(archive_data)
@@ -507,7 +506,7 @@ class RefGenConf(yacman.YacAttMap):
         _LOGGER.info("Downloading URL: {}".format(url_archive))
         try:
             signal.signal(signal.SIGINT, build_signal_handler(filepath))
-            _download_url_progress(url_archive, filepath, bundle_name)
+            _download_url_progress(url_archive, filepath, bundle_name, params={"tag": tag})
         except HTTPError as e:
             _LOGGER.error("File not found on server: {}".format(e))
             return asset, None
@@ -796,29 +795,32 @@ class DownloadProgressBar(tqdm):
         self.update(b * bsize - self.n)
 
 
-def _download_json(url):
+def _download_json(url, params=None):
     """
     Safely connect to the provided API endpoint and download JSON data.
 
     :param str url: server API endpoint
+    :param dict params: query parameters
     :return dict: served data
     """
     import requests
     _LOGGER.debug("Downloading JSON data; querying URL: '{}'".format(url))
-    resp = requests.get(url)
+    resp = requests.get(url, params=params)
     if resp.ok:
         return resp.json()
     raise DownloadJsonError(resp)
 
 
-def _download_url_progress(url, output_path, name):
+def _download_url_progress(url, output_path, name, params=None):
     """
     Download asset at given URL to given filepath, show progress along the way.
 
     :param str url: server API endpoint
     :param str output_path: path to file to save download
     :param str name: name to display in front of the progress bar
+    :param dict params: query parameters to be added to the request
     """
+    url = url if params is None else url + "?{}".format(urllib.parse.urlencode(params))
     with DownloadProgressBar(unit_scale=True, desc=name, unit="B") as dpb:
         urllib.request.urlretrieve(url, filename=output_path, reporthook=dpb.update_to)
 

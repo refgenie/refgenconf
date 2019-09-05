@@ -16,14 +16,13 @@ genomes:
             asset_path: fasta
             asset_digest: a3c46f201a3ce7831d85cf4a125aa334
           default:
+            asset_path: fasta
+            asset_digest: a3c46f201a3ce7831d85cf4a125aa334
+            asset_parents: []
             seek_keys:
               fasta: rCRSd.fa
               fai: rCRSd.fa.fai
               chrom_sizes: rCRSd.chrom.sizes
-            asset_parents: []
-            asset_children: ['bowtie2_index:default']
-            asset_path: fasta
-            asset_digest: fe7fee65215463b42df192502ba97b62
         default_tag: default
       bowtie2_index:
         tags:
@@ -41,9 +40,9 @@ genomes:
           default:
             asset_digest: 05118abbf3538156a0c1897057be9884
             seek_keys:
-              fasta: mouse_chrM2.fa
-              fai: mouse_chrM2.fa.fai
-              chrom_sizes: mouse_chrM2.chrom.sizes
+              fasta: mouse_chrM2x.fa
+              fai: mouse_chrM2x.fa.fai
+              chrom_sizes: mouse_chrM2x.chrom.sizes
             asset_parents: []
             asset_children: ['bowtie2_index:default']
             asset_path: fasta

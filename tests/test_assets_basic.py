@@ -21,7 +21,7 @@ class AssetDictTest:
 
     def test_multiple_genomes(self, my_rgc, all_genomes):
         """ Verify asset dict works with multiple genomes and returns all of them """
-        assert my_rgc.assets_dict(genome=all_genomes).keys() == my_rgc.assets_dict().keys()
+        assert sorted(my_rgc.assets_dict(genome=all_genomes).keys()) == sorted(my_rgc.assets_dict().keys())
 
 
 class ListAssetsByGenomeTest:

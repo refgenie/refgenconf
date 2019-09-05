@@ -1,5 +1,4 @@
 """ Test suite shared objects and setup """
-
 import os
 import random
 import shutil
@@ -30,9 +29,8 @@ MM10_DATA = [("bowtie2", IDX_BT2_VAL), ("blacklist", "blacklist/mm10.bed")]
 MITO_DATA = [("bowtie2", IDX_BT2_VAL), ("bowtie", "indexed_bowtie")]
 
 
-REMOTE_ASSETS = {
-    "rCRSd": {"bowtie2_index": ".tgz", "fasta": ".tgz"},
-    "mouse_chrM2x": {"bowtie2_index": ".tgz", "fasta": ".tgz"}}
+REMOTE_ASSETS = {"rCRSd": {"bowtie2_index": ".tgz", "fasta": ".tgz"},
+                 "mouse_chrM2x": {"bowtie2_index": ".tgz", "fasta": ".tgz"}}
 REQUESTS = [(g, a, "default") for g, ext_by_asset in REMOTE_ASSETS.items() for a in ext_by_asset]
 URL_BASE = "https://raw.githubusercontent.com/databio/refgenieserver/master/files"
 

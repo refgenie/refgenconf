@@ -33,3 +33,33 @@ def unbound_env_vars(path):
     """
     parts = path.split(os.path.sep)
     return [p for p in parts if p.startswith("$") and not os.getenv(p)]
+
+
+def _asciify_list(data):
+    """ https://gist.github.com/chris-hailstorm/4989643 """
+    ret = []
+    for item in data:
+        if isinstance(item, unicode):
+            item = item.encode('utf-8')
+        elif isinstance(item, list):
+            item = _asciify_list(item)
+        elif isinstance(item, dict):
+            item = asciify_dict(item)
+        ret.append(item)
+    return ret
+
+
+def asciify_dict(data):
+    """ https://gist.github.com/chris-hailstorm/4989643 """
+    ret = {}
+    for key, value in data.iteritems():
+        if isinstance(key, unicode):
+            key = key.encode('utf-8')
+        if isinstance(value, unicode):
+            value = value.encode('utf-8')
+        elif isinstance(value, list):
+            value = _asciify_list(value)
+        elif isinstance(value, dict):
+            value = asciify_dict(value)
+        ret[key] = value
+    return ret

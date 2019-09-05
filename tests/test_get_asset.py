@@ -1,3 +1,4 @@
+
 """ Tests for ReferenceGenomeConfiguration.get_asset """
 
 import os

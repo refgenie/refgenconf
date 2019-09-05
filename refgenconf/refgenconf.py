@@ -29,7 +29,7 @@ from tqdm import tqdm
 import yacman
 
 from .const import *
-from .helpers import unbound_env_vars
+from .helpers import unbound_env_vars, asciify_dict
 from .exceptions import *
 
 
@@ -464,6 +464,9 @@ class RefGenConf(yacman.YacAttMap):
         url_archive = get_json_url(self.genome_server, API_VERSION, genome, asset) + "/archive" + tag_query_param
 
         archive_data = _download_json(url_attrs)
+
+        if sys.version_info[0] == 2:
+            archive_data = asciify_dict(archive_data)
         # local file to save as
         filepath = self.filepath(genome, asset, tag)
         outdir = os.path.dirname(filepath)
@@ -800,11 +803,11 @@ def _download_json(url):
     :param str url: server API endpoint
     :return dict: served data
     """
-    import json, requests
+    import requests
     _LOGGER.debug("Downloading JSON data; querying URL: '{}'".format(url))
     resp = requests.get(url)
     if resp.ok:
-        return json.loads(resp.content.decode())
+        return resp.json()
     raise DownloadJsonError(resp)
 
 

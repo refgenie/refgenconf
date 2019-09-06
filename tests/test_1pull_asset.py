@@ -18,6 +18,7 @@ import refgenconf
 from refgenconf.const import *
 from refgenconf.exceptions import *
 from refgenconf.refgenconf import _download_url_progress
+import ubiquerg
 
 __author__ = "Vince Reuter"
 __email__ = "vreuter@virginia.edu"
@@ -52,28 +53,6 @@ def test_pull_asset_updates_genome_config(my_rgc, cfg_file, gname, aname, tname)
         my_rgc.pull_asset(*args, genome_config=cfg_file)
     my_rgc.get_asset(*args)
 
-
-@pytest.mark.remote_data
-@pytest.mark.parametrize(["genome", "asset", "tag"], REQUESTS)
-def test_pull_asset_returns_key_value_pair(
-        rgc, genome, asset, tag, gencfg, remove_genome_folder):
-    """ Verify asset pull returns asset name, and value if pulled. """
-    checksum_tmpval = "not-a-checksum"
-    with mock.patch.object(
-            refgenconf.refgenconf, "_download_json",
-            return_value=YacAttMap({
-                CFG_ARCHIVE_CHECKSUM_KEY: checksum_tmpval,
-                CFG_ARCHIVE_SIZE_KEY: "0 GB",
-                CFG_ASSET_PATH_KEY: "testpath",
-                CFG_ASSET_PARENTS_KEY: []})), \
-         mock.patch.object(refgenconf.refgenconf, "checksum",
-                           return_value=checksum_tmpval), \
-         mock.patch.object(refgenconf.refgenconf, "_download_url_progress"), \
-         mock.patch.object(refgenconf.refgenconf, "_untar"):
-        res = rgc.pull_asset(genome, asset, tag, gencfg, get_json_url=get_get_url(genome, asset))
-    key, val = _parse_single_pull(res)
-    assert asset == key
-    assert "testpath" == val
 
 
 @pytest.mark.parametrize(["genome", "asset", "tag"], REQUESTS)

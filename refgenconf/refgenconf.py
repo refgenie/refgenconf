@@ -24,7 +24,7 @@ import signal
 import warnings
 
 from attmap import PathExAttMap as PXAM
-from ubiquerg import checksum, is_url, query_yes_no, parse_registry_path as prp
+from ubiquerg import checksum, is_url, query_yes_no, parse_registry_path as prp, untar
 from tqdm import tqdm
 import yacman
 
@@ -534,7 +534,7 @@ class RefGenConf(yacman.YacAttMap):
         # successfully downloaded and moved tarball; untar it
         if unpack and filepath.endswith(".tar") or filepath.endswith(".tgz"):
             _LOGGER.info("Extracting asset tarball to: {}".format(outdir))
-            _untar(filepath, outdir)
+            untar(filepath, outdir)
             if os.path.isfile(filepath):
                 os.remove(filepath)
         _LOGGER.debug("Writing genome config file: {}".format(genome_config))
@@ -975,18 +975,6 @@ def _read_remote_data(url):
     with urllib.request.urlopen(url) as response:
         encoding = response.info().get_content_charset('utf8')
         return json.loads(response.read().decode(encoding))
-
-
-def _untar(src, dst):
-    """
-    Unpack a path to a target folder.
-
-    :param str src: path to unpack
-    :param str dst: path to output folder
-    """
-    import tarfile
-    with tarfile.open(src) as tf:
-        tf.extractall(path=dst)
 
 
 def _check_insert_data(obj, datatype, name):

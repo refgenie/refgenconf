@@ -933,7 +933,7 @@ def _list_remote(url, genome, order=None):
 
 
 def _make_genome_assets_line(gen, assets, offset_text="  ", genome_assets_delim=": ", asset_sep=", ", order=None,
-                             genome_tag_delim=":"):
+                             asset_tag_delim=":"):
     """
     Build a line of text for display of assets by genome
 
@@ -946,21 +946,31 @@ def _make_genome_assets_line(gen, assets, offset_text="  ", genome_assets_delim=
     :param order: function(str) -> object how to key asset names for sort
     :return str: text representation of a single assembly's name and assets
     """
-    tagged_assets = asset_sep.join(sorted(_make_asset_tags_product(assets, genome_tag_delim), key=order))
+    tagged_assets = asset_sep.join(sorted(_make_asset_tags_product(assets, asset_tag_delim), key=order))
     return offset_text + "{}{}{}".format(gen, genome_assets_delim, tagged_assets)
 
 
-def _make_asset_tags_product(assets, genome_tag_delim):
+def _make_asset_tags_product(assets, asset_tag_delim=":", asset_sk_delim="."):
     """
     Make a product of assets and tags available in the provided mapping
 
     :param Mapping assets: the assets for a selected genome
-    :param str genome_tag_delim: how to represent the asset-tag link
+    :param str asset_tag_delim: how to represent the asset-tag link
+    :param str asset_sk_delim: how to represent the asset-seek_key link
     :return list: list representation of tagged assets
     """
     tagged_assets = []
-    for name, asset in assets.items():
-        tagged_assets.extend([genome_tag_delim.join(i) for i in itertools.product([name], get_asset_tags(asset))])
+    for aname, asset in assets.items():
+        sk_assets = []
+        for tname, tag in asset[CFG_ASSET_TAGS_KEY].items():
+            seek_keys = get_tag_seek_keys(tag)
+            # proceed only if asset is 'complete' -- has seek_keys
+            if seek_keys is not None:
+                # add seek_keys if exist, otherwise just the asset name
+                sk_assets.extend([asset_sk_delim.join(i) for i in itertools.product([aname], seek_keys)]
+                                 if len(seek_keys) > 1 or seek_keys[0] != aname else [aname])
+        # add tags to the asset.seek_key list
+        tagged_assets.extend([asset_tag_delim.join(i) for i in itertools.product(sk_assets, [tname])])
     return tagged_assets
 
 
@@ -1009,7 +1019,18 @@ def get_asset_tags(asset):
 
     These need an accession function since under the tag name key there are not only tag names, but also the
      default tag pointer
+
     :param Mapping asset: a single asset part of the RefGenConf
     :return list: asset tags
     """
     return [t for t in asset[CFG_ASSET_TAGS_KEY]]
+
+
+def get_tag_seek_keys(tag):
+    """
+    Return a list of tag seek keys.
+
+    :param Mapping tag: a single tag part of the RefGenConf
+    :return list: tag seek keys
+    """
+    return [s for s in tag[CFG_SEEK_KEYS_KEY]] if CFG_SEEK_KEYS_KEY in tag else None

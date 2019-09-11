@@ -891,7 +891,7 @@ def _assert_gat_exists(genomes, gname, aname=None, tname=None, allow_incomplete=
         try:
             asset_data = genome[CFG_ASSETS_KEY][aname]
         except KeyError:
-            raise MissingAssetError("Genome '{}' exists, but index '{}' is missing".format(gname, aname))
+            raise MissingAssetError("Genome '{}' exists, but asset '{}' is missing".format(gname, aname))
         if tname is not None:
             try:
                 tag_data = asset_data[CFG_ASSET_TAGS_KEY][tname]

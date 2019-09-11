@@ -401,7 +401,7 @@ class RefGenConf(yacman.YacAttMap):
         """
         relative_key = CFG_ASSET_CHILDREN_KEY if update_children else CFG_ASSET_PARENTS_KEY
         for r in relatives:
-            _LOGGER.info("updating {} in '{}'".format("children" if update_children else "parents", r))
+            _LOGGER.debug("updating {} in '{}'".format("children" if update_children else "parents", r))
             r_data = prp(r)
             try:
                 self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][r_data["item"]][CFG_ASSET_TAGS_KEY][r_data["tag"]]
@@ -855,7 +855,7 @@ def _genome_asset_path(genomes, gname, aname, tname, seek_key):
     _assert_gat_exists(genomes, gname, aname, tname)
     asset_tag_data = genomes[gname][CFG_ASSETS_KEY][aname][CFG_ASSET_TAGS_KEY][tname]
     if seek_key is None:
-        if aname in asset_tag_data[CFG_SEEK_KEYS_KEY] and asset_tag_data[CFG_SEEK_KEYS_KEY][aname] == ".":
+        if aname in asset_tag_data[CFG_SEEK_KEYS_KEY]:
             seek_key = aname
         else:
             return os.path.join(asset_tag_data[CFG_ASSET_PATH_KEY], tname)
@@ -864,8 +864,8 @@ def _genome_asset_path(genomes, gname, aname, tname, seek_key):
         appendix = "" if seek_key_value == "." else seek_key_value
         return os.path.join(asset_tag_data[CFG_ASSET_PATH_KEY], tname, appendix)
     except KeyError:
-        raise MissingSeekKeyError("genome/asset:tag bundle '{}/{}:{}' exists, "
-                                "but seek_key '{}' is missing".format(gname, aname, tname, seek_key))
+        raise MissingSeekKeyError("genome/asset:tag bundle '{}/{}:{}' exists, but seek_key '{}' is missing".
+                                  format(gname, aname, tname, seek_key))
 
 
 def _assert_gat_exists(genomes, gname, aname=None, tname=None, allow_incomplete=False):

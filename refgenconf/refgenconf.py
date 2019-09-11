@@ -401,14 +401,20 @@ class RefGenConf(yacman.YacAttMap):
         """
         relative_key = CFG_ASSET_CHILDREN_KEY if update_children else CFG_ASSET_PARENTS_KEY
         for r in relatives:
-            _LOGGER.debug("updating '{}' in '{}'".format("children" if update_children else "parents", r))
+            _LOGGER.info("updating {} in '{}'".format("children" if update_children else "parents", r))
             r_data = prp(r)
-            if hasattr(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][r_data["item"]][CFG_ASSET_TAGS_KEY][r_data["tag"]],
-                       relative_key):
+            try:
+                self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][r_data["item"]][CFG_ASSET_TAGS_KEY][r_data["tag"]]
+            except KeyError:
+                _LOGGER.error("The {} asset of '{}/{}' does not exist: {}".
+                              format("child" if update_children else "parent", genome, asset, r))
+                continue
+            updated_relatives = []
+            if relative_key in \
+                    self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][r_data["item"]][CFG_ASSET_TAGS_KEY][r_data["tag"]]:
                 relatives = \
                     self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][r_data["item"]][CFG_ASSET_TAGS_KEY][r_data["tag"]]\
                         [relative_key]
-                updated_relatives = []
                 for relative in relatives:
                     ori_relative_data = prp(relative)
                     if ori_relative_data["item"] == asset and ori_relative_data["tag"] == tag:
@@ -849,7 +855,7 @@ def _genome_asset_path(genomes, gname, aname, tname, seek_key):
     _assert_gat_exists(genomes, gname, aname, tname)
     asset_tag_data = genomes[gname][CFG_ASSETS_KEY][aname][CFG_ASSET_TAGS_KEY][tname]
     if seek_key is None:
-        if hasattr(asset_tag_data[CFG_SEEK_KEYS_KEY], aname) and asset_tag_data[CFG_SEEK_KEYS_KEY][aname] == ".":
+        if aname in asset_tag_data[CFG_SEEK_KEYS_KEY] and asset_tag_data[CFG_SEEK_KEYS_KEY][aname] == ".":
             seek_key = aname
         else:
             return os.path.join(asset_tag_data[CFG_ASSET_PATH_KEY], tname)
@@ -947,7 +953,7 @@ def _make_genome_assets_line(gen, assets, offset_text="  ", genome_assets_delim=
     :return str: text representation of a single assembly's name and assets
     """
     tagged_assets = asset_sep.join(sorted(_make_asset_tags_product(assets, asset_tag_delim), key=order))
-    return offset_text + "{}{}{}".format(gen, genome_assets_delim, tagged_assets)
+    return "{}{}{}{}".format(gen.rjust(15), genome_assets_delim, offset_text, tagged_assets)
 
 
 def _make_asset_tags_product(assets, asset_tag_delim=":", asset_sk_delim="."):

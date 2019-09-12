@@ -948,11 +948,11 @@ def _list_remote(url, genome, order=None):
     genomes_data = _read_remote_data(url)
     refgens = _select_genomes(sorted(genomes_data.keys(), key=order), genome)
     filtered_genomes_data = {refgen: genomes_data[refgen] for refgen in refgens}
-    asset_texts = ["{}/  {}".format(g.rjust(20), ", ".join(a)) for g, a in filtered_genomes_data.items()]
+    asset_texts = ["{}/   {}".format(g.rjust(20), ", ".join(a)) for g, a in filtered_genomes_data.items()]
     return ", ".join(refgens), "\n".join(asset_texts)
 
 
-def _make_genome_assets_line(gen, assets, offset_text="  ", genome_assets_delim=": ", asset_sep=", ", order=None,
+def _make_genome_assets_line(gen, assets, offset_text="  ", genome_assets_delim="/ ", asset_sep=", ", order=None,
                              asset_tag_delim=":"):
     """
     Build a line of text for display of assets by genome

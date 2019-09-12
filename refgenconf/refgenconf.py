@@ -173,7 +173,7 @@ class RefGenConf(yacman.YacAttMap):
         return ", ".join(self.genomes_list(order))
 
     def get_asset(self, genome_name, asset_name, tag_name=None, seek_key=None, strict_exists=True,
-                  check_exist=lambda p: os.path.exists(p) or is_url(p)):
+                  check_exist=lambda p: os.path.exists(p) or is_url(p), enclosing_dir=False):
         """
         Get an asset for a particular assembly.
 
@@ -186,6 +186,8 @@ class RefGenConf(yacman.YacAttMap):
             RuntimeWarning, and None to do nothing at all
         :param function(callable) -> bool check_exist: how to check for
             asset/path existence
+        :param bool enclosing_dir: whether a path to the entire enclosing directory should be returned, e.g.
+            for a fasta asset that has 3 seek_keys pointing to 3 files in an asset dir, that asset dir will is returned
         :return str: path to the asset
         :raise TypeError: if the existence check is not a one-arg function
         :raise refgenconf.MissingGenomeError: if the named assembly isn't known
@@ -197,7 +199,7 @@ class RefGenConf(yacman.YacAttMap):
         _LOGGER.debug("getting asset: '{}/{}.{}:{}'".format(genome_name, asset_name, seek_key, tag_name))
         if not callable(check_exist) or len(finspect(check_exist).args) != 1:
             raise TypeError("Asset existence check must be a one-arg function.")
-        path = _genome_asset_path(self[CFG_GENOMES_KEY], genome_name, asset_name, tag_name, seek_key)
+        path = _genome_asset_path(self[CFG_GENOMES_KEY], genome_name, asset_name, tag_name, seek_key, enclosing_dir)
         if os.path.isabs(path) and check_exist(path):
             return path
         _LOGGER.debug("Relative or nonexistent path: {}".format(path))
@@ -518,7 +520,8 @@ class RefGenConf(yacman.YacAttMap):
             return asset, None
         except ConnectionRefusedError as e:
             _LOGGER.error(str(e))
-            _LOGGER.error("Server {}/{} refused download. Check your internet settings".format(self.genome_server, API_VERSION))
+            _LOGGER.error("Server {}/{} refused download. Check your internet settings".format(self.genome_server,
+                                                                                               API_VERSION))
             return asset, None
         except ContentTooShortError as e:
             _LOGGER.error(str(e))
@@ -576,7 +579,8 @@ class RefGenConf(yacman.YacAttMap):
             self.update_tags(genome, asset, tag)  # creates/asserts the genome/asset:tag combination
             self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag].setdefault(relationship, list())
             self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag][relationship] = \
-                _extend_unique(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag][relationship], data)
+                _extend_unique(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag]
+                               [relationship], data)
 
     def update_seek_keys(self, genome, asset, tag=None, keys=None):
         """
@@ -591,8 +595,10 @@ class RefGenConf(yacman.YacAttMap):
         tag = tag or self.get_default_tag(genome, asset)
         if _check_insert_data(keys, Mapping, "keys"):
             self.update_tags(genome, asset, tag)  # creates/asserts the genome/asset:tag combination
-            self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag].setdefault(CFG_SEEK_KEYS_KEY, PXAM())
-            self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag][CFG_SEEK_KEYS_KEY].update(keys)
+            self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag].setdefault(CFG_SEEK_KEYS_KEY,
+                                                                                                     PXAM())
+            self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag][CFG_SEEK_KEYS_KEY].\
+                update(keys)
         return self
 
     def update_tags(self, genome, asset=None, tag=None, data=None):
@@ -714,7 +720,8 @@ class RefGenConf(yacman.YacAttMap):
         :param str genome: genome to get the attributes dict for
         :return Mapping[str, str]: available genome attributes
         """
-        return {k: self[CFG_GENOMES_KEY][genome][k] for k in CFG_GENOME_ATTRS_KEYS if k in self[CFG_GENOMES_KEY][genome]}
+        return {k: self[CFG_GENOMES_KEY][genome][k]
+                for k in CFG_GENOME_ATTRS_KEYS if k in self[CFG_GENOMES_KEY][genome]}
 
     def is_asset_complete(self, genome, asset, tag):
         """
@@ -779,9 +786,9 @@ class RefGenConf(yacman.YacAttMap):
                 [tag][CFG_ASSET_CHECKSUM_KEY]
             if remote_digest != local_digest:
                 msg = "This asset is built from parent asset '{}', but for this parent, the remote does not "\
-                "match your local asset (local: {}; remote:{}). Refgenie will not pull this asset "\
-                "because the remote version was not built from the same parent asset you have locally."\
-                .format(asset, local_digest, remote_digest)
+                    "match your local asset (local: {}; remote: {}). Refgenie will not pull this asset "\
+                    "because the remote version was not built from the same parent asset you have locally."\
+                    .format(asset, local_digest, remote_digest)
                 _LOGGER.error(msg)
                 raise KeyError(msg)
 
@@ -833,7 +840,7 @@ def _download_url_progress(url, output_path, name, params=None):
         urllib.request.urlretrieve(url, filename=output_path, reporthook=dpb.update_to)
 
 
-def _genome_asset_path(genomes, gname, aname, tname, seek_key):
+def _genome_asset_path(genomes, gname, aname, tname, seek_key, enclosing_dir):
     """
     Retrieve the raw path value for a particular asset for a particular genome.
 
@@ -844,6 +851,8 @@ def _genome_asset_path(genomes, gname, aname, tname, seek_key):
     :param str aname: second-level key to query -- asset name, e.g. fasta
     :param str tname: third-level key to query -- tag name, e.g. default
     :param str seek_key: fourth-level key to query -- tag name, e.g. chrom_sizes
+    :param bool enclosing_dir: whether a path to the entire enclosing directory should be returned, e.g.
+        for a fasta asset that has 3 seek_keys pointing to 3 files in an asset dir, that asset dir will is returned
     :return str: raw path value for a particular asset for a particular genome
     :raise MissingGenomeError: if the given key-value pair collection does not
         contain as a top-level key the given genome ID
@@ -856,6 +865,8 @@ def _genome_asset_path(genomes, gname, aname, tname, seek_key):
     """
     _assert_gat_exists(genomes, gname, aname, tname)
     asset_tag_data = genomes[gname][CFG_ASSETS_KEY][aname][CFG_ASSET_TAGS_KEY][tname]
+    if enclosing_dir:
+        return os.path.join(asset_tag_data[CFG_ASSET_PATH_KEY], tname)
     if seek_key is None:
         if aname in asset_tag_data[CFG_SEEK_KEYS_KEY]:
             seek_key = aname

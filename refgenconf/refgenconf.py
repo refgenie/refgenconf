@@ -980,15 +980,15 @@ def _make_asset_tags_product(assets, asset_tag_delim=":", asset_sk_delim="."):
     """
     tagged_assets = []
     for aname, asset in assets.items():
-        sk_assets = []
         for tname, tag in asset[CFG_ASSET_TAGS_KEY].items():
+            sk_assets = []
             seek_keys = get_tag_seek_keys(tag)
             # proceed only if asset is 'complete' -- has seek_keys
             if seek_keys is not None:
                 # add seek_keys if exist and different from the asset name, otherwise just the asset name
                 sk_assets.extend([asset_sk_delim.join([aname, sk]) if sk != aname else aname for sk in seek_keys])
-        # add tags to the asset.seek_key list
-        tagged_assets.extend([asset_tag_delim.join(i) for i in itertools.product(sk_assets, [tname])])
+            # add tags to the asset.seek_key list
+            tagged_assets.extend([asset_tag_delim.join(i) for i in itertools.product(sk_assets, [tname])])
     return tagged_assets
 
 

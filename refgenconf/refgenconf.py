@@ -947,7 +947,8 @@ def _list_remote(url, genome, order=None):
     """
     genomes_data = _read_remote_data(url)
     refgens = _select_genomes(sorted(genomes_data.keys(), key=order), genome)
-    asset_texts = ["  {}: {}".format(g, ", ".join(a)) for g, a in genomes_data.items()]
+    filtered_genomes_data = {refgen: genomes_data[refgen] for refgen in refgens}
+    asset_texts = ["{}/ {}".format(g.rjust(20), ", ".join(a)) for g, a in filtered_genomes_data.items()]
     return ", ".join(refgens), "\n".join(asset_texts)
 
 
@@ -966,7 +967,7 @@ def _make_genome_assets_line(gen, assets, offset_text="  ", genome_assets_delim=
     :return str: text representation of a single assembly's name and assets
     """
     tagged_assets = asset_sep.join(sorted(_make_asset_tags_product(assets, asset_tag_delim), key=order))
-    return "{}{}{}{}".format(gen.rjust(15), genome_assets_delim, offset_text, tagged_assets)
+    return "{}{}{}{}".format(gen.rjust(20), genome_assets_delim, offset_text, tagged_assets)
 
 
 def _make_asset_tags_product(assets, asset_tag_delim=":", asset_sk_delim="."):

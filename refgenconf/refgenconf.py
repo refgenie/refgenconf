@@ -187,7 +187,7 @@ class RefGenConf(yacman.YacAttMap):
         :param function(callable) -> bool check_exist: how to check for
             asset/path existence
         :param bool enclosing_dir: whether a path to the entire enclosing directory should be returned, e.g.
-            for a fasta asset that has 3 seek_keys pointing to 3 files in an asset dir, that asset dir will is returned
+            for a fasta asset that has 3 seek_keys pointing to 3 files in an asset dir, that asset dir is returned
         :return str: path to the asset
         :raise TypeError: if the existence check is not a one-arg function
         :raise refgenconf.MissingGenomeError: if the named assembly isn't known
@@ -852,7 +852,7 @@ def _genome_asset_path(genomes, gname, aname, tname, seek_key, enclosing_dir):
     :param str tname: third-level key to query -- tag name, e.g. default
     :param str seek_key: fourth-level key to query -- tag name, e.g. chrom_sizes
     :param bool enclosing_dir: whether a path to the entire enclosing directory should be returned, e.g.
-        for a fasta asset that has 3 seek_keys pointing to 3 files in an asset dir, that asset dir will is returned
+        for a fasta asset that has 3 seek_keys pointing to 3 files in an asset dir, that asset dir is returned
     :return str: raw path value for a particular asset for a particular genome
     :raise MissingGenomeError: if the given key-value pair collection does not
         contain as a top-level key the given genome ID
@@ -985,9 +985,8 @@ def _make_asset_tags_product(assets, asset_tag_delim=":", asset_sk_delim="."):
             seek_keys = get_tag_seek_keys(tag)
             # proceed only if asset is 'complete' -- has seek_keys
             if seek_keys is not None:
-                # add seek_keys if exist, otherwise just the asset name
-                sk_assets.extend([asset_sk_delim.join(i) for i in itertools.product([aname], seek_keys)]
-                                 if len(seek_keys) > 1 or seek_keys[0] != aname else [aname])
+                # add seek_keys if exist and different from the asset name, otherwise just the asset name
+                sk_assets.extend([asset_sk_delim.join([aname, sk]) if sk != aname else aname for sk in seek_keys])
         # add tags to the asset.seek_key list
         tagged_assets.extend([asset_tag_delim.join(i) for i in itertools.product(sk_assets, [tname])])
     return tagged_assets

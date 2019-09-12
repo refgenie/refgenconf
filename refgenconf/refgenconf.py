@@ -780,7 +780,7 @@ class RefGenConf(yacman.YacAttMap):
             if remote_digest != local_digest:
                 msg = "This asset is built from parent asset '{}', but for this parent, the remote does not "\
                 "match your local asset (local: {}; remote:{}). Refgenie will not pull this asset "\
-                "because the remove version was not built from the same parent asset you have locally."\
+                "because the remote version was not built from the same parent asset you have locally."\
                 .format(asset, local_digest, remote_digest)
                 _LOGGER.error(msg)
                 raise KeyError(msg)

@@ -778,9 +778,12 @@ class RefGenConf(yacman.YacAttMap):
             local_digest = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY]\
                 [tag][CFG_ASSET_CHECKSUM_KEY]
             if remote_digest != local_digest:
-                raise KeyError("The remote-local parent asset ('{}') digest mismatch: {}-{}. This means that the local "
-                               "parent asset is different than the one that was used to build your asset of interest".
-                               format(asset, local_digest, remote_digest))
+                msg = "This asset is built from parent asset '{}', but for this parent, the remote does not "\
+                "match your local asset (local: {}; remote:{}). Refgenie will not pull this asset "\
+                "because the remove version was not built from the same parent asset you have locally."\
+                .format(asset, local_digest, remote_digest)
+                _LOGGER.error(msg)
+                raise KeyError(msg)
 
 
 class DownloadProgressBar(tqdm):

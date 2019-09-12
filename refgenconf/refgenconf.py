@@ -268,7 +268,7 @@ class RefGenConf(yacman.YacAttMap):
         :param bool force: whether the default tag change should be forced (even if it exists)
         """
         _assert_gat_exists(self[CFG_GENOMES_KEY], genome, asset)
-        if not hasattr(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset], CFG_ASSET_DEFAULT_TAG_KEY) or \
+        if CFG_ASSET_DEFAULT_TAG_KEY not in self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset] or \
                 len(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_DEFAULT_TAG_KEY]) == 0 or force:
             self.update_assets(genome, asset, {CFG_ASSET_DEFAULT_TAG_KEY: tag})
             _LOGGER.info("Default tag for '{}/{}' set to: {}".format(genome, asset, tag))
@@ -360,16 +360,16 @@ class RefGenConf(yacman.YacAttMap):
         if tag is None:
             raise ValueError("You must specify the tag of the that you want to assign a new one to. Currently defined "
                              "tags are: {}".format(", ".join(get_asset_tags(asset_mapping))))
-        if hasattr(asset_mapping[CFG_ASSET_TAGS_KEY], new_tag):
+        if new_tag in asset_mapping[CFG_ASSET_TAGS_KEY]:
             if not query_yes_no("You already have a '{}' asset tagged as '{}', do you wish to override?".
-                                format(asset, new_tag)):
+                                        format(asset, new_tag)):
                 _LOGGER.info("Tag action aborted by the user")
                 return
         children = []
         parents = []
-        if hasattr(asset_mapping[CFG_ASSET_TAGS_KEY][tag], CFG_ASSET_CHILDREN_KEY):
+        if CFG_ASSET_CHILDREN_KEY in asset_mapping[CFG_ASSET_TAGS_KEY][tag]:
             children = asset_mapping[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_CHILDREN_KEY]
-        if hasattr(asset_mapping[CFG_ASSET_TAGS_KEY][tag], CFG_ASSET_PARENTS_KEY):
+        if CFG_ASSET_PARENTS_KEY in asset_mapping[CFG_ASSET_TAGS_KEY][tag]:
             parents = asset_mapping[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_PARENTS_KEY]
         if len(children) > 0 or len(parents) > 0:
             if not query_yes_no("The asset '{}/{}:{}' has {} children and {} parents. Refgenie will update the "
@@ -383,7 +383,7 @@ class RefGenConf(yacman.YacAttMap):
             self._update_relatives_tags(genome, asset, tag, new_tag, parents, update_children=True)
         self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][new_tag] = \
             asset_mapping[CFG_ASSET_TAGS_KEY][tag]
-        if hasattr(asset_mapping, CFG_ASSET_DEFAULT_TAG_KEY) and asset_mapping[CFG_ASSET_DEFAULT_TAG_KEY] == tag:
+        if CFG_ASSET_DEFAULT_TAG_KEY in asset_mapping and asset_mapping[CFG_ASSET_DEFAULT_TAG_KEY] == tag:
             self.set_default_pointer(genome, asset, new_tag, force=True)
         self.remove_assets(genome, asset, tag)
         return True
@@ -664,11 +664,11 @@ class RefGenConf(yacman.YacAttMap):
             :param list[Mapping, str] alt: a list of length 2 that indicates alternative
             Mapping-attribute combination to remove
             """
-            if hasattr(obj, attr) and len(getattr(obj, attr)) == 0:
+            if attr in obj and len(obj[attr]) == 0:
                 if alt is None:
                     del obj[attr]
                 else:
-                    if hasattr(*alt):
+                    if alt[1] in alt[0]:
                         del alt[0][alt[1]]
 
         tag = tag or self.get_default_tag(genome, asset)
@@ -714,8 +714,7 @@ class RefGenConf(yacman.YacAttMap):
         :param str genome: genome to get the attributes dict for
         :return Mapping[str, str]: available genome attributes
         """
-        return {k: self[CFG_GENOMES_KEY][genome][k] for k in CFG_GENOME_ATTRS_KEYS
-                if hasattr(self[CFG_GENOMES_KEY][genome], k)}
+        return {k: self[CFG_GENOMES_KEY][genome][k] for k in CFG_GENOME_ATTRS_KEYS if k in self[CFG_GENOMES_KEY][genome]}
 
     def is_asset_complete(self, genome, asset, tag):
         """

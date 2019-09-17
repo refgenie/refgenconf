@@ -35,7 +35,8 @@ class TestGetAsset:
         ["gname", "aname", "tname"],
         [("rCRSd", "fasta", "default"), ("rCRSd", "fasta", "test"), ("mouse_chrM2x", "fasta", "default")])
     def test_result_correctness(self, my_rgc, gname, aname, tname):
-        assert os.path.join(my_rgc[CFG_FOLDER_KEY], gname, aname, tname) == my_rgc.get_asset(gname, aname, tname)
+        """ The FASTA file asset is returned  when fasta asset is requested, not the entire dir """
+        assert os.path.join(my_rgc[CFG_FOLDER_KEY], gname, aname, tname) != my_rgc.get_asset(gname, aname, tname)
 
     @pytest.mark.parametrize(
         ["gname", "aname", "tname", "seek_key"],

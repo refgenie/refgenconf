@@ -78,6 +78,7 @@ def test_update_asset_data(tmpdir, old_data, new_data, expected):
     c = RGC({CFG_GENOMES_KEY: {assembly: bind_to_assets({asset: old_data})},
              CFG_FOLDER_KEY: tmpdir.strpath,
              CFG_SERVER_KEY: DEFAULT_SERVER})
+
     def get_asset_data(refgencfg, a_name):
         return refgencfg[CFG_GENOMES_KEY][assembly][CFG_ASSETS_KEY][a_name].to_dict()
     assert expected != get_asset_data(c, asset)

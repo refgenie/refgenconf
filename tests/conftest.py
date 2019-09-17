@@ -1,5 +1,4 @@
 """ Test suite shared objects and setup """
-
 import os
 import random
 import shutil
@@ -19,15 +18,20 @@ IDX_BT2_VAL = "indexed_bowtie2"
 HG38_DATA = [
     ("bowtie2", IDX_BT2_VAL), ("hisat2", "indexed_hisat2"),
     ("tss_annotation", "TSS.bed.gz"), ("gtf", "blah.gtf")]
+
+HG38_DATA = [
+    ("bowtie2", IDX_BT2_VAL), ("hisat2", "indexed_hisat2"),
+    ("tss_annotation", "TSS.bed.gz"), ("gtf", "blah.gtf")]
+
+
+
 MM10_DATA = [("bowtie2", IDX_BT2_VAL), ("blacklist", "blacklist/mm10.bed")]
 MITO_DATA = [("bowtie2", IDX_BT2_VAL), ("bowtie", "indexed_bowtie")]
 
 
-REMOTE_ASSETS = {
-    "mm10": {"bowtie2": ".tar", "kallisto": ".tar"},
-    "hg38": {"bowtie2": ".tar", "epilog": ".tgz", "kallisto": ".tar"}}
-REQUESTS = [(g, a) for g, ext_by_asset in REMOTE_ASSETS.items()
-            for a in ext_by_asset]
+REMOTE_ASSETS = {"rCRSd": {"bowtie2_index": ".tgz", "fasta": ".tgz"},
+                 "mouse_chrM2x": {"bowtie2_index": ".tgz", "fasta": ".tgz"}}
+REQUESTS = [(g, a, "default") for g, ext_by_asset in REMOTE_ASSETS.items() for a in ext_by_asset]
 URL_BASE = "https://raw.githubusercontent.com/databio/refgenieserver/master/files"
 
 
@@ -59,6 +63,32 @@ def get_conf_genomes():
 
 
 @pytest.fixture
+def data_path():
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+
+
+@pytest.fixture
+def cfg_file(data_path):
+    return os.path.join(data_path, "genomes.yaml")
+
+
+@pytest.fixture
+def cfg_file_old(data_path):
+    return os.path.join(data_path, "genomes_v2.yaml")
+
+
+@pytest.fixture
+def cfg_file_copy(cfg_file, tmpdir_factory):
+    """ Provide test case with copied version of test session's genome config. """
+    fn = "".join(random.choice(string.ascii_letters) for _ in range(15)) + ".yaml"
+    fp = os.path.join(tmpdir_factory.mktemp("test").strpath, fn)
+    assert not os.path.exists(fp)
+    shutil.copy(cfg_file, fp)
+    assert os.path.isfile(fp)
+    return fp
+
+
+@pytest.fixture
 def gencfg(temp_genome_config_file):
     """ Provide test case with copied version of test session's genome config. """
     fn = "".join(random.choice(string.ascii_letters) for _ in range(15)) + ".yaml"
@@ -80,8 +110,7 @@ def get_get_url(genome, asset, base=URL_BASE):
         based on reference genome assembly ID, asset name, and one unused
         positional argument
     """
-    return (lambda _, g, a: "{base}/{g}/{fn}".format(
-        base=base, g=genome, fn=a + REMOTE_ASSETS[g][asset]))
+    return (lambda _, v, g, a: "{base}/{g}/{fn}".format(base=base, v=API_VERSION, g=genome, fn=a + REMOTE_ASSETS[g][asset]))
 
 
 @pytest.fixture(scope="session")
@@ -104,6 +133,16 @@ def rgc(made_genome_config_file):
     """ Provide test case with a genome config instance. """
     with open(made_genome_config_file, 'r') as f:
         return RefGenConf(yaml.load(f, yaml.SafeLoader))
+
+
+@pytest.fixture
+def my_rgc(cfg_file):
+    return RefGenConf(cfg_file)
+
+
+@pytest.fixture
+def all_genomes(my_rgc):
+    return my_rgc[CFG_GENOMES_KEY].keys()
 
 
 @pytest.fixture

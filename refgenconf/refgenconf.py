@@ -548,7 +548,7 @@ class RefGenConf(yacman.YacAttMap):
             if os.path.isfile(filepath):
                 os.remove(filepath)
         _LOGGER.debug("Writing genome config file: {}".format(genome_config))
-        self.update_tags(*gat, {attr: archive_data[attr] for attr in ATTRS_COPY_PULL if attr in archive_data})
+        self.update_tags(*gat, data={attr: archive_data[attr] for attr in ATTRS_COPY_PULL if attr in archive_data})
         self.set_default_pointer(*gat)
         self.write(genome_config)
         return asset, result

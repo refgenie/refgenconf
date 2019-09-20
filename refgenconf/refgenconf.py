@@ -474,8 +474,9 @@ class RefGenConf(yacman.YacAttMap):
 
         if sys.version_info[0] == 2:
             archive_data = asciify_dict(archive_data)
+        gat = [genome, asset, tag]
         # local file to save as
-        filepath = self.filepath(genome, asset, tag)
+        filepath = self.filepath(*gat)
         outdir = os.path.dirname(filepath)
 
         if os.path.exists(outdir):
@@ -495,20 +496,20 @@ class RefGenConf(yacman.YacAttMap):
             else:
                 msg_overwrite()
 
-        bundle_name = '{}/{}:{}'.format(genome, asset, tag)
-
         # check asset digests local-server match for each parent
         [self._check_asset_digest(genome, x) for x in archive_data[CFG_ASSET_PARENTS_KEY] if
          CFG_ASSET_PARENTS_KEY in archive_data]
 
-        if not os.path.exists(outdir):
-            _LOGGER.debug("Creating directory: {}".format(outdir))
-            os.makedirs(outdir)
+        bundle_name = '{}/{}:{}'.format(*gat)
         archsize = archive_data[CFG_ARCHIVE_SIZE_KEY]
         _LOGGER.info("'{}' archive size: {}".format(bundle_name, archsize))
         if _is_large_archive(archsize) and not query_yes_no("Are you sure you want to download this large archive?"):
             _LOGGER.info("pull action aborted by user")
             return asset, None
+
+        if not os.path.exists(outdir):
+            _LOGGER.debug("Creating directory: {}".format(outdir))
+            os.makedirs(outdir)
 
         # Download the file from `url` and save it locally under `filepath`:
         _LOGGER.info("Downloading URL: {}".format(url_archive))
@@ -547,9 +548,8 @@ class RefGenConf(yacman.YacAttMap):
             if os.path.isfile(filepath):
                 os.remove(filepath)
         _LOGGER.debug("Writing genome config file: {}".format(genome_config))
-        self.update_tags(genome, asset, tag, {attr: archive_data[attr] for attr in ATTRS_COPY_PULL
-                                              if attr in archive_data})
-        self.set_default_pointer(genome, asset, tag)
+        self.update_tags(*gat, {attr: archive_data[attr] for attr in ATTRS_COPY_PULL if attr in archive_data})
+        self.set_default_pointer(*gat)
         self.write(genome_config)
         return asset, result
 

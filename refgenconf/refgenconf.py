@@ -22,10 +22,12 @@ import logging
 import os
 import signal
 import warnings
+import shutil
 
 from attmap import PathExAttMap as PXAM
 from ubiquerg import checksum, is_url, query_yes_no, parse_registry_path as prp, untar
 from tqdm import tqdm
+
 import yacman
 
 from .const import *
@@ -141,7 +143,7 @@ class RefGenConf(yacman.YacAttMap):
                             asset_sep=asset_sep, order=order)
         return "\n".join([make_line(g, self[CFG_GENOMES_KEY][g][CFG_ASSETS_KEY]) for g in refgens])
 
-    def filepath(self, genome, asset, tag, ext=".tar"):
+    def filepath(self, genome, asset, tag, ext=".tgz"):
         """
         Determine path to a particular asset for a particular genome.
 
@@ -475,21 +477,25 @@ class RefGenConf(yacman.YacAttMap):
         if sys.version_info[0] == 2:
             archive_data = asciify_dict(archive_data)
         gat = [genome, asset, tag]
-        # local file to save as
-        filepath = self.filepath(*gat)
-        outdir = os.path.dirname(filepath)
-
-        if os.path.exists(outdir):
+        # local directory that the asset data will be stored in
+        tag_dir = os.path.dirname(self.filepath(*gat))
+        # local directory the downloaded archive will be temporarily saved in
+        genome_dir_path = os.path.join(self[CFG_FOLDER_KEY], genome)
+        # local path to the temporarily saved archive
+        filepath = os.path.join(genome_dir_path, asset + "__" + tag + ".tgz")
+        # check if the genome/asset:tag exists and get request user decision
+        if os.path.exists(tag_dir):
             def preserve():
-                _LOGGER.debug("Preserving existing: {}".format(outdir))
-                return asset, outdir
+                _LOGGER.debug("Preserving existing: {}".format(tag_dir))
+                return asset, tag_dir
 
             def msg_overwrite():
-                _LOGGER.debug("Overwriting: {}".format(outdir))
+                _LOGGER.debug("Overwriting: {}".format(tag_dir))
+                shutil.rmtree(tag_dir)
             if force is False:
                 return preserve()
             elif force is None:
-                if not query_yes_no("Replace existing ({})?".format(outdir), "no"):
+                if not query_yes_no("Replace existing ({})?".format(tag_dir), "no"):
                     return preserve()
                 else:
                     msg_overwrite()
@@ -507,9 +513,9 @@ class RefGenConf(yacman.YacAttMap):
             _LOGGER.info("pull action aborted by user")
             return asset, None
 
-        if not os.path.exists(outdir):
-            _LOGGER.debug("Creating directory: {}".format(outdir))
-            os.makedirs(outdir)
+        if not os.path.exists(genome_dir_path):
+            _LOGGER.debug("Creating directory: {}".format(genome_dir_path))
+            os.makedirs(genome_dir_path)
 
         # Download the file from `url` and save it locally under `filepath`:
         _LOGGER.info("Downloading URL: {}".format(url_archive))
@@ -538,20 +544,22 @@ class RefGenConf(yacman.YacAttMap):
             return asset, None
         else:
             _LOGGER.debug("Matched checksum: '{}'".format(old_checksum))
-
-        result = archive_data[CFG_ASSET_PATH_KEY]
-
+        import tempfile
         # successfully downloaded and moved tarball; untar it
-        if unpack and filepath.endswith(".tar") or filepath.endswith(".tgz"):
-            _LOGGER.info("Extracting asset tarball to: {}".format(outdir))
-            untar(filepath, outdir)
+        if unpack and filepath.endswith(".tgz"):
+            _LOGGER.info("Extracting asset tarball and saving to: {}".format(tag_dir))
+            with tempfile.TemporaryDirectory(dir=genome_dir_path) as tmpdir:
+                untar(filepath, tmpdir)
+                # here we suspect the unarchived asset to be an asset-named directory with the asset data inside
+                # and we transfer it to the tag-named subdirectory
+                shutil.move(os.path.join(tmpdir, asset), tag_dir)
             if os.path.isfile(filepath):
                 os.remove(filepath)
         _LOGGER.debug("Writing genome config file: {}".format(genome_config))
         self.update_tags(*gat, data={attr: archive_data[attr] for attr in ATTRS_COPY_PULL if attr in archive_data})
         self.set_default_pointer(*gat)
         self.write(genome_config)
-        return asset, result
+        return asset, archive_data[CFG_ASSET_PATH_KEY]
 
     def update_relatives_assets(self, genome, asset, tag=None, data=None, children=False):
         """

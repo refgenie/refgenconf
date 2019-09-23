@@ -548,11 +548,12 @@ class RefGenConf(yacman.YacAttMap):
         # successfully downloaded and moved tarball; untar it
         if unpack and filepath.endswith(".tgz"):
             _LOGGER.info("Extracting asset tarball and saving to: {}".format(tag_dir))
-            with tempfile.TemporaryDirectory(dir=genome_dir_path) as tmpdir:
-                untar(filepath, tmpdir)
-                # here we suspect the unarchived asset to be an asset-named directory with the asset data inside
-                # and we transfer it to the tag-named subdirectory
-                shutil.move(os.path.join(tmpdir, asset), tag_dir)
+            tmpdir = tempfile.mkdtemp(dir=genome_dir_path)  # TODO: use context manager here when we drop support for py2
+            untar(filepath, tmpdir)
+            # here we suspect the unarchived asset to be an asset-named directory with the asset data inside
+            # and we transfer it to the tag-named subdirectory
+            shutil.move(os.path.join(tmpdir, asset), tag_dir)
+            shutil.rmtree(tmpdir)
             if os.path.isfile(filepath):
                 os.remove(filepath)
         _LOGGER.debug("Writing genome config file: {}".format(genome_config))

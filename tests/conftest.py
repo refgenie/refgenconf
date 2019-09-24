@@ -132,17 +132,22 @@ def made_genome_config_file(temp_genome_config_file):
 def rgc(made_genome_config_file):
     """ Provide test case with a genome config instance. """
     with open(made_genome_config_file, 'r') as f:
-        return RefGenConf(yaml.load(f, yaml.SafeLoader))
+        return RefGenConf(yaml.load(f, yaml.SafeLoader), ro=False)
 
 
 @pytest.fixture
 def my_rgc(cfg_file):
-    return RefGenConf(cfg_file)
+    return RefGenConf(cfg_file, ro=False)
 
 
 @pytest.fixture
-def all_genomes(my_rgc):
-    return my_rgc[CFG_GENOMES_KEY].keys()
+def ro_rgc(cfg_file):
+    return RefGenConf(entries=cfg_file, ro=True)
+
+
+@pytest.fixture
+def all_genomes(ro_rgc):
+    return ro_rgc[CFG_GENOMES_KEY].keys()
 
 
 @pytest.fixture

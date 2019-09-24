@@ -41,7 +41,7 @@ _LOGGER = logging.getLogger(__name__)
 __all__ = ["RefGenConf"]
 
 
-def _handle_sigint(filepath):
+def _handle_sigint(filepath, rgc):
     def handle(sig, frame):
         _LOGGER.warning("\nThe download was interrupted: {}".format(filepath))
         try:
@@ -50,6 +50,7 @@ def _handle_sigint(filepath):
             _LOGGER.debug("'{}' not found, can't remove".format(filepath))
         else:
             _LOGGER.info("Incomplete file '{}' was removed".format(filepath))
+        rgc.unlock()
         sys.exit(0)
     return handle
 
@@ -57,7 +58,7 @@ def _handle_sigint(filepath):
 class RefGenConf(yacman.YacAttMap):
     """ A sort of oracle of available reference genome assembly assets """
 
-    def __init__(self, entries=None):
+    def __init__(self, entries=None, ro=True):
         """
         Create the config instance by with a filepath or key-value pairs.
 
@@ -67,13 +68,12 @@ class RefGenConf(yacman.YacAttMap):
             item is missing
         :raise ValueError: if entries is given as a string and is not a file
         """
-        super(RefGenConf, self).__init__(entries)
+        super(RefGenConf, self).__init__(entries=entries, ro=ro)
         genomes = self.setdefault(CFG_GENOMES_KEY, PXAM())
         if not isinstance(genomes, PXAM):
             if genomes:
-                _LOGGER.warning(
-                    "'{k}' value is a {t_old}, not a {t_new}; setting to empty {t_new}".
-                        format(k=CFG_GENOMES_KEY, t_old=type(genomes).__name__, t_new=PXAM.__name__))
+                _LOGGER.warning("'{k}' value is a {t_old}, not a {t_new}; setting to empty {t_new}".
+                                format(k=CFG_GENOMES_KEY, t_old=type(genomes).__name__, t_new=PXAM.__name__))
             self[CFG_GENOMES_KEY] = PXAM()
         if CFG_FOLDER_KEY not in self:
             self[CFG_FOLDER_KEY] = os.path.dirname(entries) if isinstance(entries, str) else os.getcwd()
@@ -452,7 +452,7 @@ class RefGenConf(yacman.YacAttMap):
         :param function(str) -> function build_signal_handler: how to create
             a signal handler to use during the download; the single argument
             to this function factory is the download filepath
-        :return a pairs of asset name and folder name (key-value pair with which genome config file
+        :return a pair of asset name and folder name (key-value pair with which genome config file
             is updated) if pull succeeds, else asset key and a null value.
         :raise refgenconf.UnboundEnvironmentVariablesError: if genome folder
             path contains any env. var. that's unbound
@@ -520,7 +520,7 @@ class RefGenConf(yacman.YacAttMap):
         # Download the file from `url` and save it locally under `filepath`:
         _LOGGER.info("Downloading URL: {}".format(url_archive))
         try:
-            signal.signal(signal.SIGINT, build_signal_handler(filepath))
+            signal.signal(signal.SIGINT, build_signal_handler(filepath, self))
             _download_url_progress(url_archive, filepath, bundle_name, params={"tag": tag})
         except HTTPError as e:
             _LOGGER.error("File not found on server: {}".format(e))
@@ -789,7 +789,7 @@ class RefGenConf(yacman.YacAttMap):
                                allow_incomplete=not self.is_asset_complete(genome, asset, tag))
         except (KeyError, MissingAssetError, MissingGenomeError, MissingSeekKeyError):
             self.update_tags(genome, asset, tag, {CFG_ASSET_CHECKSUM_KEY: remote_digest})
-            _LOGGER.info("No digest not found for '{}/{}:{}'. Populating with server data".format(genome, asset, tag))
+            _LOGGER.info("Could not find '{}/{}:{}' digest. Populating with server data".format(genome, asset, tag))
         else:
             local_digest = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY]\
                 [tag][CFG_ASSET_CHECKSUM_KEY]

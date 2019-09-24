@@ -22,8 +22,8 @@ class TestRefGenConf:
         with pytest.raises(MissingConfigDataError):
             RefGenConf(data)
 
-    def test_genome_folder_is_pwd_if_no_folder_key_and_raw_entries_passed(self, my_rgc):
-        data = PathExAttMap({k: v for k, v in my_rgc.items() if k != CFG_FOLDER_KEY})
+    def test_genome_folder_is_pwd_if_no_folder_key_and_raw_entries_passed(self, ro_rgc):
+        data = PathExAttMap({k: v for k, v in ro_rgc.items() if k != CFG_FOLDER_KEY})
         new_rgc = RefGenConf(data)
         assert os.getcwd() == new_rgc[CFG_FOLDER_KEY]
 

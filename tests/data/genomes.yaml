@@ -16,6 +16,7 @@ genomes:
             asset_path: fasta
             asset_digest: a3c46f201a3ce7831d85cf4a125aa334
           default:
+            asset_children: ['star_index:default', 'bismark_bt1_index:default', 'bismark_bt2_index:default']
             asset_path: fasta
             asset_digest: a3c46f201a3ce7831d85cf4a125aa334
             asset_parents: []
@@ -44,7 +45,7 @@ genomes:
               fai: mouse_chrM2x.fa.fai
               chrom_sizes: mouse_chrM2x.chrom.sizes
             asset_parents: []
-            asset_children: ['bowtie2_index:default']
+            asset_children: ['bowtie2_index:default', 'hisat2_index:default', 'star_index:default', 'bismark_bt1_index:default', 'bismark_bt2_index:default']
             asset_path: fasta
         default_tag: default
       bowtie2_index:

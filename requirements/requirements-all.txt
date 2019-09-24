@@ -3,5 +3,5 @@ pyyaml
 requests
 tqdm
 ubiquerg>=0.4.9
-yacman>=0.4
+yacman>=0.6.0
 future

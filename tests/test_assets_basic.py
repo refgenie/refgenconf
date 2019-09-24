@@ -8,31 +8,31 @@ __email__ = "michal@virginia.edu"
 
 class AssetDictTest:
     @pytest.mark.parametrize("gname", ["nonexistent", None])
-    def test_with_nonexistent_genome(self, my_rgc, gname):
+    def test_with_nonexistent_genome(self, ro_rgc, gname):
         """ Verify asset dict is always returned, even if the requested genome does not exist """
-        assert isinstance(my_rgc.assets_dict(genome=gname), OrderedDict)
+        assert isinstance(ro_rgc.assets_dict(genome=gname), OrderedDict)
 
     @pytest.mark.parametrize("gname", ["nonexistent", None])
-    def test_length(self, my_rgc, all_genomes, gname):
+    def test_length(self, ro_rgc, all_genomes, gname):
         """ Verify asset dict is larger if nonexistent or no genome specified than ones that are
         returned for a specific genome"""
         for g in all_genomes:
-            assert len(my_rgc.assets_dict(genome=gname)) > len(my_rgc.assets_dict(genome=g))
+            assert len(ro_rgc.assets_dict(genome=gname)) > len(ro_rgc.assets_dict(genome=g))
 
-    def test_multiple_genomes(self, my_rgc, all_genomes):
+    def test_multiple_genomes(self, ro_rgc, all_genomes):
         """ Verify asset dict works with multiple genomes and returns all of them """
-        assert sorted(my_rgc.assets_dict(genome=all_genomes).keys()) == sorted(my_rgc.assets_dict().keys())
+        assert sorted(ro_rgc.assets_dict(genome=all_genomes).keys()) == sorted(ro_rgc.assets_dict().keys())
 
 
 class ListAssetsByGenomeTest:
-    def test_returns_entire_mapping_when_no_genonome_specified(self, my_rgc):
-        assert my_rgc.list_assets_by_genome() == my_rgc.assets_dict()
+    def test_returns_entire_mapping_when_no_genonome_specified(self, ro_rgc):
+        assert ro_rgc.list_assets_by_genome() == ro_rgc.assets_dict()
 
-    def test_returns_list(self, my_rgc, all_genomes):
+    def test_returns_list(self, ro_rgc, all_genomes):
         for g in all_genomes:
-            assert isinstance(my_rgc.list_assets_by_genome(g), list)
+            assert isinstance(ro_rgc.list_assets_by_genome(g), list)
 
     @pytest.mark.parametrize("gname", ["nonexistent", "genome"])
-    def test_exception_on_nonexistent_genome(self, my_rgc, gname):
+    def test_exception_on_nonexistent_genome(self, ro_rgc, gname):
         with pytest.raises(KeyError):
-            my_rgc.list_assets_by_genome(genome=gname)
+            ro_rgc.list_assets_by_genome(genome=gname)

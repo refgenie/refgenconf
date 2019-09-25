@@ -58,17 +58,20 @@ def _handle_sigint(filepath, rgc):
 class RefGenConf(yacman.YacAttMap):
     """ A sort of oracle of available reference genome assembly assets """
 
-    def __init__(self, entries=None, ro=True):
+    def __init__(self, entries=None, ro=True, wait_max=10):
         """
         Create the config instance by with a filepath or key-value pairs.
 
         :param str | Iterable[(str, object)] | Mapping[str, object] entries:
             config filepath or collection of key-value pairs
+        :param bool ro: logical indicating whether the object should be created in read-only mode.
+            This is crucial for situations when two processes may be writing to the same file.
+        :param int wait_max: how long to wait for creating an object when the file that data will be read from is locked
         :raise refgenconf.MissingConfigDataError: if a required configuration
             item is missing
         :raise ValueError: if entries is given as a string and is not a file
         """
-        super(RefGenConf, self).__init__(entries=entries, ro=ro)
+        super(RefGenConf, self).__init__(entries=entries, ro=ro, wait_max=wait_max)
         genomes = self.setdefault(CFG_GENOMES_KEY, PXAM())
         if not isinstance(genomes, PXAM):
             if genomes:

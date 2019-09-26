@@ -18,7 +18,7 @@ def _asset_data_is_pxam(a, g, c):
 @pytest.fixture(scope="function")
 def rgc(tmpdir):
     """ Provide an RGC instance; avoid disk read/write and stay in memory. """
-    return RGC({CFG_GENOMES_KEY: dict(CONF_DATA),
+    return RGC(entries={CFG_GENOMES_KEY: dict(CONF_DATA),
                 CFG_FOLDER_KEY: tmpdir.strpath,
                 CFG_SERVER_KEY: DEFAULT_SERVER})
 
@@ -75,7 +75,7 @@ def test_update_asset_data(tmpdir, old_data, new_data, expected):
     """ update_genomes can modify data for existing assembly and asset. """
     assembly = "hg38"
     asset = "idx_bt2"
-    c = RGC({CFG_GENOMES_KEY: {assembly: bind_to_assets({asset: old_data})},
+    c = RGC(entries={CFG_GENOMES_KEY: {assembly: bind_to_assets({asset: old_data})},
              CFG_FOLDER_KEY: tmpdir.strpath,
              CFG_SERVER_KEY: DEFAULT_SERVER})
 

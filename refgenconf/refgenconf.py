@@ -58,7 +58,7 @@ def _handle_sigint(filepath, rgc):
 class RefGenConf(yacman.YacAttMap):
     """ A sort of oracle of available reference genome assembly assets """
 
-    def __init__(self, entries=None, ro=True, wait_max=10):
+    def __init__(self, filepath=None, entries=None, ro=True, wait_max=10):
         """
         Create the config instance by with a filepath or key-value pairs.
 
@@ -71,7 +71,7 @@ class RefGenConf(yacman.YacAttMap):
             item is missing
         :raise ValueError: if entries is given as a string and is not a file
         """
-        super(RefGenConf, self).__init__(entries=entries, ro=ro, wait_max=wait_max)
+        super(RefGenConf, self).__init__(filepath=filepath, entries=entries, use_locks=True, ro=ro, wait_max=wait_max)
         genomes = self.setdefault(CFG_GENOMES_KEY, PXAM())
         if not isinstance(genomes, PXAM):
             if genomes:
@@ -906,7 +906,7 @@ def _assert_gat_exists(genomes, gname, aname=None, tname=None, allow_incomplete=
     :param str tname: third-level key to query -- tag name, e.g. default
     :raise MissingGenomeError: if the given key-value pair collection does not
         contain as a top-level key the given genome ID
-    :raise MissingAssetError: if the given key-value pair colelction does
+    :raise MissingAssetError: if the given key-value pair collection does
         contain the given genome ID, but that key's mapping doesn't contain
         the given asset name as a key
     :raise GenomeConfigFormatError: if it's discovered during the query that

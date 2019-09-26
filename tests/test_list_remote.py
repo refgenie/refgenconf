@@ -10,7 +10,7 @@ __email__ = "vreuter@virginia.edu"
 
 def test_list_remote(rgc, tmpdir):
     """ Verify expected behavior of remote genome/asset listing. """
-    new_rgc = RefGenConf({CFG_FOLDER_KEY: tmpdir.strpath,
+    new_rgc = RefGenConf(entries={CFG_FOLDER_KEY: tmpdir.strpath,
                           CFG_SERVER_KEY: DEFAULT_SERVER,
                           CFG_GENOMES_KEY: rgc[CFG_GENOMES_KEY]})
     print("NEW RGC KEYS: {}".format(list(new_rgc.keys())))

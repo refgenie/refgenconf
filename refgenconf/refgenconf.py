@@ -225,6 +225,7 @@ class RefGenConf(yacman.YacAttMap):
         if extant:
             msg += ". These paths exist: {}".format(extant)
         if strict_exists is True:
+            self.unlock()
             raise IOError(msg)
         else:
             warnings.warn(msg, RuntimeWarning)

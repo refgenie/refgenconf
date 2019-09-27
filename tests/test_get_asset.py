@@ -6,6 +6,7 @@ import pytest
 from refgenconf.exceptions import *
 from refgenconf.const import *
 from tests.conftest import CONF_DATA
+from shutil import rmtree
 
 
 class TestGetAsset:
@@ -48,3 +49,4 @@ class TestGetAsset:
         seek_key_value = tag_data[CFG_SEEK_KEYS_KEY][seek_key]
         pth = os.path.join(ro_rgc[CFG_FOLDER_KEY], gname, aname, tname, seek_key_value)
         assert pth == ro_rgc.get_asset(gname, aname, tname, seek_key)
+        rmtree(os.path.join("/tmp", gname))

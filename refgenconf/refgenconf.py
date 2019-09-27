@@ -433,7 +433,7 @@ class RefGenConf(yacman.YacAttMap):
             self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][r_data["item"]][CFG_ASSET_TAGS_KEY][r_data["tag"]]\
                 [relative_key] = updated_relatives
 
-    def pull_asset(self, genome, asset, tag, genome_config, unpack=True, force=None,
+    def pull_asset(self, genome, asset, tag, unpack=True, force=None,
                    get_json_url=lambda base, v, g, a: "{}/{}/asset/{}/{}".format(base, v, g, a),
                    build_signal_handler=_handle_sigint):
         """
@@ -442,7 +442,6 @@ class RefGenConf(yacman.YacAttMap):
         :param str genome: name of a reference genome assembly of interest
         :param str asset: name of particular asset to fetch
         :param str tag: name of particular tag to fetch
-        :param str genome_config: path to genome configuration file to update
         :param bool unpack: whether to unpack a tarball
         :param bool | NoneType force: how to handle case in which asset path
             already exists; null for prompt (on a per-asset basis), False to
@@ -559,10 +558,9 @@ class RefGenConf(yacman.YacAttMap):
             shutil.rmtree(tmpdir)
             if os.path.isfile(filepath):
                 os.remove(filepath)
-        _LOGGER.debug("Writing genome config file: {}".format(genome_config))
         self.update_tags(*gat, data={attr: archive_data[attr] for attr in ATTRS_COPY_PULL if attr in archive_data})
         self.set_default_pointer(*gat)
-        self.write(genome_config)
+        self.write()
         return asset, archive_data[CFG_ASSET_PATH_KEY]
 
     def update_relatives_assets(self, genome, asset, tag=None, data=None, children=False):

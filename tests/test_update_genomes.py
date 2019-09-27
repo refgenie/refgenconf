@@ -20,7 +20,7 @@ def rgc(tmpdir):
     """ Provide an RGC instance; avoid disk read/write and stay in memory. """
     return RGC(entries={CFG_GENOMES_KEY: dict(CONF_DATA),
                 CFG_FOLDER_KEY: tmpdir.strpath,
-                CFG_SERVER_KEY: DEFAULT_SERVER})
+                CFG_SERVER_KEY: "http://staging.refgenomes.databio.org/"})
 
 
 @pytest.mark.parametrize("assembly", ["dm3"])

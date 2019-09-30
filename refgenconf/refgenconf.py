@@ -412,8 +412,8 @@ class RefGenConf(yacman.YacAttMap):
             try:
                 self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][r_data["item"]][CFG_ASSET_TAGS_KEY][r_data["tag"]]
             except KeyError:
-                _LOGGER.error("The {} asset of '{}/{}' does not exist: {}".
-                              format("child" if update_children else "parent", genome, asset, r))
+                _LOGGER.warning("The {} asset of '{}/{}' does not exist: {}".
+                                format("parent" if update_children else "child", genome, asset, r))
                 continue
             updated_relatives = []
             if relative_key in \

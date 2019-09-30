@@ -50,7 +50,6 @@ def _handle_sigint(filepath, rgc):
             _LOGGER.debug("'{}' not found, can't remove".format(filepath))
         else:
             _LOGGER.info("Incomplete file '{}' was removed".format(filepath))
-        rgc.unlock()
         sys.exit(0)
     return handle
 
@@ -58,20 +57,20 @@ def _handle_sigint(filepath, rgc):
 class RefGenConf(yacman.YacAttMap):
     """ A sort of oracle of available reference genome assembly assets """
 
-    def __init__(self, filepath=None, entries=None, ro=True, wait_max=10):
+    def __init__(self, filepath=None, entries=None, writable=False, wait_max=10):
         """
         Create the config instance by with a filepath or key-value pairs.
 
-        :param str | Iterable[(str, object)] | Mapping[str, object] entries:
+        :param str filepath: a path to the YAML file to read
+        :param Iterable[(str, object)] | Mapping[str, object] entries:
             config filepath or collection of key-value pairs
-        :param bool ro: logical indicating whether the object should be created in read-only mode.
-            This is crucial for situations when two processes may be writing to the same file.
+        :param bool writable: whether to create the object with write capabilities
         :param int wait_max: how long to wait for creating an object when the file that data will be read from is locked
         :raise refgenconf.MissingConfigDataError: if a required configuration
             item is missing
         :raise ValueError: if entries is given as a string and is not a file
         """
-        super(RefGenConf, self).__init__(filepath=filepath, entries=entries, use_locks=True, ro=ro, wait_max=wait_max)
+        super(RefGenConf, self).__init__(filepath=filepath, entries=entries, writable=writable, wait_max=wait_max)
         genomes = self.setdefault(CFG_GENOMES_KEY, PXAM())
         if not isinstance(genomes, PXAM):
             if genomes:
@@ -225,7 +224,6 @@ class RefGenConf(yacman.YacAttMap):
         if extant:
             msg += ". These paths exist: {}".format(extant)
         if strict_exists is True:
-            self.unlock()
             raise IOError(msg)
         else:
             warnings.warn(msg, RuntimeWarning)

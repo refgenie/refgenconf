@@ -110,7 +110,8 @@ def get_get_url(genome, asset, base=URL_BASE):
         based on reference genome assembly ID, asset name, and one unused
         positional argument
     """
-    return (lambda _, v, g, a: "{base}/{g}/{fn}".format(base=base, v=API_VERSION, g=genome, fn=a + REMOTE_ASSETS[g][asset]))
+    return lambda _, v, g, a: "{base}/{g}/{fn}".\
+        format(base=base, v=API_VERSION, g=genome, fn=a + REMOTE_ASSETS[g][asset])
 
 
 @pytest.fixture(scope="session")
@@ -137,12 +138,12 @@ def rgc(made_genome_config_file):
 
 @pytest.fixture
 def my_rgc(cfg_file):
-    return RefGenConf(filepath=cfg_file, ro=False)
+    return RefGenConf(filepath=cfg_file, writable=True)
 
 
 @pytest.fixture
 def ro_rgc(cfg_file):
-    return RefGenConf(filepath=cfg_file, ro=True)
+    return RefGenConf(filepath=cfg_file, writable=False)
 
 
 @pytest.fixture

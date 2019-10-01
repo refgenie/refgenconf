@@ -694,7 +694,7 @@ class RefGenConf(yacman.YacAttMap):
                     _del_if_empty(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset], CFG_ASSET_TAGS_KEY,
                                   [self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY], asset])
                     _del_if_empty(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY], asset)
-                    _del_if_empty(self[CFG_GENOMES_KEY][genome], CFG_ASSETS_KEY)
+                    _del_if_empty(self[CFG_GENOMES_KEY][genome], CFG_ASSETS_KEY, [self[CFG_GENOMES_KEY], genome])
                     _del_if_empty(self[CFG_GENOMES_KEY], genome)
                     try:
                         default_tag = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_DEFAULT_TAG_KEY]

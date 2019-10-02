@@ -151,3 +151,14 @@ def _parse_single_pull(result):
               format(result))
         raise
     return k, v
+
+
+@pytest.mark.parametrize(["gname", "aname", "tname"],
+                         [("human_repeats", "bowtie2_index", "default"), ("rCRSd", "bwa_index", "default")])
+def test_parent_asset_mismatch(my_rgc, gname, aname, tname):
+    """ Test that an exception is raised when remote and local parent checksums do not match on pull"""
+    with mock.patch("refgenconf.refgenconf.query_yes_no", return_value=True):
+        my_rgc.pull_asset(gname, "fasta", tname)
+    my_rgc[CFG_GENOMES_KEY][gname][CFG_ASSETS_KEY]["fasta"][CFG_ASSET_TAGS_KEY][tname][CFG_ASSET_CHECKSUM_KEY] = "wrong"
+    with pytest.raises(RefgenconfError):
+        my_rgc.pull_asset(gname, aname, tname)

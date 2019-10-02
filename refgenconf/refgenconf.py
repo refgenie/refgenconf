@@ -799,7 +799,7 @@ class RefGenConf(yacman.YacAttMap):
                     "because the remote version was not built from the same parent asset you have locally."\
                     .format(asset, local_digest, remote_digest)
                 _LOGGER.error(msg)
-                raise KeyError(msg)
+                raise RefgenconfError(msg)
 
 
 class DownloadProgressBar(tqdm):

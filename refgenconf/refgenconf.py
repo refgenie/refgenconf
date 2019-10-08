@@ -328,7 +328,7 @@ class RefGenConf(yacman.YacAttMap):
             else ", ".join(_select_genomes(sorted(self[CFG_GENOMES_KEY].keys(), key=order), genome))
         return genomes_str, self.assets_str(genome=genome, order=order)
 
-    def list_remote(self, get_url=lambda rgc, v: "{}/{}/assets".format(rgc.genome_server, v), genome=None, order=None):
+    def list_remote(self, genome=None, order=None, get_url=lambda server, id: construct_request_url(server, id)):
         """
         List genomes and assets available remotely.
 
@@ -339,7 +339,7 @@ class RefGenConf(yacman.YacAttMap):
             names for sort
         :return str, str: text reps of remotely available genomes and assets
         """
-        url = get_url(self, API_VERSION)
+        url = get_url(self.genome_server, API_ID_ASSETS)
         _LOGGER.info("Querying available assets from server: {}".format(url))
         genomes, assets = _list_remote(url, genome, order)
         return genomes, assets
@@ -433,7 +433,7 @@ class RefGenConf(yacman.YacAttMap):
                 [relative_key] = updated_relatives
 
     def pull_asset(self, genome, asset, tag, unpack=True, force=None,
-                   get_json_url=lambda base, v, g, a: "{}/{}/asset/{}/{}".format(base, v, g, a),
+                   get_json_url=lambda server, id: construct_request_url(server, id),
                    build_signal_handler=_handle_sigint):
         """
         Download and possibly unpack one or more assets for a given ref gen.
@@ -465,14 +465,13 @@ class RefGenConf(yacman.YacAttMap):
         def raise_unpack_error():
             raise NotImplementedError("Option to not extract tarballs is not yet supported.")
 
-        tag = _download_json(get_json_url(self.genome_server, API_VERSION, genome, asset) + "/default_tag") \
+        tag = _download_json(get_json_url(self.genome_server, API_ID_DEFAULT_TAG).format(genome=genome, asset=asset)) \
             if tag is None else tag
         _LOGGER.debug("Determined tag: '{}'".format(tag))
         unpack or raise_unpack_error()
 
-        url_attrs = get_json_url(self.genome_server, API_VERSION, genome, asset)
-        url_archive = get_json_url(self.genome_server, API_VERSION, genome, asset) + "/archive"
-
+        url_attrs = get_json_url(self.genome_server, API_ID_ASSET_ATTRS).format(genome=genome, asset=asset)
+        url_archive = get_json_url(self.genome_server, API_ID_ARCHIVE).format(genome=genome, asset=asset)
         archive_data = _download_json(url_attrs, params={"tag": tag})
 
         if sys.version_info[0] == 2:
@@ -1064,7 +1063,18 @@ def get_tag_seek_keys(tag):
     return [s for s in tag[CFG_SEEK_KEYS_KEY]] if CFG_SEEK_KEYS_KEY in tag else None
 
 
-def get_sever_endpoints_mapping(url):
+def construct_request_url(server_url, operation_id):
+    """
+    Create a request URL based on a openAPI description
+
+    :param str server_url: server URL
+    :param str operation_id: the operationId of the endpoint
+    :return str: a complete URL for the request
+    """
+    return server_url + _get_sever_endpoints_mapping(server_url)[operation_id]
+
+
+def _get_sever_endpoints_mapping(url):
     """
     Establishes the API with the server using operationId field in the openAPI JSON description
 
@@ -1075,7 +1085,7 @@ def get_sever_endpoints_mapping(url):
 
 
 def _map_paths_by_id(json_dict):
-    # check the required input dict characteristics to perform construct the mapping
+    # check the required input dict characteristics to construct the mapping
     if "openapi" not in json_dict or not isinstance(json_dict["openapi"], str) \
             or "paths" not in json_dict or not isinstance(json_dict["paths"], dict):
         raise ValueError("The provided mapping is not a valid representation of a JSON openAPI description")

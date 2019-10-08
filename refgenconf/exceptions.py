@@ -47,7 +47,7 @@ class MissingSeekKeyError(RefgenconfError):
 
 
 class MissingRecipeError(RefgenconfError):
-    """ Error type for request of an unavailable asset seek key. """
+    """ Error type for request of an unavailable recipe. """
     pass
 
 

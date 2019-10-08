@@ -1062,3 +1062,21 @@ def get_tag_seek_keys(tag):
     :return list: tag seek keys
     """
     return [s for s in tag[CFG_SEEK_KEYS_KEY]] if CFG_SEEK_KEYS_KEY in tag else None
+
+
+def get_sever_endpoints_mapping(url):
+    """
+    Establishes the API with the server using operationId field in the openAPI JSON description
+
+    :param str url: server URL
+    :return dict: endpoints mapped by their operationIds
+    """
+    return _map_paths_by_id(_download_json(url + "/openapi.json"))
+
+
+def _map_paths_by_id(json_dict):
+    # check the required input dict characteristics to perform construct the mapping
+    if "openapi" not in json_dict or not isinstance(json_dict["openapi"], str) \
+            or "paths" not in json_dict or not isinstance(json_dict["paths"], dict):
+        raise ValueError("The provided mapping is not a valid representation of a JSON openAPI description")
+    return {values["get"]["operationId"]: endpoint for endpoint, values in json_dict["paths"].items()}

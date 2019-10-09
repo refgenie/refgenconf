@@ -1086,7 +1086,8 @@ def _get_sever_endpoints_mapping(url):
     :param str url: server URL
     :return dict: endpoints mapped by their operationIds
     """
-    return _map_paths_by_id(_download_json(url + "/openapi.json"))
+    json = _download_json(url + "/openapi.json")
+    return _map_paths_by_id(asciify_dict(json) if sys.version_info[0] == 2 else json)
 
 
 def _map_paths_by_id(json_dict):

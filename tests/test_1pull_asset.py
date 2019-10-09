@@ -12,8 +12,6 @@ else:
     from urllib.error import HTTPError
 import pytest
 from yacman import YacAttMap
-from tests.conftest import REMOTE_ASSETS, REQUESTS, \
-    get_get_url
 import refgenconf
 from refgenconf.const import *
 from refgenconf.exceptions import *
@@ -46,49 +44,12 @@ def test_pull_asset_updates_genome_config(my_rgc, gname, aname, tname):
         my_rgc.pull_asset(*args)
     my_rgc.get_asset(*args)
 
-#
-# @pytest.mark.parametrize(["genome", "asset", "tag"], REQUESTS)
-# @pytest.mark.parametrize("error", [ConnectionRefusedError, HTTPError, DownloadJsonError])
-# def test_pull_asset_pull_error(rgc, genome, asset, tag, remove_genome_folder, error):
-#     """ Error pulling asset is exceptional. """
-#     args = (genome, asset, tag)
-#     kwargs = {"get_json_url": get_get_url(genome, asset)}
-#     if error is DownloadJsonError:
-#         def raise_error(*args, **kwargs):
-#             raise DownloadJsonError(None)
-#         with mock.patch("refgenconf.refgenconf._download_json",
-#                         side_effect=raise_error), \
-#              pytest.raises(DownloadJsonError):
-#             rgc.pull_asset(*args, **kwargs)
-#     else:
-#         class SubErr(error):
-#             def __init__(self):
-#                 pass
-#
-#             def __str__(self):
-#                 return self.__class__.__name__
-#
-#         def raise_error(*args, **kwargs):
-#             raise SubErr()
-#         with mock.patch.object(
-#                 refgenconf.refgenconf, "_download_json",
-#                 return_value=YacAttMap({CFG_ARCHIVE_CHECKSUM_KEY: "not-a-checksum",
-#                                         CFG_ARCHIVE_SIZE_KEY: "0 GB",
-#                                         CFG_ASSET_PARENTS_KEY: []})), \
-#              mock.patch(DOWNLOAD_FUNCTION, side_effect=raise_error):
-#             res = rgc.pull_asset(*args, **kwargs)
-#             key, val = _parse_single_pull(res)
-#             assert asset == key
-#             assert val is None
-#
 
-# @pytest.mark.parametrize(["genome", "asset"], [
-#     (g, a) for g in REMOTE_ASSETS for a in [None, 1, -0.1]])
-# def test_pull_asset_illegal_asset_name(
-#         rgc, genome, asset, remove_genome_folder):
-#     """ TypeError occurs if asset argument is not iterable. """
-#     with pytest.raises(TypeError):
-#         rgc.pull_asset(genome, asset, get_json_url=get_get_url(genome, asset))
+@pytest.mark.parametrize(["gname", "aname"],[("human_repeats", 1), ("mouse_chrM2x", None)])
+def test_pull_asset_illegal_asset_name(rgc, gname, aname):
+    """ TypeError occurs if asset argument is not iterable. """
+    with pytest.raises(TypeError):
+        rgc.pull_asset(gname, aname)
 
 @pytest.mark.parametrize(["gname", "aname", "tname"],
                          [("human_repeats", "bowtie2_index", "default"), ("mouse_chrM2x", "bwa_index", "default")])

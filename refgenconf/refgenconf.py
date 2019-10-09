@@ -778,9 +778,14 @@ class RefGenConf(yacman.YacAttMap):
         remote_asset_data = prp(remote_asset_name)
         asset = remote_asset_data["item"]
         tag = remote_asset_data["tag"]
-        asset_digest_url = "{}/{}/asset/{}/{}/{}/asset_digest".\
-            format(self.genome_server, API_VERSION, genome, asset, tag)
-        remote_digest = _download_json(asset_digest_url)
+        asset_digest_url = construct_request_url(self.genome_server, API_ID_DIGEST).\
+            format(genome=genome, asset=asset, tag=tag)
+        try:
+            remote_digest = _download_json(asset_digest_url)
+        except DownloadJsonError:
+            _LOGGER.warning("Parent asset ({}/{}:{}) not found on the server. The asset provenance was not verified.".
+                            format(genome, asset, tag))
+            return
         try:
             # we need to allow for missing seek_keys section so that the digest is respected even from the previously
             # populated just asset_digest metadata from the server

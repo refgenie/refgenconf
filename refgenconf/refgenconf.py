@@ -273,7 +273,7 @@ class RefGenConf(yacman.YacAttMap):
         :param str tag: name of the particular asset tag to point to by default
         :param bool force: whether the default tag change should be forced (even if it exists)
         """
-        _assert_gat_exists(self[CFG_GENOMES_KEY], genome, asset)
+        _assert_gat_exists(self[CFG_GENOMES_KEY], genome, asset, tag)
         if CFG_ASSET_DEFAULT_TAG_KEY not in self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset] or \
                 len(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_DEFAULT_TAG_KEY]) == 0 or force:
             self.update_assets(genome, asset, {CFG_ASSET_DEFAULT_TAG_KEY: tag})

@@ -808,7 +808,7 @@ class RefGenConf(yacman.YacAttMap):
                 _LOGGER.error(msg)
                 raise RefgenconfError(msg)
         finally:
-            self.update_relatives_assets(genome, asset, tag, [child_name])
+            self.update_relatives_assets(genome, asset, tag, [child_name], children=True)
 
 
 class DownloadProgressBar(tqdm):

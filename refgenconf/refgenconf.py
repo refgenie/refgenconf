@@ -503,7 +503,8 @@ class RefGenConf(yacman.YacAttMap):
                 msg_overwrite()
 
         # check asset digests local-server match for each parent
-        [self._check_asset_digest(genome, x, "{}:{}".format(asset, tag))
+        # and update parents' children list with the asset that is about to be pulled
+        [self._chk_digest_update_child(genome, x, "{}:{}".format(asset, tag))
          for x in archive_data[CFG_ASSET_PARENTS_KEY] if CFG_ASSET_PARENTS_KEY in archive_data]
 
         bundle_name = '{}/{}:{}'.format(*gat)
@@ -766,15 +767,16 @@ class RefGenConf(yacman.YacAttMap):
         assets = sorted(genomes.keys(), key=order)
         return OrderedDict([(a, sorted(genomes[a], key=order)) for a in assets])
 
-    def _check_asset_digest(self, genome, remote_asset_name, child_name):
+    def _chk_digest_update_child(self, genome, remote_asset_name, child_name):
         """
-        Check local asset digest against the remote one. In case the local asset does not exist,
-        the config is populated with the remote asset digest data
+        Check local asset digest against the remote one and populate children of the asset with the provided asset:tag.
+
+        In case the local asset does not exist, the config is populated with the remote asset digest and children data
 
         :param str genome: name of the genome to check the asset digests for
         :param str remote_asset_name: asset and tag names, formatted like: asset:tag
         :param str child_name: name to be appended to the children of the parent
-        :raise KeyError: if the local digest does not match its remote counterpart
+        :raise RefgenconfError: if the local digest does not match its remote counterpart
         """
         remote_asset_data = prp(remote_asset_name)
         asset = remote_asset_data["item"]
@@ -806,7 +808,7 @@ class RefGenConf(yacman.YacAttMap):
                 _LOGGER.error(msg)
                 raise RefgenconfError(msg)
         finally:
-            self.update_relatives_assets(genome, asset, tag, [child_name], children=True)
+            self.update_relatives_assets(genome, asset, tag, [child_name])
 
 
 class DownloadProgressBar(tqdm):

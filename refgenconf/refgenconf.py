@@ -244,8 +244,8 @@ class RefGenConf(yacman.YacAttMap):
         """
         try:
             _assert_gat_exists(self[CFG_GENOMES_KEY], genome, asset)
-        except Exception as e:
-            _LOGGER.info("{}: using '{}' as the default tag".format(e.__class__.__name__, DEFAULT_TAG))
+        except RefgenconfError:
+            _LOGGER.info("Using '{}' as the default tag for '{}/{}'".format(DEFAULT_TAG, genome, asset))
             return DEFAULT_TAG
         try:
             return self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_DEFAULT_TAG_KEY]

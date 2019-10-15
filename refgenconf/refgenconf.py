@@ -364,8 +364,9 @@ class RefGenConf(yacman.YacAttMap):
         _assert_gat_exists(self[CFG_GENOMES_KEY], genome, asset, tag)
         asset_mapping = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]
         if tag is None:
-            raise ValueError("You must specify the tag of the that you want to assign a new one to. Currently defined "
-                             "tags are: {}".format(", ".join(get_asset_tags(asset_mapping))))
+            raise ValueError("You must explicitly specify the tag of the asset "
+                             "you want to reassign. \nCurrently defined "
+                             "tags for '{}/{}' are: {}".format(genome, asset,", ".join(get_asset_tags(asset_mapping))))
         if new_tag in asset_mapping[CFG_ASSET_TAGS_KEY]:
             if not query_yes_no("You already have a '{}' asset tagged as '{}', do you wish to override?".
                                         format(asset, new_tag)):

@@ -1082,10 +1082,10 @@ def construct_request_url(server_url, operation_id):
     :param str operation_id: the operationId of the endpoint
     :return str: a complete URL for the request
     """
-    return server_url + _get_sever_endpoints_mapping(server_url)[operation_id]
+    return server_url + _get_server_endpoints_mapping(server_url)[operation_id]
 
 
-def _get_sever_endpoints_mapping(url):
+def _get_server_endpoints_mapping(url):
     """
     Establishes the API with the server using operationId field in the openAPI JSON description
 

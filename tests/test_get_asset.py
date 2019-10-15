@@ -33,8 +33,7 @@ class TestGetAsset:
             ro_rgc.get_asset(gname, aname, check_exist=check_exist)
 
     @pytest.mark.parametrize(
-        ["gname", "aname", "tname"],
-        [("rCRSd", "fasta", "default"), ("human_repeats", "fasta", "default"), ("mouse_chrM2x", "fasta", "default")])
+        ["gname", "aname", "tname"], [("rCRSd", "fasta", "default"), ("mouse_chrM2x", "fasta", "default")])
     def test_result_correctness(self, ro_rgc, gname, aname, tname):
         """ The FASTA file asset is returned  when fasta asset is requested, not the entire dir """
         assert os.path.join(ro_rgc[CFG_FOLDER_KEY], gname, aname, tname) != ro_rgc.get_asset(gname, aname, tname)
@@ -42,7 +41,6 @@ class TestGetAsset:
     @pytest.mark.parametrize(
         ["gname", "aname", "tname", "seek_key"],
         [("rCRSd", "fasta", "default", "fai"),
-         ("human_repeats", "fasta", "default", "fai"),
          ("mouse_chrM2x", "fasta", "default", "fai")])
     def test_result_correctness_seek_keys(self, ro_rgc, gname, aname, tname, seek_key):
         tag_data = ro_rgc[CFG_GENOMES_KEY][gname][CFG_ASSETS_KEY][aname][CFG_ASSET_TAGS_KEY][tname]

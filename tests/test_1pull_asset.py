@@ -33,18 +33,6 @@ def test_no_unpack(rgc, genome, asset, tag):
         rgc.pull_asset(genome, asset, tag, unpack=False)
 
 
-@pytest.mark.parametrize(["gname", "aname", "tname"], [("rCRSd", "fasta", "default")])
-def test_pull_asset_updates_genome_config(my_rgc, gname, aname, tname):
-    args = [gname, aname, tname]
-    my_rgc.remove_assets(*args)
-    print(my_rgc)
-    with pytest.raises(RefgenconfError):
-        my_rgc.get_asset(*args)
-    with mock.patch("refgenconf.refgenconf.query_yes_no", return_value=True):
-        my_rgc.pull_asset(*args)
-    my_rgc.get_asset(*args)
-
-
 @pytest.mark.parametrize(["gname", "aname"],[("human_repeats", 1), ("mouse_chrM2x", None)])
 def test_pull_asset_illegal_asset_name(rgc, gname, aname):
     """ TypeError occurs if asset argument is not iterable. """
@@ -59,7 +47,7 @@ def test_negative_response_to_large_download_prompt(rgc, gname, aname, tname):
          mock.patch("refgenconf.refgenconf.query_yes_no", return_value=False):
         res = rgc.pull_asset(gname, aname, tname)
     key, val = _parse_single_pull(res)
-    assert aname == key
+    assert aname == key[1]
     assert val is None
 
 
@@ -84,7 +72,7 @@ def test_download_interruption(my_rgc, gname, aname, tname, caplog):
     assert "The download was interrupted" in r.msg
 
 
-@pytest.mark.parametrize(["gname", "aname", "tname"], [("human_repeats", "fasta", "default"), ("mouse_chrM2x", "fasta", "default")])
+@pytest.mark.parametrize(["gname", "aname", "tname"], [("rCRSd", "fasta", "default"), ("mouse_chrM2x", "fasta", "default")])
 def test_pull_asset(my_rgc, gname, aname, tname):
     with mock.patch("refgenconf.refgenconf.query_yes_no", return_value=True):
         print("\nPulling; genome: {}, asset: {}, tag: {}\n".format(gname, aname, tname))
@@ -102,12 +90,9 @@ def _parse_single_pull(result):
     return k, v
 
 
-@pytest.mark.parametrize(["gname", "aname", "tname"],
-                         [("human_repeats", "bowtie2_index", "default"), ("mouse_chrM2x", "bwa_index", "default")])
+@pytest.mark.parametrize(["gname", "aname", "tname"], [("mouse_chrM2x", "bwa_index", "default")])
 def test_parent_asset_mismatch(my_rgc, gname, aname, tname):
     """ Test that an exception is raised when remote and local parent checksums do not match on pull"""
-    with mock.patch("refgenconf.refgenconf.query_yes_no", return_value=True):
-        my_rgc.pull_asset(gname, "fasta", tname)
     my_rgc[CFG_GENOMES_KEY][gname][CFG_ASSETS_KEY]["fasta"][CFG_ASSET_TAGS_KEY][tname][CFG_ASSET_CHECKSUM_KEY] = "wrong"
-    with pytest.raises(RefgenconfError):
+    with pytest.raises(RemoteDigestMismatchError):
         my_rgc.pull_asset(gname, aname, tname)

@@ -41,7 +41,7 @@ _LOGGER = logging.getLogger(__name__)
 __all__ = ["RefGenConf"]
 
 
-def _handle_sigint(filepath, rgc):
+def _handle_sigint(filepath):
     def handle(sig, frame):
         _LOGGER.warning("\nThe download was interrupted: {}".format(filepath))
         try:
@@ -488,7 +488,7 @@ class RefGenConf(yacman.YacAttMap):
         if os.path.exists(tag_dir):
             def preserve():
                 _LOGGER.debug("Preserving existing: {}".format(tag_dir))
-                return asset, tag_dir
+                return gat, None
 
             def msg_overwrite():
                 _LOGGER.debug("Overwriting: {}".format(tag_dir))
@@ -504,16 +504,14 @@ class RefGenConf(yacman.YacAttMap):
                 msg_overwrite()
 
         # check asset digests local-server match for each parent
-        # and update parents' children list with the asset that is about to be pulled
-        [self._chk_digest_update_child(genome, x, "{}:{}".format(asset, tag))
-         for x in archive_data[CFG_ASSET_PARENTS_KEY] if CFG_ASSET_PARENTS_KEY in archive_data]
+        [self._chk_digest_if_avail(genome, x) for x in archive_data[CFG_ASSET_PARENTS_KEY] if CFG_ASSET_PARENTS_KEY in archive_data]
 
         bundle_name = '{}/{}:{}'.format(*gat)
         archsize = archive_data[CFG_ARCHIVE_SIZE_KEY]
-        _LOGGER.info("'{}' archive size: {}".format(bundle_name, archsize))
+        _LOGGER.debug("'{}' archive size: {}".format(bundle_name, archsize))
         if _is_large_archive(archsize) and not query_yes_no("Are you sure you want to download this large archive?"):
             _LOGGER.info("pull action aborted by user")
-            return asset, None
+            return gat, None
 
         if not os.path.exists(genome_dir_path):
             _LOGGER.debug("Creating directory: {}".format(genome_dir_path))
@@ -522,20 +520,20 @@ class RefGenConf(yacman.YacAttMap):
         # Download the file from `url` and save it locally under `filepath`:
         _LOGGER.info("Downloading URL: {}".format(url_archive))
         try:
-            signal.signal(signal.SIGINT, build_signal_handler(filepath, self))
+            signal.signal(signal.SIGINT, build_signal_handler(filepath))
             _download_url_progress(url_archive, filepath, bundle_name, params={"tag": tag})
         except HTTPError as e:
             _LOGGER.error("File not found on server: {}".format(e))
-            return asset, None
+            return gat, None
         except ConnectionRefusedError as e:
             _LOGGER.error(str(e))
             _LOGGER.error("Server {}/{} refused download. Check your internet settings".format(self.genome_server,
                                                                                                API_VERSION))
-            return asset, None
+            return gat, None
         except ContentTooShortError as e:
             _LOGGER.error(str(e))
             _LOGGER.error("'{}' download incomplete".format(bundle_name))
-            return asset, None
+            return gat, None
         else:
             _LOGGER.info("Download complete: {}".format(filepath))
 
@@ -543,7 +541,7 @@ class RefGenConf(yacman.YacAttMap):
         old_checksum = archive_data and archive_data.get(CFG_CHECKSUM_KEY)
         if old_checksum and new_checksum != old_checksum:
             _LOGGER.error("Checksum mismatch: ({}, {})".format(new_checksum, old_checksum))
-            return asset, None
+            return gat, None
         else:
             _LOGGER.debug("Matched checksum: '{}'".format(old_checksum))
         import tempfile
@@ -558,10 +556,7 @@ class RefGenConf(yacman.YacAttMap):
             shutil.rmtree(tmpdir)
             if os.path.isfile(filepath):
                 os.remove(filepath)
-        self.update_tags(*gat, data={attr: archive_data[attr] for attr in ATTRS_COPY_PULL if attr in archive_data})
-        self.set_default_pointer(*gat)
-        self.write()
-        return asset, archive_data[CFG_ASSET_PATH_KEY]
+        return gat, archive_data
 
     def update_relatives_assets(self, genome, asset, tag=None, data=None, children=False):
         """
@@ -768,7 +763,38 @@ class RefGenConf(yacman.YacAttMap):
         assets = sorted(genomes.keys(), key=order)
         return OrderedDict([(a, sorted(genomes[a], key=order)) for a in assets])
 
-    def _chk_digest_update_child(self, genome, remote_asset_name, child_name):
+    def _chk_digest_if_avail(self, genome, remote_asset_name):
+        """
+        Check local asset digest against the remote one and populate children of the asset with the provided asset:tag.
+
+        In case the local asset does not exist, the config is populated with the remote asset digest and children data
+
+        :param str genome: name of the genome to check the asset digests for
+        :param str remote_asset_name: asset and tag names, formatted like: asset:tag
+        :raise RefgenconfError: if the local digest does not match its remote counterpart
+        """
+        remote_asset_data = prp(remote_asset_name)
+        asset = remote_asset_data["item"]
+        tag = remote_asset_data["tag"]
+        asset_digest_url = construct_request_url(self.genome_server, API_ID_DIGEST).\
+            format(genome=genome, asset=asset, tag=tag)
+        try:
+            remote_digest = _download_json(asset_digest_url)
+        except DownloadJsonError:
+            _LOGGER.warning("Parent asset ({}/{}:{}) not found on the server. The asset provenance was not verified.".
+                            format(genome, asset, tag))
+            return
+        try:
+            local_digest = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY]\
+                [tag][CFG_ASSET_CHECKSUM_KEY]
+            if remote_digest != local_digest:
+                raise RemoteDigestMismatchError(asset, local_digest, remote_digest)
+        except KeyError:
+            _LOGGER.debug("Could not find '{}/{}:{}' digest. Digest for this parent will be populated "
+                          "with the server one after the pull".format(genome, asset, tag))
+            return
+
+    def chk_digest_update_child(self, genome, remote_asset_name, child_name):
         """
         Check local asset digest against the remote one and populate children of the asset with the provided asset:tag.
 
@@ -787,8 +813,6 @@ class RefGenConf(yacman.YacAttMap):
         try:
             remote_digest = _download_json(asset_digest_url)
         except DownloadJsonError:
-            _LOGGER.warning("Parent asset ({}/{}:{}) not found on the server. The asset provenance was not verified.".
-                            format(genome, asset, tag))
             return
         try:
             # we need to allow for missing seek_keys section so that the digest is respected even from the previously
@@ -802,12 +826,7 @@ class RefGenConf(yacman.YacAttMap):
             local_digest = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY]\
                 [tag][CFG_ASSET_CHECKSUM_KEY]
             if remote_digest != local_digest:
-                msg = "This asset is built from parent asset '{}', but for this parent, the remote does not "\
-                    "match your local asset (local: {}; remote: {}). Refgenie will not pull this asset "\
-                    "because the remote version was not built from the same parent asset you have locally."\
-                    .format(asset, local_digest, remote_digest)
-                _LOGGER.error(msg)
-                raise RefgenconfError(msg)
+                raise RemoteDigestMismatchError(asset, local_digest, remote_digest)
         finally:
             self.update_relatives_assets(genome, asset, tag, [child_name], children=True)
 

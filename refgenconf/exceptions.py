@@ -2,7 +2,7 @@
 
 import abc
 
-__all__ = ["DownloadJsonError", "GenomeConfigFormatError", "MissingAssetError",
+__all__ = ["DownloadJsonError", "GenomeConfigFormatError", "MissingAssetError", "MissingRecipeError",
            "MissingConfigDataError", "MissingGenomeError", "MissingSeekKeyError", "MissingTagError",
            "RefgenconfError", "UnboundEnvironmentVariablesError", "ConfigNotCompliantError"]
 
@@ -43,6 +43,11 @@ class MissingTagError(RefgenconfError):
 
 class MissingSeekKeyError(RefgenconfError):
     """ Error type for request of an unavailable asset seek key. """
+    pass
+
+
+class MissingRecipeError(RefgenconfError):
+    """ Error type for request of an unavailable recipe. """
     pass
 
 

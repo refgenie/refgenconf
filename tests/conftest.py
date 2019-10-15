@@ -99,7 +99,7 @@ def gencfg(temp_genome_config_file):
     return fp
 
 
-def get_get_url(genome, asset, base=URL_BASE):
+def get_get_url(base=URL_BASE):
     """
     Create 3-arg function that determines URL from genome and asset names.
 
@@ -110,8 +110,9 @@ def get_get_url(genome, asset, base=URL_BASE):
         based on reference genome assembly ID, asset name, and one unused
         positional argument
     """
-    return lambda _, v, g, a: "{base}/{g}/{fn}".\
-        format(base=base, v=API_VERSION, g=genome, fn=a + REMOTE_ASSETS[g][asset])
+    # return lambda _, v, g, a: "{base}/{g}/{fn}".\
+    #     format(base=base, v=API_VERSION, g=genome, fn=a + REMOTE_ASSETS[g][asset])
+    return lambda base: base + "/{genome}/{asset}.tgz"
 
 
 @pytest.fixture(scope="session")

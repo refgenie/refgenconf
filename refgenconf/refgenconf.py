@@ -273,7 +273,7 @@ class RefGenConf(yacman.YacAttMap):
         :param str tag: name of the particular asset tag to point to by default
         :param bool force: whether the default tag change should be forced (even if it exists)
         """
-        _assert_gat_exists(self[CFG_GENOMES_KEY], genome, asset)
+        _assert_gat_exists(self[CFG_GENOMES_KEY], genome, asset, tag)
         if CFG_ASSET_DEFAULT_TAG_KEY not in self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset] or \
                 len(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_DEFAULT_TAG_KEY]) == 0 or force:
             self.update_assets(genome, asset, {CFG_ASSET_DEFAULT_TAG_KEY: tag})
@@ -328,7 +328,7 @@ class RefGenConf(yacman.YacAttMap):
             else ", ".join(_select_genomes(sorted(self[CFG_GENOMES_KEY].keys(), key=order), genome))
         return genomes_str, self.assets_str(genome=genome, order=order)
 
-    def list_remote(self, get_url=lambda rgc, v: "{}/{}/assets".format(rgc.genome_server, v), genome=None, order=None):
+    def list_remote(self, genome=None, order=None, get_url=lambda server, id: construct_request_url(server, id)):
         """
         List genomes and assets available remotely.
 
@@ -339,7 +339,7 @@ class RefGenConf(yacman.YacAttMap):
             names for sort
         :return str, str: text reps of remotely available genomes and assets
         """
-        url = get_url(self, API_VERSION)
+        url = get_url(self.genome_server, API_ID_ASSETS)
         _LOGGER.info("Querying available assets from server: {}".format(url))
         genomes, assets = _list_remote(url, genome, order)
         return genomes, assets
@@ -434,7 +434,7 @@ class RefGenConf(yacman.YacAttMap):
                 [relative_key] = updated_relatives
 
     def pull_asset(self, genome, asset, tag, unpack=True, force=None,
-                   get_json_url=lambda base, v, g, a: "{}/{}/asset/{}/{}".format(base, v, g, a),
+                   get_json_url=lambda server, id: construct_request_url(server, id),
                    build_signal_handler=_handle_sigint):
         """
         Download and possibly unpack one or more assets for a given ref gen.
@@ -466,14 +466,13 @@ class RefGenConf(yacman.YacAttMap):
         def raise_unpack_error():
             raise NotImplementedError("Option to not extract tarballs is not yet supported.")
 
-        tag = _download_json(get_json_url(self.genome_server, API_VERSION, genome, asset) + "/default_tag") \
+        tag = _download_json(get_json_url(self.genome_server, API_ID_DEFAULT_TAG).format(genome=genome, asset=asset)) \
             if tag is None else tag
         _LOGGER.debug("Determined tag: '{}'".format(tag))
         unpack or raise_unpack_error()
 
-        url_attrs = get_json_url(self.genome_server, API_VERSION, genome, asset)
-        url_archive = get_json_url(self.genome_server, API_VERSION, genome, asset) + "/archive"
-
+        url_attrs = get_json_url(self.genome_server, API_ID_ASSET_ATTRS).format(genome=genome, asset=asset)
+        url_archive = get_json_url(self.genome_server, API_ID_ARCHIVE).format(genome=genome, asset=asset)
         archive_data = _download_json(url_attrs, params={"tag": tag})
 
         if sys.version_info[0] == 2:
@@ -505,8 +504,9 @@ class RefGenConf(yacman.YacAttMap):
                 msg_overwrite()
 
         # check asset digests local-server match for each parent
-        [self._check_asset_digest(genome, x) for x in archive_data[CFG_ASSET_PARENTS_KEY] if
-         CFG_ASSET_PARENTS_KEY in archive_data]
+        # and update parents' children list with the asset that is about to be pulled
+        [self._chk_digest_update_child(genome, x, "{}:{}".format(asset, tag))
+         for x in archive_data[CFG_ASSET_PARENTS_KEY] if CFG_ASSET_PARENTS_KEY in archive_data]
 
         bundle_name = '{}/{}:{}'.format(*gat)
         archsize = archive_data[CFG_ARCHIVE_SIZE_KEY]
@@ -768,24 +768,31 @@ class RefGenConf(yacman.YacAttMap):
         assets = sorted(genomes.keys(), key=order)
         return OrderedDict([(a, sorted(genomes[a], key=order)) for a in assets])
 
-    def _check_asset_digest(self, genome, remote_asset_name):
+    def _chk_digest_update_child(self, genome, remote_asset_name, child_name):
         """
-        Check local asset digest against the remote one. In case the local asset does not exist,
-        the config is populated with the remote asset digest data
+        Check local asset digest against the remote one and populate children of the asset with the provided asset:tag.
+
+        In case the local asset does not exist, the config is populated with the remote asset digest and children data
 
         :param str genome: name of the genome to check the asset digests for
         :param str remote_asset_name: asset and tag names, formatted like: asset:tag
-        :raise KeyError: if the local digest does not match its remote counterpart
+        :param str child_name: name to be appended to the children of the parent
+        :raise RefgenconfError: if the local digest does not match its remote counterpart
         """
         remote_asset_data = prp(remote_asset_name)
         asset = remote_asset_data["item"]
         tag = remote_asset_data["tag"]
-        asset_digest_url = "{}/{}/asset/{}/{}/{}/asset_digest".\
-            format(self.genome_server, API_VERSION, genome, asset, tag)
-        remote_digest = _download_json(asset_digest_url)
+        asset_digest_url = construct_request_url(self.genome_server, API_ID_DIGEST).\
+            format(genome=genome, asset=asset, tag=tag)
+        try:
+            remote_digest = _download_json(asset_digest_url)
+        except DownloadJsonError:
+            _LOGGER.warning("Parent asset ({}/{}:{}) not found on the server. The asset provenance was not verified.".
+                            format(genome, asset, tag))
+            return
         try:
             # we need to allow for missing seek_keys section so that the digest is respected even from the previously
-            # populated just asset_digest metadata from the server
+            # populated 'incomplete asset' from the server
             _assert_gat_exists(self[CFG_GENOMES_KEY], genome, asset, tag,
                                allow_incomplete=not self.is_asset_complete(genome, asset, tag))
         except (KeyError, MissingAssetError, MissingGenomeError, MissingSeekKeyError):
@@ -801,6 +808,8 @@ class RefGenConf(yacman.YacAttMap):
                     .format(asset, local_digest, remote_digest)
                 _LOGGER.error(msg)
                 raise RefgenconfError(msg)
+        finally:
+            self.update_relatives_assets(genome, asset, tag, [child_name], children=True)
 
 
 class DownloadProgressBar(tqdm):
@@ -1063,3 +1072,33 @@ def get_tag_seek_keys(tag):
     :return list: tag seek keys
     """
     return [s for s in tag[CFG_SEEK_KEYS_KEY]] if CFG_SEEK_KEYS_KEY in tag else None
+
+
+def construct_request_url(server_url, operation_id):
+    """
+    Create a request URL based on a openAPI description
+
+    :param str server_url: server URL
+    :param str operation_id: the operationId of the endpoint
+    :return str: a complete URL for the request
+    """
+    return server_url + _get_sever_endpoints_mapping(server_url)[operation_id]
+
+
+def _get_sever_endpoints_mapping(url):
+    """
+    Establishes the API with the server using operationId field in the openAPI JSON description
+
+    :param str url: server URL
+    :return dict: endpoints mapped by their operationIds
+    """
+    json = _download_json(url + "/openapi.json")
+    return _map_paths_by_id(asciify_dict(json) if sys.version_info[0] == 2 else json)
+
+
+def _map_paths_by_id(json_dict):
+    # check the required input dict characteristics to construct the mapping
+    if "openapi" not in json_dict or not isinstance(json_dict["openapi"], str) \
+            or "paths" not in json_dict or not isinstance(json_dict["paths"], dict):
+        raise ValueError("The provided mapping is not a valid representation of a JSON openAPI description")
+    return {values["get"]["operationId"]: endpoint for endpoint, values in json_dict["paths"].items()}

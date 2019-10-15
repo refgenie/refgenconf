@@ -538,7 +538,7 @@ class RefGenConf(yacman.YacAttMap):
             _LOGGER.info("Download complete: {}".format(filepath))
 
         new_checksum = checksum(filepath)
-        old_checksum = archive_data and archive_data.get(CFG_CHECKSUM_KEY)
+        old_checksum = archive_data and archive_data.get(CFG_ARCHIVE_CHECKSUM_KEY)
         if old_checksum and new_checksum != old_checksum:
             _LOGGER.error("Checksum mismatch: ({}, {})".format(new_checksum, old_checksum))
             return gat, None

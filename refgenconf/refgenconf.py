@@ -31,7 +31,7 @@ from tqdm import tqdm
 import yacman
 
 from .const import *
-from .helpers import unbound_env_vars, asciify_dict
+from .helpers import unbound_env_vars, asciify_json_dict
 from .exceptions import *
 
 
@@ -476,7 +476,7 @@ class RefGenConf(yacman.YacAttMap):
         archive_data = _download_json(url_attrs, params={"tag": tag})
 
         if sys.version_info[0] == 2:
-            archive_data = asciify_dict(archive_data)
+            archive_data = asciify_json_dict(archive_data)
         gat = [genome, asset, tag]
         # local directory that the asset data will be stored in
         tag_dir = os.path.dirname(self.filepath(*gat))
@@ -1093,7 +1093,7 @@ def _get_server_endpoints_mapping(url):
     :return dict: endpoints mapped by their operationIds
     """
     json = _download_json(url + "/openapi.json")
-    return _map_paths_by_id(asciify_dict(json) if sys.version_info[0] == 2 else json)
+    return _map_paths_by_id(asciify_json_dict(json) if sys.version_info[0] == 2 else json)
 
 
 def _map_paths_by_id(json_dict):

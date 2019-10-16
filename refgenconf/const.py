@@ -13,6 +13,13 @@ DEFAULT_SERVER = "http://refgenomes.databio.org"
 API_VERSION = "v2"
 DEFAULT_TAG = "default"
 
+
+TEMPLATE_RECIPE_JSON = "build_recipe_{}__{}.json"
+TEMPLATE_TARGET = "{}_{}__{}.flag"
+TEMPLATE_LOG = "build_log_{}__{}.md"
+
+FILENAME_TEMPLATES = ["TEMPLATE_RECIPE_JSON", "TEMPLATE_TARGET", "TEMPLATE_LOG"]
+
 # project-wide definition of the endpoint IDs. They are used to establish the way of communication between the server
 # and the client so that changes of endpoint function names OR endpoints themselves do not influence the connection
 CUSTOM_PFX = "custom_Id"
@@ -21,8 +28,12 @@ API_ID_ARCHIVE = CUSTOM_PFX + "_archive"
 API_ID_DEFAULT_TAG = CUSTOM_PFX + "_default_tag"
 API_ID_ASSET_ATTRS = CUSTOM_PFX + "_asset_attrs"
 API_ID_DIGEST = CUSTOM_PFX + "_asset_digest"
+API_ID_RECIPE = CUSTOM_PFX + "_asset_recipe"
+API_ID_LOG = CUSTOM_PFX + "_asset_log"
 
-API_IDS = ["API_ID_ASSETS", "API_ID_ARCHIVE", "API_ID_DEFAULT_TAG", "API_ID_ASSET_ATTRS", "API_ID_DIGEST"]
+API_IDS = [
+    "API_ID_ASSETS", "API_ID_ARCHIVE", "API_ID_DEFAULT_TAG", "API_ID_ASSET_ATTRS", "API_ID_DIGEST",
+    "API_ID_RECIPE", "API_ID_LOG"]
 
 CFG_FOLDER_KEY = "genome_folder"
 CFG_SERVER_KEY = "genome_server"
@@ -69,10 +80,9 @@ ATTRS_COPY_PULL = [CFG_ASSET_DESC_KEY, CFG_SEEK_KEYS_KEY, CFG_ASSET_PARENTS_KEY,
                    CFG_ASSET_CHECKSUM_KEY, CFG_TAG_DESC_KEY]
 REQ_TAG_ATTRS = [CFG_ASSET_PATH_KEY, CFG_SEEK_KEYS_KEY]
 
-__all__ = API_IDS + CFG_CONST + CFG_KEY_NAMES + ["DEFAULT_SERVER", "CFG_ASSET_DEFAULT_TAG_KEY", "CFG_KEY_NAMES",
-                                       "CFG_GENOME_DESC_KEY", "REQ_CFG_VERSION", "CFG_ASSETS_KEY",
-                                       "CFG_GENOME_ATTRS_KEYS", "REFGENIE_BY_CFG", "DEFAULT_TAG", "ATTRS_COPY_PULL",
-                                       "REQ_TAG_ATTRS", "API_VERSION", "CONF_STRUCTURE"]
+__all__ = ["DEFAULT_SERVER", "CFG_ASSET_DEFAULT_TAG_KEY", "CFG_KEY_NAMES", "CFG_GENOME_DESC_KEY", "REQ_CFG_VERSION",
+           "CFG_ASSETS_KEY", "CFG_GENOME_ATTRS_KEYS", "REFGENIE_BY_CFG", "DEFAULT_TAG", "ATTRS_COPY_PULL",
+           "REQ_TAG_ATTRS", "API_VERSION", "CONF_STRUCTURE"] + FILENAME_TEMPLATES + API_IDS + CFG_CONST + CFG_KEY_NAMES
 
 CONF_STRUCTURE = """
 # example genome configuration structure

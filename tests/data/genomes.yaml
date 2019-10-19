@@ -6,19 +6,10 @@ genomes:
     assets:
       fasta:
         tags:
-          test:
-            seek_keys:
-              fasta: rCRSd.fa
-              fai: rCRSd.fa.fai
-              chrom_sizes: rCRSd.chrom.sizes
-            asset_parents: []
-            asset_children: ['bowtie2_index:default']
-            asset_path: fasta
-            asset_digest: a3c46f201a3ce7831d85cf4a125aa334
           default:
             asset_children: ['star_index:default', 'bismark_bt1_index:default', 'bismark_bt2_index:default']
             asset_path: fasta
-            asset_digest: a3c46f201a3ce7831d85cf4a125aa334
+            asset_digest: 4eb430296bc02ed7e4006624f1d5ac53
             asset_parents: []
             seek_keys:
               fasta: rCRSd.fa
@@ -32,14 +23,14 @@ genomes:
               bowtie2_index: .
             asset_parents: ['fasta:test']
             asset_path: bowtie2_index
-            asset_digest: 0f9217d44264ae2188fcf8e469d2bb38
+            asset_digest: 1262e30d4a87db9365d501de8559b3b4
         default_tag: default
   mouse_chrM2x:
     assets:
       fasta:
         tags:
           default:
-            asset_digest: 05118abbf3538156a0c1897057be9884
+            asset_digest: 8dfe402f7d29d5b036dd8937119e4404
             seek_keys:
               fasta: mouse_chrM2x.fa
               fai: mouse_chrM2x.fa.fai
@@ -55,5 +46,5 @@ genomes:
               bowtie2_index: .
             asset_parents: ['fasta:default']
             asset_path: bowtie2_index
-            asset_digest: 4b26dbfd28a5c47109191dc56b8cd443
+            asset_digest: 738d82a0ff63864726c442b2276d06c0
         default_tag: default

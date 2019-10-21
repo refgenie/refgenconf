@@ -434,7 +434,7 @@ class RefGenConf(yacman.YacAttMap):
                 [relative_key] = updated_relatives
 
     def pull_asset(self, genome, asset, tag, unpack=True, force=None,
-                   get_json_url=lambda server, id: construct_request_url(server, id),
+                   get_json_url=lambda server, operation_id: construct_request_url(server, operation_id),
                    build_signal_handler=_handle_sigint):
         """
         Download and possibly unpack one or more assets for a given ref gen.
@@ -447,15 +447,14 @@ class RefGenConf(yacman.YacAttMap):
             already exists; null for prompt (on a per-asset basis), False to
             effectively auto-reply No to the prompt to replace existing file,
             and True to auto-replay Yes for existing asset replacement.
-        :param function(str, str, str) -> str get_json_url: how to build URL from
+        :param function(str, str) -> str get_json_url: how to build URL from
             genome server URL base, genome, and asset
-        :param function(str) -> str get_main_url: how to get archive URL from
-            main URL
         :param function(str) -> function build_signal_handler: how to create
             a signal handler to use during the download; the single argument
             to this function factory is the download filepath
-        :return a pair of asset name and folder name (key-value pair with which genome config file
-            is updated) if pull succeeds, else asset key and a null value.
+        :return a list of genome, asset, tag names and a key-value pair with
+            which genome config file should be updated if pull succeeds,
+             else asset key and a null value.
         :raise refgenconf.UnboundEnvironmentVariablesError: if genome folder
             path contains any env. var. that's unbound
         """

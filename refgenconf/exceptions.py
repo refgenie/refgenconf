@@ -2,9 +2,10 @@
 
 import abc
 
-__all__ = ["DownloadJsonError", "GenomeConfigFormatError", "MissingAssetError",
-           "MissingConfigDataError", "MissingGenomeError",
-           "RefgenconfError", "UnboundEnvironmentVariablesError", "ConfigNotCompliantError"]
+__all__ = ["DownloadJsonError", "GenomeConfigFormatError", "MissingAssetError", "MissingRecipeError",
+           "MissingConfigDataError", "MissingGenomeError", "MissingSeekKeyError", "MissingTagError",
+           "RefgenconfError", "UnboundEnvironmentVariablesError", "ConfigNotCompliantError",
+           "RemoteDigestMismatchError"]
 
 DOC_URL = "http://refgenie.databio.org/en/latest/genome_config/"
 
@@ -36,6 +37,21 @@ class MissingAssetError(RefgenconfError):
     pass
 
 
+class MissingTagError(RefgenconfError):
+    """ Error type for request of an unavailable asset tag. """
+    pass
+
+
+class MissingSeekKeyError(RefgenconfError):
+    """ Error type for request of an unavailable asset seek key. """
+    pass
+
+
+class MissingRecipeError(RefgenconfError):
+    """ Error type for request of an unavailable recipe. """
+    pass
+
+
 class MissingConfigDataError(RefgenconfError):
     """ Missing required configuration instance items """
     pass
@@ -54,3 +70,13 @@ class MissingGenomeError(RefgenconfError):
 class UnboundEnvironmentVariablesError(RefgenconfError):
     """ Use of environment variable that isn't bound to a value. """
     pass
+
+
+class RemoteDigestMismatchError(RefgenconfError):
+    """ Remote digest of the parent asset does not match its local counterpart """
+    def __init__(self, asset, local_digest, remote_digest):
+        msg = "This asset is built from parent asset '{}', but for this parent, the remote does not " \
+              "match your local asset (local: {}; remote: {}). Refgenie will not pull this asset " \
+              "because the remote version was not built from the same parent asset you have locally." \
+            .format(asset, local_digest, remote_digest)
+        super(RemoteDigestMismatchError, self).__init__(msg)

@@ -2,6 +2,20 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format. 
 
+## [0.5.0] - 2019-10-19
+
+### Added
+- systematic determination of `refgenieserver` API endpoint names
+- asset provenance assertion before pull
+- asset tagging support
+- asset relationship tracking
+- asset removal method
+
+### Changed
+- no config file updates after pull
+- config format; added sections for storing digests, tags, parent and children info
+
+
 ## [0.4.0] - 2019-07-02
 
 ### Added

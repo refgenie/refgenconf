@@ -1,73 +1,38 @@
 """ Basic RGC asset tests """
 
 from collections import OrderedDict
-from operator import itemgetter
 import pytest
-from refgenconf import CFG_ASSETS_KEY
-from tests.conftest import CONF_DATA, HG38_DATA, MM10_DATA, MITO_DATA
-
-__author__ = "Vince Reuter"
-__email__ = "vreuter@virginia.edu"
+__author__ = "Michal Stolarczyk"
+__email__ = "michal@virginia.edu"
 
 
-BT2_EXP = ["hg38", "mm10", "rCRSd"]
-BT1_EXP = ["rCRSd"]
-HISAT2_EXP = ["hg38"]
-BLACKLIST_EXP = ["mm10"]
-TSS_EXP = ["hg38"]
-GTF_EXP = ["hg38"]
-SORT_CONF_DATA = [(g, sorted(data[CFG_ASSETS_KEY].keys())) for g, data in
-                  sorted(CONF_DATA, key=itemgetter(0))]
+class AssetDictTest:
+    @pytest.mark.parametrize("gname", ["nonexistent", None])
+    def test_with_nonexistent_genome(self, ro_rgc, gname):
+        """ Verify asset dict is always returned, even if the requested genome does not exist """
+        assert isinstance(ro_rgc.assets_dict(genome=gname), OrderedDict)
+
+    @pytest.mark.parametrize("gname", ["nonexistent", None])
+    def test_length(self, ro_rgc, all_genomes, gname):
+        """ Verify asset dict is larger if nonexistent or no genome specified than ones that are
+        returned for a specific genome"""
+        for g in all_genomes:
+            assert len(ro_rgc.assets_dict(genome=gname)) > len(ro_rgc.assets_dict(genome=g))
+
+    def test_multiple_genomes(self, ro_rgc, all_genomes):
+        """ Verify asset dict works with multiple genomes and returns all of them """
+        assert sorted(ro_rgc.assets_dict(genome=all_genomes).keys()) == sorted(ro_rgc.assets_dict().keys())
 
 
-def _ord_exp_map(m):
-    return OrderedDict([(k, sorted(m[k])) for k in sorted(m.keys())])
+class ListAssetsByGenomeTest:
+    def test_returns_entire_mapping_when_no_genonome_specified(self, ro_rgc):
+        assert ro_rgc.list_assets_by_genome() == ro_rgc.assets_dict()
 
+    def test_returns_list(self, ro_rgc, all_genomes):
+        for g in all_genomes:
+            assert isinstance(ro_rgc.list_assets_by_genome(g), list)
 
-def test_assets_dict(rgc):
-    """ Verify mapping of genome name to assets key-value collection. """
-    exp = _ord_exp_map({g: list(data[CFG_ASSETS_KEY].keys()) for g, data in CONF_DATA})
-    assert exp == rgc.assets_dict()
-
-
-@pytest.mark.parametrize(
-    ["kwargs", "expected"],
-    [({}, "\n".join("  " + "{}: {}".format(g, ", ".join(assets))
-                    for g, assets in SORT_CONF_DATA)),
-     ({"offset_text": ""},
-      "\n".join("{}: {}".format(g, ", ".join(assets))
-                for g, assets in SORT_CONF_DATA)),
-     ({"asset_sep": ","},
-      "\n".join("  " + "{}: {}".format(g, ",".join(assets))
-                for g, assets in SORT_CONF_DATA)),
-     ({"genome_assets_delim": " -- "},
-      "\n".join("  " + "{} -- {}".format(g, ", ".join(assets))
-                for g, assets in SORT_CONF_DATA))])
-def test_assets_str(rgc, kwargs, expected):
-    """ Verify text representation of the configuration instance's assets. """
-    print("kwargs: {}".format(kwargs))
-    assert expected == rgc.assets_str(**kwargs)
-
-
-@pytest.mark.parametrize(["gname", "expected"], [
-    ("hg38", sorted([a for a, _ in HG38_DATA])),
-    ("mm10", sorted([a for a, _ in MM10_DATA])),
-    ("rCRSd", sorted([a for a, _ in MITO_DATA])),
-    (None, _ord_exp_map({g: list(data[CFG_ASSETS_KEY].keys())
-                         for g, data in CONF_DATA}))
-])
-def test_list_assets_by_genome(rgc, gname, expected):
-    """ Verify listing of asset name/key/type, possible for one/all genomes. """
-    assert expected == rgc.list_assets_by_genome(gname)
-
-
-@pytest.mark.parametrize(["asset", "expected"], [
-    (None, {"bowtie2": BT2_EXP, "bowtie": BT1_EXP,
-            "hisat2": HISAT2_EXP, "blacklist": BLACKLIST_EXP,
-            "tss_annotation": TSS_EXP, "gtf": GTF_EXP}),
-    ("bowtie2", BT2_EXP), ("bowtie", BT1_EXP), ("hisat2", HISAT2_EXP),
-    ("gtf", GTF_EXP), ("tss_annotation", TSS_EXP)
-])
-def test_list_genomes_by_asset(rgc, asset, expected):
-    """ Veerify listing of genomes by asset name/key/type. """
-    assert expected == rgc.list_genomes_by_asset(asset)
+    @pytest.mark.parametrize("gname", ["nonexistent", "genome"])
+    def test_exception_on_nonexistent_genome(self, ro_rgc, gname):
+        with pytest.raises(KeyError):
+            ro_rgc.list_assets_by_genome(genome=gname)

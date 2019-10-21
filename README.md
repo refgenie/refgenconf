@@ -5,4 +5,4 @@
 
 Configuration object for refgenie *et al.*
 
-Documentation for `refgenconf` can be found with the primary documentation for `refgenie`.
+Documentation for `refgenconf` can be found with the [primary documentation for refgenie](http://refgenie.databio.org).

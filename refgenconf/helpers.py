@@ -33,3 +33,8 @@ def unbound_env_vars(path):
     """
     parts = path.split(os.path.sep)
     return [p for p in parts if p.startswith("$") and not os.getenv(p)]
+
+
+def asciify_json_dict(json_dict):
+    from ubiquerg.collection import asciify_dict
+    return asciify_dict(json_dict)

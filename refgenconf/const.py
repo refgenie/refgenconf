@@ -9,7 +9,7 @@ but they're also integral to both refgenie and to refgenieserver.
 CFG_NAME = "genome configuration"
 CFG_ENV_VARS = ["REFGENIE"]
 CFG_CONST = ["CFG_NAME", "CFG_ENV_VARS"]
-DEFAULT_SERVER = "http://refgenomes.databio.org"
+DEFAULT_SERVER = ["http://refgenomes.databio.org"]
 API_VERSION = "v2"
 DEFAULT_TAG = "default"
 

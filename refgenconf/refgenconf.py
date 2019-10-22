@@ -97,7 +97,15 @@ class RefGenConf(yacman.YacAttMap):
                 else:
                     _LOGGER.debug("Config version is compliant: {}".format(version))
         try:
-            self[CFG_SERVER_KEY] = self[CFG_SERVER_KEY].rstrip("/")
+            #_LOGGER.info("JPS self[CFG_SERVER_KEY]: {}".format(self[CFG_SERVER_KEY]))  # JPS DEBUG
+            if isinstance(self[CFG_SERVER_KEY], list):
+                #_LOGGER.info("JPS is list()") # JPS DEBUG
+                tmp_list = [server_url.rstrip("/") for server_url in self[CFG_SERVER_KEY]]
+                self[CFG_SERVER_KEY] = tmp_list
+                #_LOGGER.info("JPS rstrip self[CFG_SERVER_KEY]: {}".format(self[CFG_SERVER_KEY]))  # JPS DEBUG
+            else:
+                self[CFG_SERVER_KEY] = self[CFG_SERVER_KEY].rstrip("/")
+                self[CFG_SERVER_KEY] = [self[CFG_SERVER_KEY]]
         except KeyError:
             raise MissingConfigDataError(CFG_SERVER_KEY)
 
@@ -344,6 +352,7 @@ class RefGenConf(yacman.YacAttMap):
         genomes, assets = _list_remote(url, genome, order)
         return genomes, assets
 
+
     def tag_asset(self, genome, asset, tag, new_tag):
         """
         Retags the asset selected by the tag with the new_tag.
@@ -466,97 +475,121 @@ class RefGenConf(yacman.YacAttMap):
         def raise_unpack_error():
             raise NotImplementedError("Option to not extract tarballs is not yet supported.")
 
-        tag = _download_json(get_json_url(self.genome_server, API_ID_DEFAULT_TAG).format(genome=genome, asset=asset)) \
-            if tag is None else tag
-        _LOGGER.debug("Determined tag: '{}'".format(tag))
-        unpack or raise_unpack_error()
+        # Expect list for following logic JPS DEBUG
+        #if not isinstance(self.genome_server, list):
+        #    self.genome_server = [self.genome_server]
+        #    _LOGGER.info("Should no longer arrive here?")  # JPS DEBUG
 
-        url_attrs = get_json_url(self.genome_server, API_ID_ASSET_ATTRS).format(genome=genome, asset=asset)
-        url_archive = get_json_url(self.genome_server, API_ID_ARCHIVE).format(genome=genome, asset=asset)
-        archive_data = _download_json(url_attrs, params={"tag": tag})
+        num_servers = 0
+        for server_url in self.genome_server:
+            num_servers += 1
+            #_LOGGER.info("self.genome_server: {}".format(self.genome_server))  # JPS DEBUG
+            #_LOGGER.info("server_url: {}".format(server_url))  # JPS DEBUG
+            try:
+                tag = _download_json(get_json_url(server_url, API_ID_DEFAULT_TAG).format(genome=genome, asset=asset)) \
+                    if tag is None else tag
+                _LOGGER.debug("Determined tag: '{}'".format(tag))
+                #_LOGGER.info("Determined tag: '{}'".format(tag))  # JPS DEBUG
+                unpack or raise_unpack_error()
+                #_LOGGER.info("self.genome_server before resetting it: {}".format(self.genome_server))  # JPS DEBUG
+                self.genome_server = server_url
+                #_LOGGER.info("self.genome_server after resetting it: {}".format(self.genome_server))  # JPS DEBUG
+            except DownloadJsonError:
+                _LOGGER.warning("Could not retrieve json from {}".format(server_url))  # JPS DEBUG
+                if num_servers == len(self.genome_server):
+                    _LOGGER.error("No servers [{}] responded to request for json".format(self.genome_server))  # JPS DEBUG
+                    return [genome, asset, tag], None
+                else:
+                    continue
 
-        if sys.version_info[0] == 2:
-            archive_data = asciify_json_dict(archive_data)
-        gat = [genome, asset, tag]
-        # local directory that the asset data will be stored in
-        tag_dir = os.path.dirname(self.filepath(*gat))
-        # local directory the downloaded archive will be temporarily saved in
-        genome_dir_path = os.path.join(self[CFG_FOLDER_KEY], genome)
-        # local path to the temporarily saved archive
-        filepath = os.path.join(genome_dir_path, asset + "__" + tag + ".tgz")
-        # check if the genome/asset:tag exists and get request user decision
-        if os.path.exists(tag_dir):
-            def preserve():
-                _LOGGER.debug("Preserving existing: {}".format(tag_dir))
-                return gat, None
+            url_attrs = get_json_url(self.genome_server, API_ID_ASSET_ATTRS).format(genome=genome, asset=asset)
+            url_archive = get_json_url(self.genome_server, API_ID_ARCHIVE).format(genome=genome, asset=asset)
+            archive_data = _download_json(url_attrs, params={"tag": tag})
 
-            def msg_overwrite():
-                _LOGGER.debug("Overwriting: {}".format(tag_dir))
-                shutil.rmtree(tag_dir)
-            if force is False:
-                return preserve()
-            elif force is None:
-                if not query_yes_no("Replace existing ({})?".format(tag_dir), "no"):
+            if sys.version_info[0] == 2:
+                archive_data = asciify_json_dict(archive_data)
+            gat = [genome, asset, tag]
+            # local directory that the asset data will be stored in
+            #_LOGGER.info("gat: '{}'".format(gat))  # JPS DEBUG
+            #_LOGGER.info("tag_dir: '{}'".format(os.path.dirname(self.filepath(*gat))))  # JPS DEBUG
+            tag_dir = os.path.dirname(self.filepath(*gat))
+            # local directory the downloaded archive will be temporarily saved in
+            genome_dir_path = os.path.join(self[CFG_FOLDER_KEY], genome)
+            # local path to the temporarily saved archive
+            filepath = os.path.join(genome_dir_path, asset + "__" + tag + ".tgz")
+            # check if the genome/asset:tag exists and get request user decision
+            if os.path.exists(tag_dir):
+                def preserve():
+                    _LOGGER.debug("Preserving existing: {}".format(tag_dir))
+                    return gat, None
+
+                def msg_overwrite():
+                    _LOGGER.debug("Overwriting: {}".format(tag_dir))
+                    shutil.rmtree(tag_dir)
+                if force is False:
                     return preserve()
+                elif force is None:
+                    if not query_yes_no("Replace existing ({})?".format(tag_dir), "no"):
+                        return preserve()
+                    else:
+                        msg_overwrite()
                 else:
                     msg_overwrite()
+
+            # check asset digests local-server match for each parent
+            [self._chk_digest_if_avail(genome, x) for x in archive_data[CFG_ASSET_PARENTS_KEY] if CFG_ASSET_PARENTS_KEY in archive_data]
+
+            bundle_name = '{}/{}:{}'.format(*gat)
+            archsize = archive_data[CFG_ARCHIVE_SIZE_KEY]
+            _LOGGER.debug("'{}' archive size: {}".format(bundle_name, archsize))
+            if _is_large_archive(archsize) and not query_yes_no("Are you sure you want to download this large archive?"):
+                _LOGGER.info("pull action aborted by user")
+                return gat, None
+
+            if not os.path.exists(genome_dir_path):
+                _LOGGER.debug("Creating directory: {}".format(genome_dir_path))
+                os.makedirs(genome_dir_path)
+
+            # Download the file from `url` and save it locally under `filepath`:
+            _LOGGER.info("Downloading URL: {}".format(url_archive))
+            try:
+                signal.signal(signal.SIGINT, build_signal_handler(filepath))
+                _download_url_progress(url_archive, filepath, bundle_name, params={"tag": tag})
+            except HTTPError as e:
+                _LOGGER.error("File not found on server: {}".format(e))  # JPS Add messaging here? and reboot loop
+                return gat, None
+            except ConnectionRefusedError as e:
+                _LOGGER.error(str(e))
+                _LOGGER.error("Server {}/{} refused download. Check your internet settings".format(server_url,
+                                                                                                   API_VERSION))
+                return gat, None
+            except ContentTooShortError as e:
+                _LOGGER.error(str(e))
+                _LOGGER.error("'{}' download incomplete".format(bundle_name))
+                return gat, None
             else:
-                msg_overwrite()
+                _LOGGER.info("Download complete: {}".format(filepath))
 
-        # check asset digests local-server match for each parent
-        [self._chk_digest_if_avail(genome, x) for x in archive_data[CFG_ASSET_PARENTS_KEY] if CFG_ASSET_PARENTS_KEY in archive_data]
-
-        bundle_name = '{}/{}:{}'.format(*gat)
-        archsize = archive_data[CFG_ARCHIVE_SIZE_KEY]
-        _LOGGER.debug("'{}' archive size: {}".format(bundle_name, archsize))
-        if _is_large_archive(archsize) and not query_yes_no("Are you sure you want to download this large archive?"):
-            _LOGGER.info("pull action aborted by user")
-            return gat, None
-
-        if not os.path.exists(genome_dir_path):
-            _LOGGER.debug("Creating directory: {}".format(genome_dir_path))
-            os.makedirs(genome_dir_path)
-
-        # Download the file from `url` and save it locally under `filepath`:
-        _LOGGER.info("Downloading URL: {}".format(url_archive))
-        try:
-            signal.signal(signal.SIGINT, build_signal_handler(filepath))
-            _download_url_progress(url_archive, filepath, bundle_name, params={"tag": tag})
-        except HTTPError as e:
-            _LOGGER.error("File not found on server: {}".format(e))
-            return gat, None
-        except ConnectionRefusedError as e:
-            _LOGGER.error(str(e))
-            _LOGGER.error("Server {}/{} refused download. Check your internet settings".format(self.genome_server,
-                                                                                               API_VERSION))
-            return gat, None
-        except ContentTooShortError as e:
-            _LOGGER.error(str(e))
-            _LOGGER.error("'{}' download incomplete".format(bundle_name))
-            return gat, None
-        else:
-            _LOGGER.info("Download complete: {}".format(filepath))
-
-        new_checksum = checksum(filepath)
-        old_checksum = archive_data and archive_data.get(CFG_ARCHIVE_CHECKSUM_KEY)
-        if old_checksum and new_checksum != old_checksum:
-            _LOGGER.error("Checksum mismatch: ({}, {})".format(new_checksum, old_checksum))
-            return gat, None
-        else:
-            _LOGGER.debug("Matched checksum: '{}'".format(old_checksum))
-        import tempfile
-        # successfully downloaded and moved tarball; untar it
-        if unpack and filepath.endswith(".tgz"):
-            _LOGGER.info("Extracting asset tarball and saving to: {}".format(tag_dir))
-            tmpdir = tempfile.mkdtemp(dir=genome_dir_path)  # TODO: use context manager here when we drop support for py2
-            untar(filepath, tmpdir)
-            # here we suspect the unarchived asset to be an asset-named directory with the asset data inside
-            # and we transfer it to the tag-named subdirectory
-            shutil.move(os.path.join(tmpdir, asset), tag_dir)
-            shutil.rmtree(tmpdir)
-            if os.path.isfile(filepath):
-                os.remove(filepath)
-        return gat, archive_data
+            new_checksum = checksum(filepath)
+            old_checksum = archive_data and archive_data.get(CFG_ARCHIVE_CHECKSUM_KEY)
+            if old_checksum and new_checksum != old_checksum:
+                _LOGGER.error("Checksum mismatch: ({}, {})".format(new_checksum, old_checksum))
+                return gat, None
+            else:
+                _LOGGER.debug("Matched checksum: '{}'".format(old_checksum))
+            import tempfile
+            # successfully downloaded and moved tarball; untar it
+            if unpack and filepath.endswith(".tgz"):
+                _LOGGER.info("Extracting asset tarball and saving to: {}".format(tag_dir))
+                tmpdir = tempfile.mkdtemp(dir=genome_dir_path)  # TODO: use context manager here when we drop support for py2
+                untar(filepath, tmpdir)
+                # here we suspect the unarchived asset to be an asset-named directory with the asset data inside
+                # and we transfer it to the tag-named subdirectory
+                shutil.move(os.path.join(tmpdir, asset), tag_dir)
+                shutil.rmtree(tmpdir)
+                if os.path.isfile(filepath):
+                    os.remove(filepath)
+            return gat, archive_data
 
     def update_relatives_assets(self, genome, asset, tag=None, data=None, children=False):
         """
@@ -808,27 +841,50 @@ class RefGenConf(yacman.YacAttMap):
         remote_asset_data = prp(remote_asset_name)
         asset = remote_asset_data["item"]
         tag = remote_asset_data["tag"]
-        asset_digest_url = construct_request_url(self.genome_server, API_ID_DIGEST).\
-            format(genome=genome, asset=asset, tag=tag)
-        try:
-            remote_digest = _download_json(asset_digest_url)
-        except DownloadJsonError:
-            return
-        try:
-            # we need to allow for missing seek_keys section so that the digest is respected even from the previously
-            # populated 'incomplete asset' from the server
-            _assert_gat_exists(self[CFG_GENOMES_KEY], genome, asset, tag,
-                               allow_incomplete=not self.is_asset_complete(genome, asset, tag))
-        except (KeyError, MissingAssetError, MissingGenomeError, MissingSeekKeyError):
-            self.update_tags(genome, asset, tag, {CFG_ASSET_CHECKSUM_KEY: remote_digest})
-            _LOGGER.info("Could not find '{}/{}:{}' digest. Populating with server data".format(genome, asset, tag))
-        else:
-            local_digest = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY]\
-                [tag][CFG_ASSET_CHECKSUM_KEY]
-            if remote_digest != local_digest:
-                raise RemoteDigestMismatchError(asset, local_digest, remote_digest)
-        finally:
-            self.update_relatives_assets(genome, asset, tag, [child_name], children=True)
+        #_LOGGER.info("self.genome_server in chk_digest_update_child: {}".format(self.genome_server))  # JPS DEBUG
+        # Expect list for following logic JPS DEBUG
+        #if not isinstance(self.genome_server, list):
+        #    self.genome_server = [self.genome_server]
+
+        num_servers = 0
+        bad_servers = []
+        for server_url in self.genome_server:
+            num_servers += 1
+            try:
+                asset_digest_url = construct_request_url(server_url, API_ID_DIGEST).\
+                    format(genome=genome, asset=asset, tag=tag)
+                #_LOGGER.info("self.genome_server before resetting it: {}".format(self.genome_server))  # JPS DEBUG
+                #self.genome_server = server_url
+                #_LOGGER.info("self.genome_server after resetting it: {}".format(self.genome_server))  # JPS DEBUG
+                # JPS TODO: Messaging for successful update?
+            except DownloadJsonError:
+                bad_servers.append(server_url)
+                #_LOGGER.warning("Could not update child digest from {}".format(server_url))  # JPS DEBUG
+                if num_servers == len(self.genome_server):
+                    _LOGGER.error("Could not download json file from the following server(s), {}".format(bad_servers))  # JPS DEBUG
+                    return
+                else:
+                    continue
+       
+            try:
+                remote_digest = _download_json(asset_digest_url)
+            except DownloadJsonError:
+                return
+            try:
+                # we need to allow for missing seek_keys section so that the digest is respected even from the previously
+                # populated 'incomplete asset' from the server
+                _assert_gat_exists(self[CFG_GENOMES_KEY], genome, asset, tag,
+                                   allow_incomplete=not self.is_asset_complete(genome, asset, tag))
+            except (KeyError, MissingAssetError, MissingGenomeError, MissingSeekKeyError):
+                self.update_tags(genome, asset, tag, {CFG_ASSET_CHECKSUM_KEY: remote_digest})
+                _LOGGER.info("Could not find '{}/{}:{}' digest. Populating with server data".format(genome, asset, tag))
+            else:
+                local_digest = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY]\
+                    [tag][CFG_ASSET_CHECKSUM_KEY]
+                if remote_digest != local_digest:
+                    raise RemoteDigestMismatchError(asset, local_digest, remote_digest)
+            finally:
+                self.update_relatives_assets(genome, asset, tag, [child_name], children=True)
 
 
 class DownloadProgressBar(tqdm):
@@ -858,9 +914,19 @@ def _download_json(url, params=None):
     """
     import requests
     _LOGGER.debug("Downloading JSON data; querying URL: '{}'".format(url))
+    #_LOGGER.info("Downloading JSON data; querying URL: '{}'".format(url))  # JPS DEBUG
     resp = requests.get(url, params=params)
+    #_LOGGER.info("resp.content: '{}'".format(resp.content))  # JPS DEBUG
+    #_LOGGER.info("resp.text: '{}'".format(resp.text))  # JPS DEBUG
+    #_LOGGER.info("resp.status_code: '{}'".format(resp.status_code))  # JPS DEBUG
+    #resp_default = requests.get("http://staging.refgenomes.databio.org", params=params)  # DEBUG
+    #if resp_default.ok:
+    #    _LOGGER.info("resp_default: '{}'".format(resp_default))  # JPS DEBUG
+    #    _LOGGER.info("resp_default.json(): '{}'".format(resp_default.json()))  # JPS DEBUG
     if resp.ok:
         return resp.json()
+    elif resp.status_code == 404:
+        resp = None
     raise DownloadJsonError(resp)
 
 
@@ -1101,6 +1167,9 @@ def construct_request_url(server_url, operation_id):
     :param str operation_id: the operationId of the endpoint
     :return str: a complete URL for the request
     """
+    #mapping_value = _get_server_endpoints_mapping(server_url)[operation_id]  # JPS DEBUG
+    #_LOGGER.info("[operation_id] : {}".format(operation_id))  # JPS DEBUG
+    #_LOGGER.info("_get_server_endpoints_mapping(server_url)[operation_id] : {}".format(mapping_value))  # JPS DEBUG
     try:
         return server_url + _get_server_endpoints_mapping(server_url)[operation_id]
     except KeyError as e:

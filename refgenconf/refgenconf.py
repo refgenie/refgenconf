@@ -103,7 +103,7 @@ class RefGenConf(yacman.YacAttMap):
                 tmp_list = [server_url.rstrip("/") for server_url in self[CFG_SERVER_KEY]]
                 self[CFG_SERVER_KEY] = tmp_list
                 #_LOGGER.info("JPS rstrip self[CFG_SERVER_KEY]: {}".format(self[CFG_SERVER_KEY]))  # JPS DEBUG
-            else:
+            else:  # Logic in pull_asset expects a list, even for a single server
                 self[CFG_SERVER_KEY] = self[CFG_SERVER_KEY].rstrip("/")
                 self[CFG_SERVER_KEY] = [self[CFG_SERVER_KEY]]
         except KeyError:
@@ -479,7 +479,11 @@ class RefGenConf(yacman.YacAttMap):
         #    self.genome_server = [self.genome_server]
         #    _LOGGER.info("Should no longer arrive here?")  # JPS DEBUG
 
+        # JPS Do I pull this logic out into separate function that checks for good json?
         num_servers = 0
+        bad_servers = []
+        no_asset_json = []
+        server_list = self.genome_server
         for server_url in self.genome_server:
             num_servers += 1
             #_LOGGER.info("self.genome_server: {}".format(self.genome_server))  # JPS DEBUG
@@ -488,23 +492,52 @@ class RefGenConf(yacman.YacAttMap):
                 tag = _download_json(get_json_url(server_url, API_ID_DEFAULT_TAG).format(genome=genome, asset=asset)) \
                     if tag is None else tag
                 _LOGGER.debug("Determined tag: '{}'".format(tag))
-                #_LOGGER.info("Determined tag: '{}'".format(tag))  # JPS DEBUG
                 unpack or raise_unpack_error()
                 #_LOGGER.info("self.genome_server before resetting it: {}".format(self.genome_server))  # JPS DEBUG
                 self.genome_server = server_url
                 #_LOGGER.info("self.genome_server after resetting it: {}".format(self.genome_server))  # JPS DEBUG
             except DownloadJsonError:
                 _LOGGER.warning("Could not retrieve json from {}".format(server_url))  # JPS DEBUG
-                if num_servers == len(self.genome_server):
-                    _LOGGER.error("No servers [{}] responded to request for json".format(self.genome_server))  # JPS DEBUG
-                    return [genome, asset, tag], None
-                else:
-                    continue
+                # if num_servers == len(self.genome_server):
+                #     _LOGGER.error("Could not retrieve json file from the following server(s): {}".format(self.genome_server))  # JPS DEBUG
+                #     return [genome, asset, tag], None
+                # else:
+                #     continue
+                bad_servers.append(server_url)
+                #_LOGGER.warning("Could not list assets from {}".format(server_url))  # JPS DEBUG
+                continue
+            #_LOGGER.info("server_url: {}".format(server_url))  # JPS DEBUG
+            #_LOGGER.info("len(server_list): {}".format(len(server_list)))  # JPS DEBUG
+            #_LOGGER.info("server_list: {}".format(server_list))  # JPS DEBUG
+            #_LOGGER.info("num_servers: {}".format(num_servers))  # JPS DEBUG
+            #if num_servers == len(server_list):
+            #    _LOGGER.error("Could not retrieve json file from the following server(s): {}".format(bad_servers))  # JPS DEBUG
+                #return [genome, asset, tag], None
+            # if len(bad_servers) == len(self.genome_server):
+            #     return [genome, asset, tag], None
 
             url_attrs = get_json_url(self.genome_server, API_ID_ASSET_ATTRS).format(genome=genome, asset=asset)
             url_archive = get_json_url(self.genome_server, API_ID_ARCHIVE).format(genome=genome, asset=asset)
-            archive_data = _download_json(url_attrs, params={"tag": tag})
 
+            #_LOGGER.info("url_attrs: '{}'".format(url_attrs))  # JPS DEBUG
+            try:
+                archive_data = _download_json(url_attrs, params={"tag": tag})
+            except DownloadJsonError:
+                no_asset_json.append(server_url)
+                #_LOGGER.warning("Could not retrieve {} {} from the following server: {}".format(genome, asset, server_url))
+                #_LOGGER.info("len(server_list): {}".format(len(server_list)))  # JPS DEBUG
+                #_LOGGER.info("server_list: {}".format(server_list))  # JPS DEBUG
+                #_LOGGER.info("num_servers: {}".format(num_servers))  # JPS DEBUG
+                #if num_servers < len(server_list):
+                #    _LOGGER.warning("Checking next refgenieserver...")
+                #else:
+                if num_servers == len(server_list):
+                    _LOGGER.error("Could not retrieve {} {}'s json file from the following server(s): {}".format(genome, asset, no_asset_json))  # JPS DEBUG
+                    return [genome, asset, tag], None
+                continue
+
+            #_LOGGER.info("archive_data: {}".format(archive_data))  # JPS DEBUG
+            #if archive_data is not None:
             if sys.version_info[0] == 2:
                 archive_data = asciify_json_dict(archive_data)
             gat = [genome, asset, tag]
@@ -917,15 +950,19 @@ def _download_json(url, params=None):
     resp = requests.get(url, params=params)
     #_LOGGER.info("resp.content: '{}'".format(resp.content))  # JPS DEBUG
     #_LOGGER.info("resp.text: '{}'".format(resp.text))  # JPS DEBUG
-    #_LOGGER.info("resp.status_code: '{}'".format(resp.status_code))  # JPS DEBUG
+    #_LOGGER.info("resp.status_code, '{}', for {}".format(resp.status_code, url))  # JPS DEBUG
+    #_LOGGER.info("resp.url: '{}'".format(url))  # JPS DEBUG
     #resp_default = requests.get("http://staging.refgenomes.databio.org", params=params)  # DEBUG
     #if resp_default.ok:
     #    _LOGGER.info("resp_default: '{}'".format(resp_default))  # JPS DEBUG
-    #    _LOGGER.info("resp_default.json(): '{}'".format(resp_default.json()))  # JPS DEBUG
+    #_LOGGER.info("resp.json(): '{}'".format(resp.json()))  # JPS DEBUG
     if resp.ok:
         return resp.json()
     elif resp.status_code == 404:
+        #return None
         resp = None
+        # So right now, when this happens, it raises the error and that's that for the program.
+        # Instead, we want it to look for the asset on the next server... JPS
     raise DownloadJsonError(resp)
 
 

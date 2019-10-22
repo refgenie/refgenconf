@@ -24,9 +24,11 @@ with open("refgenconf/_version.py", 'r') as versionfile:
 try:
     import pypandoc
     long_description = pypandoc.convert_file('README.md', 'rst')
+    msg = "\033[032mPandoc conversion succeeded.\033[0m"
 except(IOError, ImportError, OSError):
-    print("Warning -- couldn't convert README to rst")
+    msg = "\033[0;31mWarning: pandoc conversion failed!\033[0m"
     long_description = open('README.md').read()
+
 
 setup(
     name=PACKAGE_NAME,
@@ -52,3 +54,5 @@ setup(
     author=u'Nathan Sheffield, Vince Reuter, Michal Stolarczyk',
     **extra
 )
+
+print(msg)

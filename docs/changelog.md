@@ -2,6 +2,11 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format. 
 
+## [0.5.1] - 2019-10-19
+
+### Fixed
+- small bug in documentation that prevented automatic doc builds
+
 ## [0.5.0] - 2019-10-19
 
 ### Added

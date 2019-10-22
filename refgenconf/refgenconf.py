@@ -452,7 +452,7 @@ class RefGenConf(yacman.YacAttMap):
         :param function(str) -> function build_signal_handler: how to create
             a signal handler to use during the download; the single argument
             to this function factory is the download filepath
-        :return a list of genome, asset, tag names and a key-value pair with
+        :return list: a list of genome, asset, tag names and a key-value pair with
             which genome config file should be updated if pull succeeds,
              else asset key and a null value.
         :raise refgenconf.UnboundEnvironmentVariablesError: if genome folder

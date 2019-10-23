@@ -328,7 +328,9 @@ class RefGenConf(yacman.YacAttMap):
         :return str, str: text reps of locally available genomes and assets
         """
         if genome is not None:
-            _assert_gat_exists(self[CFG_GENOMES_KEY], gname=genome)
+            if isinstance(genome, str):
+                genome = [genome]
+            [_assert_gat_exists(self[CFG_GENOMES_KEY], gname=g) for g in genome]
         genomes_str = self.genomes_str(order=order) if genome is None \
             else ", ".join(_select_genomes(sorted(self[CFG_GENOMES_KEY].keys(), key=order), genome))
         return genomes_str, self.assets_str(genome=genome, order=order)
@@ -984,7 +986,7 @@ def _assert_gat_exists(genomes, gname, aname=None, tname=None, allow_incomplete=
     try:
         genome = genomes[gname]
     except KeyError:
-        raise MissingGenomeError("Your genomes do not include {}".format(gname))
+        raise MissingGenomeError("Your genomes do not include '{}'".format(gname))
     if aname is not None:
         try:
             asset_data = genome[CFG_ASSETS_KEY][aname]
@@ -1025,7 +1027,9 @@ def _list_remote(url, genome, order=None):
     :return str, str: text reps of remotely available genomes and assets
     """
     genomes_data = _read_remote_data(url)
-    refgens = _select_genomes(sorted(genomes_data.keys(), key=order), genome)
+    refgens = _select_genomes(sorted(genomes_data.keys(), key=order), genome, strict=True)
+    if not refgens:
+        sys.exit(0)
     filtered_genomes_data = {refgen: genomes_data[refgen] for refgen in refgens}
     asset_texts = ["{}/   {}".format(g.rjust(20), ", ".join(a)) for g, a in filtered_genomes_data.items()]
     return ", ".join(refgens), "\n".join(asset_texts)
@@ -1095,11 +1099,13 @@ def _check_insert_data(obj, datatype, name):
     return True
 
 
-def _select_genomes(genomes, genome=None):
+def _select_genomes(genomes, genome=None, strict=False):
     """
     Safely select a subset of genomes
 
     :param list[str] | str genome: genomes that the assets should be found for
+    :param bool strict: whether a non-existent genome should lead to a warning.
+        Specific genome request is disregarded otherwise
     :raise TypeError: if genome argument type is not a list or str
     :return list: selected subset of genomes
     """
@@ -1108,6 +1114,11 @@ def _select_genomes(genomes, genome=None):
             genome = [genome]
         elif not isinstance(genome, list) or not all(isinstance(i, str) for i in genome):
             raise TypeError("genome has to be a list[str] or a str, got '{}'".format(genome.__class__.__name__))
+    if strict:
+        for g in genome:
+            if g not in genomes:
+                _LOGGER.warning("Genomes do not include '{}'".format(g))
+                return
     return genomes if (genome is None or not all(x in genomes for x in genome)) else genome
 
 

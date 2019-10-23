@@ -351,7 +351,6 @@ class RefGenConf(yacman.YacAttMap):
         genomes, assets = _list_remote(url, genome, order)
         return genomes, assets
 
-
     def tag_asset(self, genome, asset, tag, new_tag):
         """
         Retags the asset selected by the tag with the new_tag.
@@ -1029,7 +1028,7 @@ def _list_remote(url, genome, order=None):
     genomes_data = _read_remote_data(url)
     refgens = _select_genomes(sorted(genomes_data.keys(), key=order), genome, strict=True)
     if not refgens:
-        sys.exit(0)
+        return None, None
     filtered_genomes_data = {refgen: genomes_data[refgen] for refgen in refgens}
     asset_texts = ["{}/   {}".format(g.rjust(20), ", ".join(a)) for g, a in filtered_genomes_data.items()]
     return ", ".join(refgens), "\n".join(asset_texts)
@@ -1115,10 +1114,13 @@ def _select_genomes(genomes, genome=None, strict=False):
         elif not isinstance(genome, list) or not all(isinstance(i, str) for i in genome):
             raise TypeError("genome has to be a list[str] or a str, got '{}'".format(genome.__class__.__name__))
     if strict:
+        missing = []
         for g in genome:
             if g not in genomes:
-                _LOGGER.warning("Genomes do not include '{}'".format(g))
-                return
+                missing.append(g)
+        if missing:
+            _LOGGER.warning("Genomes do not include: {}".format(", ".join(missing)))
+            return
     return genomes if (genome is None or not all(x in genomes for x in genome)) else genome
 
 

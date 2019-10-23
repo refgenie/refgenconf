@@ -1113,6 +1113,8 @@ def _select_genomes(genomes, genome=None, strict=False):
             genome = [genome]
         elif not isinstance(genome, list) or not all(isinstance(i, str) for i in genome):
             raise TypeError("genome has to be a list[str] or a str, got '{}'".format(genome.__class__.__name__))
+    else:
+        return genomes
     if strict:
         missing = []
         filtered = []
@@ -1124,7 +1126,7 @@ def _select_genomes(genomes, genome=None, strict=False):
         if missing:
             _LOGGER.warning("Genomes do not include: {}".format(", ".join(missing)))
         return None if not filtered else filtered
-    return genomes if (genome is None or not all(x in genomes for x in genome)) else genome
+    return genomes if not all(x in genomes for x in genome) else genome
 
 
 def get_asset_tags(asset):

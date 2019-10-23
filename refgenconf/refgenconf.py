@@ -1115,12 +1115,15 @@ def _select_genomes(genomes, genome=None, strict=False):
             raise TypeError("genome has to be a list[str] or a str, got '{}'".format(genome.__class__.__name__))
     if strict:
         missing = []
+        filtered = []
         for g in genome:
-            if g not in genomes:
+            if g in genomes:
+                filtered.append(g)
+            else:
                 missing.append(g)
         if missing:
             _LOGGER.warning("Genomes do not include: {}".format(", ".join(missing)))
-            return
+        return None if not filtered else filtered
     return genomes if (genome is None or not all(x in genomes for x in genome)) else genome
 
 

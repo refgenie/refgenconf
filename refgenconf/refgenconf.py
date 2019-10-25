@@ -498,7 +498,7 @@ class RefGenConf(yacman.YacAttMap):
                 no_asset_json.append(server_url)
                 if num_servers == len(self.genome_server):
                     _LOGGER.error("Asset '{}/{}:{}' not available on any of the following servers: {}".
-                                  format(*gat, ", ".join(no_asset_json)))
+                                  format(genome, asset, tag, ", ".join(no_asset_json)))
                     return gat, None, None
                 continue
 

@@ -478,27 +478,27 @@ class RefGenConf(yacman.YacAttMap):
         for server_url in self.genome_server:
             num_servers += 1
             try:
-                tag = _download_json(get_json_url(server_url, API_ID_DEFAULT_TAG).format(genome=genome, asset=asset)) \
+                determined_tag = _download_json(get_json_url(server_url, API_ID_DEFAULT_TAG).format(genome=genome, asset=asset)) \
                     if tag is None else tag
             except DownloadJsonError:
                 _LOGGER.warning("Could not retrieve JSON from: {}".format(server_url))
                 bad_servers.append(server_url)
                 continue
             else:
-                _LOGGER.debug("Determined tag: {}".format(tag))
+                _LOGGER.debug("Determined tag: {}".format(determined_tag))
                 unpack or raise_unpack_error()
-            gat = [genome, asset, tag]
+            gat = [genome, asset, determined_tag]
             url_attrs = get_json_url(server_url, API_ID_ASSET_ATTRS).format(genome=genome, asset=asset)
             url_archive = get_json_url(server_url, API_ID_ARCHIVE).format(genome=genome, asset=asset)
 
             try:
-                archive_data = _download_json(url_attrs, params={"tag": tag})
+                archive_data = _download_json(url_attrs, params={"tag": determined_tag})
                 _LOGGER.debug("Determined server URL: {}".format(server_url))
             except DownloadJsonError:
                 no_asset_json.append(server_url)
                 if num_servers == len(self.genome_server):
                     _LOGGER.error("Asset '{}/{}:{}' not available on any of the following servers: {}".
-                                  format(genome, asset, tag, ", ".join(no_asset_json)))
+                                  format(genome, asset, determined_tag, ", ".join(no_asset_json)))
                     return gat, None, None
                 continue
 
@@ -510,7 +510,7 @@ class RefGenConf(yacman.YacAttMap):
             # local directory the downloaded archive will be temporarily saved in
             genome_dir_path = os.path.join(self[CFG_FOLDER_KEY], genome)
             # local path to the temporarily saved archive
-            filepath = os.path.join(genome_dir_path, asset + "__" + tag + ".tgz")
+            filepath = os.path.join(genome_dir_path, asset + "__" + determined_tag + ".tgz")
             # check if the genome/asset:tag exists and get request user decision
             if os.path.exists(tag_dir):
                 def preserve():
@@ -549,10 +549,17 @@ class RefGenConf(yacman.YacAttMap):
             _LOGGER.info("Downloading URL: {}".format(url_archive))
             try:
                 signal.signal(signal.SIGINT, build_signal_handler(filepath))
-                _download_url_progress(url_archive, filepath, bundle_name, params={"tag": tag})
-            except HTTPError as e:
-                _LOGGER.error("File not found on server: {}".format(e))
-                return gat, None, None
+                _download_url_progress(url_archive, filepath, bundle_name, params={"tag": determined_tag})
+            except HTTPError:
+                _LOGGER.error("Asset archive '{}/{}:{}' is missing on the server: {s}".format(*gat, s=server_url))
+                if server_url == self.genome_server[-1]:
+                    # it this was the last server on the list, return
+                    return gat, None, None
+                else:
+                    _LOGGER.info("Trying next server")
+                    # set the tag value back to what user requested
+                    determined_tag = tag
+                    continue
             except ConnectionRefusedError as e:
                 _LOGGER.error(str(e))
                 _LOGGER.error("Server {}/{} refused download. Check your internet settings".format(server_url,

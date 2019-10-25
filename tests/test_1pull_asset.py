@@ -40,7 +40,7 @@ def test_negative_response_to_large_download_prompt(rgc, gname, aname, tname):
     """ Test responsiveness to user abortion of pull request. """
     with mock.patch("refgenconf.refgenconf._is_large_archive", return_value=True), \
          mock.patch("refgenconf.refgenconf.query_yes_no", return_value=False):
-        gat, archive_dict = rgc.pull_asset(gname, aname, tname)
+        gat, archive_dict, server_url = rgc.pull_asset(gname, aname, tname)
     assert gat == [gname, aname, tname]
 
 

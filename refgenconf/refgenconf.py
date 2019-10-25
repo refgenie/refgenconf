@@ -475,35 +475,36 @@ class RefGenConf(yacman.YacAttMap):
         num_servers = 0
         bad_servers = []
         no_asset_json = []
-        server_list = self.genome_server
         for server_url in self.genome_server:
             num_servers += 1
             try:
                 tag = _download_json(get_json_url(server_url, API_ID_DEFAULT_TAG).format(genome=genome, asset=asset)) \
                     if tag is None else tag
-                _LOGGER.debug("Determined tag: '{}'".format(tag))
-                unpack or raise_unpack_error()
-                self.genome_server = server_url
             except DownloadJsonError:
-                _LOGGER.warning("Could not retrieve json from {}".format(server_url))
+                _LOGGER.warning("Could not retrieve JSON from: {}".format(server_url))
                 bad_servers.append(server_url)
                 continue
-
-            url_attrs = get_json_url(self.genome_server, API_ID_ASSET_ATTRS).format(genome=genome, asset=asset)
-            url_archive = get_json_url(self.genome_server, API_ID_ARCHIVE).format(genome=genome, asset=asset)
+            else:
+                _LOGGER.debug("Determined tag: {}".format(tag))
+                unpack or raise_unpack_error()
+            gat = [genome, asset, tag]
+            url_attrs = get_json_url(server_url, API_ID_ASSET_ATTRS).format(genome=genome, asset=asset)
+            url_archive = get_json_url(server_url, API_ID_ARCHIVE).format(genome=genome, asset=asset)
 
             try:
                 archive_data = _download_json(url_attrs, params={"tag": tag})
+                _LOGGER.debug("Determined server URL: {}".format(server_url))
             except DownloadJsonError:
                 no_asset_json.append(server_url)
-                if num_servers == len(server_list):
-                    _LOGGER.error("Could not retrieve {} {}'s json file from the following server(s): {}".format(genome, asset, no_asset_json))
-                    return [genome, asset, tag], None
+                if num_servers == len(self.genome_server):
+                    _LOGGER.error("Asset '{}/{}:{}' not available on any of the following servers: {}".
+                                  format(*gat, ", ".join(no_asset_json)))
+                    return gat, None, None
                 continue
 
             if sys.version_info[0] == 2:
                 archive_data = asciify_json_dict(archive_data)
-            gat = [genome, asset, tag]
+
             # local directory that the asset data will be stored in
             tag_dir = os.path.dirname(self.filepath(*gat))
             # local directory the downloaded archive will be temporarily saved in
@@ -514,7 +515,7 @@ class RefGenConf(yacman.YacAttMap):
             if os.path.exists(tag_dir):
                 def preserve():
                     _LOGGER.debug("Preserving existing: {}".format(tag_dir))
-                    return gat, None
+                    return gat, None, None
 
                 def msg_overwrite():
                     _LOGGER.debug("Overwriting: {}".format(tag_dir))
@@ -530,14 +531,15 @@ class RefGenConf(yacman.YacAttMap):
                     msg_overwrite()
 
             # check asset digests local-server match for each parent
-            [self._chk_digest_if_avail(genome, x) for x in archive_data[CFG_ASSET_PARENTS_KEY] if CFG_ASSET_PARENTS_KEY in archive_data]
+            [self._chk_digest_if_avail(genome, x, server_url)
+             for x in archive_data[CFG_ASSET_PARENTS_KEY] if CFG_ASSET_PARENTS_KEY in archive_data]
 
             bundle_name = '{}/{}:{}'.format(*gat)
             archsize = archive_data[CFG_ARCHIVE_SIZE_KEY]
             _LOGGER.debug("'{}' archive size: {}".format(bundle_name, archsize))
             if _is_large_archive(archsize) and not query_yes_no("Are you sure you want to download this large archive?"):
                 _LOGGER.info("pull action aborted by user")
-                return gat, None
+                return gat, None, None
 
             if not os.path.exists(genome_dir_path):
                 _LOGGER.debug("Creating directory: {}".format(genome_dir_path))
@@ -550,16 +552,16 @@ class RefGenConf(yacman.YacAttMap):
                 _download_url_progress(url_archive, filepath, bundle_name, params={"tag": tag})
             except HTTPError as e:
                 _LOGGER.error("File not found on server: {}".format(e))
-                return gat, None
+                return gat, None, None
             except ConnectionRefusedError as e:
                 _LOGGER.error(str(e))
                 _LOGGER.error("Server {}/{} refused download. Check your internet settings".format(server_url,
                                                                                                    API_VERSION))
-                return gat, None
+                return gat, None, None
             except ContentTooShortError as e:
                 _LOGGER.error(str(e))
                 _LOGGER.error("'{}' download incomplete".format(bundle_name))
-                return gat, None
+                return gat, None, None
             else:
                 _LOGGER.info("Download complete: {}".format(filepath))
 
@@ -567,7 +569,7 @@ class RefGenConf(yacman.YacAttMap):
             old_checksum = archive_data and archive_data.get(CFG_ARCHIVE_CHECKSUM_KEY)
             if old_checksum and new_checksum != old_checksum:
                 _LOGGER.error("Checksum mismatch: ({}, {})".format(new_checksum, old_checksum))
-                return gat, None
+                return gat, None, None
             else:
                 _LOGGER.debug("Matched checksum: '{}'".format(old_checksum))
             import tempfile
@@ -582,7 +584,7 @@ class RefGenConf(yacman.YacAttMap):
                 shutil.rmtree(tmpdir)
                 if os.path.isfile(filepath):
                     os.remove(filepath)
-            return gat, archive_data
+            return gat, archive_data, server_url
 
     def update_relatives_assets(self, genome, asset, tag=None, data=None, children=False):
         """
@@ -789,7 +791,7 @@ class RefGenConf(yacman.YacAttMap):
         assets = sorted(genomes.keys(), key=order)
         return OrderedDict([(a, sorted(genomes[a], key=order)) for a in assets])
 
-    def _chk_digest_if_avail(self, genome, remote_asset_name):
+    def _chk_digest_if_avail(self, genome, remote_asset_name, server_url):
         """
         Check local asset digest against the remote one and populate children of the asset with the provided asset:tag.
 
@@ -797,12 +799,13 @@ class RefGenConf(yacman.YacAttMap):
 
         :param str genome: name of the genome to check the asset digests for
         :param str remote_asset_name: asset and tag names, formatted like: asset:tag
+        :param str server_url: addres of the server to query for the digests
         :raise RefgenconfError: if the local digest does not match its remote counterpart
         """
         remote_asset_data = prp(remote_asset_name)
         asset = remote_asset_data["item"]
         tag = remote_asset_data["tag"]
-        asset_digest_url = construct_request_url(self.genome_server, API_ID_DIGEST).\
+        asset_digest_url = construct_request_url(server_url, API_ID_DIGEST).\
             format(genome=genome, asset=asset, tag=tag)
         try:
             remote_digest = _download_json(asset_digest_url)
@@ -820,7 +823,7 @@ class RefGenConf(yacman.YacAttMap):
                           "with the server one after the pull".format(genome, asset, tag))
             return
 
-    def chk_digest_update_child(self, genome, remote_asset_name, child_name):
+    def chk_digest_update_child(self, genome, remote_asset_name, child_name, server_url):
         """
         Check local asset digest against the remote one and populate children of the asset with the provided asset:tag.
 
@@ -829,46 +832,33 @@ class RefGenConf(yacman.YacAttMap):
         :param str genome: name of the genome to check the asset digests for
         :param str remote_asset_name: asset and tag names, formatted like: asset:tag
         :param str child_name: name to be appended to the children of the parent
+        :param str server_url: addres of the server to query for the digests
         :raise RefgenconfError: if the local digest does not match its remote counterpart
         """
         remote_asset_data = prp(remote_asset_name)
         asset = remote_asset_data["item"]
         tag = remote_asset_data["tag"]
-
-        num_servers = 0
-        bad_servers = []
-        for server_url in self.genome_server:
-            num_servers += 1
-            try:
-                asset_digest_url = construct_request_url(server_url, API_ID_DIGEST).\
-                    format(genome=genome, asset=asset, tag=tag)
-            except DownloadJsonError:
-                bad_servers.append(server_url)
-                if num_servers == len(self.genome_server):
-                    _LOGGER.error("Could not download json file from the following server(s), {}".format(bad_servers))
-                    return
-                else:
-                    continue
-       
-            try:
-                remote_digest = _download_json(asset_digest_url)
-            except DownloadJsonError:
-                return
-            try:
-                # we need to allow for missing seek_keys section so that the digest is respected even from the previously
-                # populated 'incomplete asset' from the server
-                _assert_gat_exists(self[CFG_GENOMES_KEY], genome, asset, tag,
-                                   allow_incomplete=not self.is_asset_complete(genome, asset, tag))
-            except (KeyError, MissingAssetError, MissingGenomeError, MissingSeekKeyError):
-                self.update_tags(genome, asset, tag, {CFG_ASSET_CHECKSUM_KEY: remote_digest})
-                _LOGGER.info("Could not find '{}/{}:{}' digest. Populating with server data".format(genome, asset, tag))
-            else:
-                local_digest = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY]\
-                    [tag][CFG_ASSET_CHECKSUM_KEY]
-                if remote_digest != local_digest:
-                    raise RemoteDigestMismatchError(asset, local_digest, remote_digest)
-            finally:
-                self.update_relatives_assets(genome, asset, tag, [child_name], children=True)
+        asset_digest_url = construct_request_url(server_url, API_ID_DIGEST).\
+            format(genome=genome, asset=asset, tag=tag)
+        try:
+            remote_digest = _download_json(asset_digest_url)
+        except DownloadJsonError:
+            return
+        try:
+            # we need to allow for missing seek_keys section so that the digest is respected even from the previously
+            # populated 'incomplete asset' from the server
+            _assert_gat_exists(self[CFG_GENOMES_KEY], genome, asset, tag,
+                               allow_incomplete=not self.is_asset_complete(genome, asset, tag))
+        except (KeyError, MissingAssetError, MissingGenomeError, MissingSeekKeyError):
+            self.update_tags(genome, asset, tag, {CFG_ASSET_CHECKSUM_KEY: remote_digest})
+            _LOGGER.info("Could not find '{}/{}:{}' digest. Populating with server data".format(genome, asset, tag))
+        else:
+            local_digest = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY] \
+                [tag][CFG_ASSET_CHECKSUM_KEY]
+            if remote_digest != local_digest:
+                raise RemoteDigestMismatchError(asset, local_digest, remote_digest)
+        finally:
+            self.update_relatives_assets(genome, asset, tag, [child_name], children=True)
 
 
 class DownloadProgressBar(tqdm):

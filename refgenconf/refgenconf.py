@@ -327,10 +327,17 @@ class RefGenConf(yacman.YacAttMap):
             names for sort
         :return str, str: text reps of locally available genomes and assets
         """
+        exceptions = []
         if genome is not None:
             if isinstance(genome, str):
                 genome = [genome]
-            [_assert_gat_exists(self[CFG_GENOMES_KEY], gname=g) for g in genome]
+            for g in genome:
+                try:
+                    _assert_gat_exists(self[CFG_GENOMES_KEY], g)
+                except MissingGenomeError as e:
+                    exceptions.append(e)
+            if exceptions:
+                raise MissingGenomeError(", ".join(map(str, exceptions)))
         genomes_str = self.genomes_str(order=order) if genome is None \
             else ", ".join(_select_genomes(sorted(self[CFG_GENOMES_KEY].keys(), key=order), genome))
         return genomes_str, self.assets_str(genome=genome, order=order)

@@ -2,10 +2,11 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format. 
 
-## [0.5.3] - 2019-10-23
+## [0.5.3] - unreleased
 
 ### Changed
-- enable multiple refgenieservers for pull_asset and digest_update_child
+- enable multiple refgenieservers for `pull_asset` method
+- `_chk_digest_if_avail` and `_chk_digest_update_child` require server URL argument to get the asset information from
 
 ## [0.5.2] - 2019-10-22
 

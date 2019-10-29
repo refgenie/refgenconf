@@ -9,7 +9,7 @@ but they're also integral to both refgenie and to refgenieserver.
 CFG_NAME = "genome configuration"
 CFG_ENV_VARS = ["REFGENIE"]
 CFG_CONST = ["CFG_NAME", "CFG_ENV_VARS"]
-DEFAULT_SERVER = ["http://refgenomes.databio.org"]
+DEFAULT_SERVER = "http://refgenomes.databio.org"
 API_VERSION = "v2"
 DEFAULT_TAG = "default"
 
@@ -36,6 +36,7 @@ API_IDS = [
     "API_ID_RECIPE", "API_ID_LOG"]
 
 CFG_FOLDER_KEY = "genome_folder"
+CFG_SERVERS_KEY = "genome_servers"
 CFG_SERVER_KEY = "genome_server"
 CFG_ARCHIVE_KEY = "genome_archive"
 CFG_VERSION_KEY = "config_version"
@@ -59,7 +60,7 @@ CFG_ASSET_CHECKSUM_KEY = "asset_digest"
 CFG_TAG_DESC_KEY = "tag_description"
 
 CFG_TOP_LEVEL_KEYS = [
-    CFG_FOLDER_KEY, CFG_SERVER_KEY, CFG_ARCHIVE_KEY, CFG_GENOMES_KEY, CFG_VERSION_KEY]
+    CFG_FOLDER_KEY, CFG_SERVER_KEY, CFG_SERVERS_KEY, CFG_ARCHIVE_KEY, CFG_GENOMES_KEY, CFG_VERSION_KEY]
 CFG_GENOME_KEYS = [
     CFG_GENOME_DESC_KEY, CFG_ASSETS_KEY, CFG_CHECKSUM_KEY]
 CFG_GENOME_ATTRS_KEYS = [CFG_GENOME_DESC_KEY, CFG_CHECKSUM_KEY]
@@ -67,7 +68,7 @@ CFG_SINGLE_ASSET_SECTION_KEYS = [CFG_ASSET_PATH_KEY, CFG_ASSET_DESC_KEY, CFG_ASS
                                  CFG_ARCHIVE_CHECKSUM_KEY, CFG_SEEK_KEYS_KEY]
 
 CFG_KEY_NAMES = [
-    "CFG_FOLDER_KEY", "CFG_SERVER_KEY", "CFG_GENOMES_KEY",
+    "CFG_FOLDER_KEY", "CFG_SERVER_KEY", "CFG_SERVERS_KEY", "CFG_GENOMES_KEY",
     "CFG_ASSET_PATH_KEY", "CFG_ASSET_DESC_KEY", "CFG_ARCHIVE_KEY", "CFG_ARCHIVE_SIZE_KEY", "CFG_SEEK_KEYS_KEY",
     "CFG_ASSET_SIZE_KEY", "CFG_CHECKSUM_KEY", "CFG_ARCHIVE_CHECKSUM_KEY", "CFG_VERSION_KEY", "CFG_ASSET_PARENTS_KEY",
     "CFG_ASSET_CHILDREN_KEY", "CFG_TAG_DESC_KEY", "CFG_ASSET_CHECKSUM_KEY", "CFG_ASSET_TAGS_KEY"]
@@ -113,7 +114,7 @@ CONF_STRUCTURE = """
                             fasta: hg38.fa.gz
                             fai: hg38.fa.fai
                             chrom_sizes: sizes.txt
-""".format(folder=CFG_FOLDER_KEY, server=CFG_SERVER_KEY, version=CFG_VERSION_KEY, assets=CFG_ASSETS_KEY,
+""".format(folder=CFG_FOLDER_KEY, server=CFG_SERVERS_KEY, version=CFG_VERSION_KEY, assets=CFG_ASSETS_KEY,
            archive=CFG_ARCHIVE_KEY, digest=CFG_CHECKSUM_KEY, genomes=CFG_GENOMES_KEY,
            desc_genome=CFG_GENOME_DESC_KEY, asset_path=CFG_ASSET_PATH_KEY, desc_asset=CFG_ASSET_DESC_KEY,
            archive_digest=CFG_ARCHIVE_CHECKSUM_KEY, asset_size=CFG_ASSET_SIZE_KEY, archive_size=CFG_ARCHIVE_SIZE_KEY,

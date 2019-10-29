@@ -96,18 +96,23 @@ class RefGenConf(yacman.YacAttMap):
                     raise ConfigNotCompliantError(msg)
                 else:
                     _LOGGER.debug("Config version is compliant: {}".format(version))
+        if CFG_SERVERS_KEY not in self and CFG_SERVER_KEY in self:
+            # backwards compatibility after server config key change
+            self[CFG_SERVERS_KEY] = self[CFG_SERVER_KEY]
+            del self[CFG_SERVER_KEY]
+            _LOGGER.debug("Moved servers list from '{}' to '{}'".format(CFG_SERVER_KEY, CFG_SERVERS_KEY))
         try:
-            if isinstance(self[CFG_SERVER_KEY], list):
-                tmp_list = [server_url.rstrip("/") for server_url in self[CFG_SERVER_KEY]]
-                self[CFG_SERVER_KEY] = tmp_list
+            if isinstance(self[CFG_SERVERS_KEY], list):
+                tmp_list = [server_url.rstrip("/") for server_url in self[CFG_SERVERS_KEY]]
+                self[CFG_SERVERS_KEY] = tmp_list
             else:  # Logic in pull_asset expects a list, even for a single server
-                self[CFG_SERVER_KEY] = self[CFG_SERVER_KEY].rstrip("/")
-                self[CFG_SERVER_KEY] = [self[CFG_SERVER_KEY]]
+                self[CFG_SERVERS_KEY] = self[CFG_SERVERS_KEY].rstrip("/")
+                self[CFG_SERVERS_KEY] = [self[CFG_SERVERS_KEY]]
         except KeyError:
             raise MissingConfigDataError(CFG_SERVER_KEY)
 
     def __bool__(self):
-        minkeys = set(self.keys()) == {CFG_SERVER_KEY, CFG_FOLDER_KEY, CFG_GENOMES_KEY}
+        minkeys = set(self.keys()) == {CFG_SERVERS_KEY, CFG_FOLDER_KEY, CFG_GENOMES_KEY}
         return not minkeys or bool(self[CFG_GENOMES_KEY])
 
     __nonzero__ = __bool__
@@ -353,7 +358,7 @@ class RefGenConf(yacman.YacAttMap):
             names for sort
         :return str, str: text reps of remotely available genomes and assets
         """
-        url = get_url(self.genome_server, API_ID_ASSETS)
+        url = get_url(self[CFG_SERVERS_KEY], API_ID_ASSETS)
         _LOGGER.info("Querying available assets from server: {}".format(url))
         genomes, assets = _list_remote(url, genome, order)
         return genomes, assets
@@ -472,7 +477,7 @@ class RefGenConf(yacman.YacAttMap):
         :raise refgenconf.UnboundEnvironmentVariablesError: if genome folder
             path contains any env. var. that's unbound
         """
-        missing_vars = unbound_env_vars(self.genome_folder)
+        missing_vars = unbound_env_vars(self[CFG_FOLDER_KEY])
         if missing_vars:
             raise UnboundEnvironmentVariablesError(", ".join(missing_vars))
 
@@ -482,7 +487,7 @@ class RefGenConf(yacman.YacAttMap):
         num_servers = 0
         bad_servers = []
         no_asset_json = []
-        for server_url in self.genome_server:
+        for server_url in self[CFG_SERVERS_KEY]:
             num_servers += 1
             try:
                 determined_tag = _download_json(get_json_url(server_url, API_ID_DEFAULT_TAG).format(genome=genome, asset=asset)) \
@@ -503,7 +508,7 @@ class RefGenConf(yacman.YacAttMap):
                 _LOGGER.debug("Determined server URL: {}".format(server_url))
             except DownloadJsonError:
                 no_asset_json.append(server_url)
-                if num_servers == len(self.genome_server):
+                if num_servers == len(self[CFG_SERVERS_KEY]):
                     _LOGGER.error("Asset '{}/{}:{}' not available on any of the following servers: {}".
                                   format(genome, asset, determined_tag, ", ".join(no_asset_json)))
                     return gat, None, None
@@ -559,7 +564,7 @@ class RefGenConf(yacman.YacAttMap):
                 _download_url_progress(url_archive, filepath, bundle_name, params={"tag": determined_tag})
             except HTTPError:
                 _LOGGER.error("Asset archive '{}/{}:{}' is missing on the server: {s}".format(*gat, s=server_url))
-                if server_url == self.genome_server[-1]:
+                if server_url == self[CFG_SERVERS_KEY][-1]:
                     # it this was the last server on the list, return
                     return gat, None, None
                 else:

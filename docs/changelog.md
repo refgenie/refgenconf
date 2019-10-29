@@ -5,6 +5,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [0.5.3] - unreleased
 
 ### Changed
+- `genome_server` config key to `genome_servers`
 - enable multiple refgenieservers for `pull_asset` method
 - `_chk_digest_if_avail` and `_chk_digest_update_child` require server URL argument to get the asset information from
 

@@ -925,7 +925,7 @@ def _download_url_progress(url, output_path, name, params=None):
     :param dict params: query parameters to be added to the request
     """
     url = url if params is None else url + "?{}".format(urllib.parse.urlencode(params))
-    with DownloadProgressBar(unit_scale=True, desc=name, unit="B") as dpb:
+    with DownloadProgressBar(unit_scale=True, desc=name, unit="B", bar_format=CUSTOM_BAR_FMT, leave=False) as dpb:
         urllib.request.urlretrieve(url, filename=output_path, reporthook=dpb.update_to)
 
 

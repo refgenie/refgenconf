@@ -4,6 +4,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [0.5.5] - unreleased
 
+### Added
+- `get_asset_digest` method for asset digest retrieval
+
 ### Fixed
 - overloaded colon in progress bar descriptions; [#73](https://github.com/databio/refgenconf/issues/73)
 

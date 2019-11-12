@@ -833,11 +833,10 @@ class RefGenConf(yacman.YacAttMap):
                             format(genome, asset, tag))
             return
         try:
-            local_digest = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY]\
-                [tag][CFG_ASSET_CHECKSUM_KEY]
+            local_digest = self.get_asset_digest(genome, asset, tag)
             if remote_digest != local_digest:
                 raise RemoteDigestMismatchError(asset, local_digest, remote_digest)
-        except KeyError:
+        except RefgenconfError:
             _LOGGER.debug("Could not find '{}/{}:{}' digest. Digest for this parent will be populated "
                           "with the server one after the pull".format(genome, asset, tag))
             return

@@ -155,7 +155,7 @@ class RefGenConf(yacman.YacAttMap):
                             asset_sep=asset_sep, order=order)
         return "\n".join([make_line(g, self[CFG_GENOMES_KEY][g][CFG_ASSETS_KEY]) for g in refgens])
 
-    def filepath(self, genome, asset, tag, ext=".tgz"):
+    def filepath(self, genome, asset, tag, ext=".tgz", dir=False):
         """
         Determine path to a particular asset for a particular genome.
 
@@ -165,7 +165,8 @@ class RefGenConf(yacman.YacAttMap):
         :param str ext: file extension
         :return str: path to asset for given genome and asset kind/name
         """
-        return os.path.join(self[CFG_FOLDER_KEY], genome, asset, tag, asset + "__" + tag + ext)
+        tag_dir = os.path.join(self[CFG_FOLDER_KEY], genome, asset, tag)
+        return os.path.join(tag_dir, asset + "__" + tag + ext) if not dir else tag_dir
 
     def genomes_list(self, order=None):
         """

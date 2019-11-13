@@ -789,6 +789,18 @@ class RefGenConf(yacman.YacAttMap):
         tag_data = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag]
         return all([r in tag_data for r in REQ_TAG_ATTRS])
 
+    def is_tag_link(self, genome, asset, tag):
+        """
+        Check whether the specified tag is a link. Based on a key exitence.
+
+        :param str genome: genome to be checked
+        :param str asset: asset package to be checked
+        :param str tag: tag to be checked
+        :return bool: the decision
+        """
+        _assert_gat_exists(self[CFG_GENOMES_KEY], genome, asset, tag)
+        return CFG_TAG_SOURCE_KEY in self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag]
+
     def _invert_genomes(self, order=None):
         """ Map each asset type/kind/name to a collection of assemblies.
 

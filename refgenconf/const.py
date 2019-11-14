@@ -4,7 +4,6 @@ Config file structure determination for the refgenie suite of packages
 These values are defined here in refgenconf and use some within this package,
 but they're also integral to both refgenie and to refgenieserver.
 """
-# config file structure related consts
 
 CFG_NAME = "genome configuration"
 CFG_ENV_VARS = ["REFGENIE"]
@@ -13,12 +12,14 @@ DEFAULT_SERVER = "http://refgenomes.databio.org"
 API_VERSION = "v2"
 DEFAULT_TAG = "default"
 
-
+# file or dir names
 TEMPLATE_RECIPE_JSON = "build_recipe_{}__{}.json"
 TEMPLATE_TARGET = "{}_{}__{}.flag"
 TEMPLATE_LOG = "build_log_{}__{}.md"
+ORI_LOG_NAME = "refgenie_log.md"
+BUILD_STATS_DIR = "_refgenie_build"
 
-FILENAME_TEMPLATES = ["TEMPLATE_RECIPE_JSON", "TEMPLATE_TARGET", "TEMPLATE_LOG"]
+FILE_DIR_NAMES = ["TEMPLATE_RECIPE_JSON", "TEMPLATE_TARGET", "TEMPLATE_LOG", "ORI_LOG_NAME", "BUILD_STATS_DIR"]
 
 # project-wide definition of the endpoint IDs. They are used to establish the way of communication between the server
 # and the client so that changes of endpoint function names OR endpoints themselves do not influence the connection
@@ -85,7 +86,7 @@ CUSTOM_BAR_FMT = "{desc}{percentage:3.0f}%|{bar}| {n_fmt} [{elapsed}<{remaining}
 
 __all__ = ["DEFAULT_SERVER", "CFG_ASSET_DEFAULT_TAG_KEY", "CFG_KEY_NAMES", "CFG_GENOME_DESC_KEY", "REQ_CFG_VERSION",
            "CFG_ASSETS_KEY", "CFG_GENOME_ATTRS_KEYS", "REFGENIE_BY_CFG", "DEFAULT_TAG", "ATTRS_COPY_PULL",
-           "REQ_TAG_ATTRS", "CUSTOM_BAR_FMT", "API_VERSION", "CONF_STRUCTURE"] + FILENAME_TEMPLATES + API_IDS + \
+           "REQ_TAG_ATTRS", "CUSTOM_BAR_FMT", "API_VERSION", "CONF_STRUCTURE"] + FILE_DIR_NAMES + API_IDS + \
           CFG_CONST + CFG_KEY_NAMES
 
 CONF_STRUCTURE = """

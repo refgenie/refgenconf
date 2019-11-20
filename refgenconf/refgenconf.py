@@ -455,7 +455,7 @@ class RefGenConf(yacman.YacAttMap):
 
     def pull_asset(self, genome, asset, tag, unpack=True, force=None,
                    get_json_url=lambda server, operation_id: construct_request_url(server, operation_id),
-                   build_signal_handler=_handle_sigint):
+                   build_signal_handler=_handle_sigint, update=False):
         """
         Download and possibly unpack one or more assets for a given ref gen.
 
@@ -472,12 +472,18 @@ class RefGenConf(yacman.YacAttMap):
         :param function(str) -> function build_signal_handler: how to create
             a signal handler to use during the download; the single argument
             to this function factory is the download filepath
-        :return list: a list of genome, asset, tag names and a key-value pair with
-            which genome config file should be updated if pull succeeds,
-             else asset key and a null value.
+        :param bool update: whether the object should be updated with downloaded archive data
+        :return (list[str], dict, str): a list of genome, asset, tag names
+            and a key-value pair with which genome config file should be updated
+            if pull succeeds, else asset key and a null value
         :raise refgenconf.UnboundEnvironmentVariablesError: if genome folder
             path contains any env. var. that's unbound
+        :raise refgenconf.RefGenConfError: if the object update is requested in
+            a non-writable state
         """
+        if update and not self.writable:
+            raise RefgenconfError("You can't update an object that is not writable. "
+                                  "Use 'writable=True' when you initialize the object.")
         missing_vars = unbound_env_vars(self[CFG_FOLDER_KEY])
         if missing_vars:
             raise UnboundEnvironmentVariablesError(", ".join(missing_vars))
@@ -604,7 +610,23 @@ class RefGenConf(yacman.YacAttMap):
                 shutil.rmtree(tmpdir)
                 if os.path.isfile(filepath):
                     os.remove(filepath)
+            if update and archive_data is not None:
+                self.post_pull_update(gat, archive_data, server_url)
             return gat, archive_data, server_url
+
+    def post_pull_update(self, gat, archive_data, server_url):
+        """
+        Perform the object update after the pull
+
+        :param list[str] gat: a list of names (genome, asset, tag)
+        :param dict archive_data: metadadata about the an asset
+        :param str server_url: URL that the parents data should be sourced from
+        """
+        [self.chk_digest_update_child(gat[0], x, "{}/{}:{}".format(*gat), server_url)
+            for x in archive_data[CFG_ASSET_PARENTS_KEY] if CFG_ASSET_PARENTS_KEY in archive_data]
+        self.update_tags(*gat, data={attr: archive_data[attr] for attr in ATTRS_COPY_PULL
+                                     if attr in archive_data})
+        self.set_default_pointer(*gat)
 
     def update_relatives_assets(self, genome, asset, tag=None, data=None, children=False):
         """
@@ -789,17 +811,6 @@ class RefGenConf(yacman.YacAttMap):
         tag_data = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag]
         return all([r in tag_data for r in REQ_TAG_ATTRS])
 
-    def is_tag_link(self, genome, asset, tag):
-        """
-        Check whether the specified tag is a link. Based on a key exitence.
-
-        :param str genome: genome to be checked
-        :param str asset: asset package to be checked
-        :param str tag: tag to be checked
-        :return bool: the decision
-        """
-        _assert_gat_exists(self[CFG_GENOMES_KEY], genome, asset, tag)
-        return CFG_TAG_SOURCE_KEY in self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag]
 
     def _invert_genomes(self, order=None):
         """ Map each asset type/kind/name to a collection of assemblies.
@@ -863,7 +874,7 @@ class RefGenConf(yacman.YacAttMap):
         :param str genome: name of the genome to check the asset digests for
         :param str remote_asset_name: asset and tag names, formatted like: asset:tag
         :param str child_name: name to be appended to the children of the parent
-        :param str server_url: addres of the server to query for the digests
+        :param str server_url: address of the server to query for the digests
         :raise RefgenconfError: if the local digest does not match its remote counterpart
         """
         remote_asset_data = prp(remote_asset_name)
@@ -901,7 +912,7 @@ class RefGenConf(yacman.YacAttMap):
         :return str: asset digest for the tag
         """
         _assert_gat_exists(self[CFG_GENOMES_KEY], genome, asset, tag)
-        tag = tag or self.get_default_tag(genome, asset, tag)
+        tag = tag or self.get_default_tag(genome, asset)
         if CFG_ASSET_CHECKSUM_KEY in self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag]:
             return self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_CHECKSUM_KEY]
         raise MissingConfigDataError("Digest does not exist for: {}/{}:{}".format(genome, asset, tag))

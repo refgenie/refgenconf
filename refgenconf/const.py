@@ -29,6 +29,7 @@ API_ID_DEFAULT_TAG = CUSTOM_PFX + "_default_tag"
 API_ID_ARCHIVE = CUSTOM_PFX + "_asset_archive"
 API_ID_ASSET_ATTRS = CUSTOM_PFX + "_asset_attributes"
 API_ID_DIGEST = CUSTOM_PFX + "_asset_digest"
+API_ID_ARCHIVE_DIGEST = CUSTOM_PFX + "_asset_archive_digest"
 API_ID_RECIPE = CUSTOM_PFX + "_asset_build_recipe"
 API_ID_LOG = CUSTOM_PFX + "_asset_build_log"
 API_ID_SPLASH = CUSTOM_PFX + "_asset_splash"
@@ -37,13 +38,14 @@ API_ID_SPLASH = CUSTOM_PFX + "_asset_splash"
 # for systematic links generation in the splash pages
 OPERATION_IDS = {
     "asset": [
-        API_ID_ARCHIVE, API_ID_ASSET_ATTRS, API_ID_DIGEST, API_ID_RECIPE, API_ID_LOG, API_ID_SPLASH
+        API_ID_ARCHIVE, API_ID_ASSET_ATTRS, API_ID_DIGEST, API_ID_ARCHIVE_DIGEST,
+        API_ID_RECIPE, API_ID_LOG, API_ID_SPLASH
     ]
 }
 
 API_IDS = [
     "API_ID_ASSETS", "API_ID_ARCHIVE", "API_ID_DEFAULT_TAG", "API_ID_ASSET_ATTRS", "API_ID_DIGEST",
-    "API_ID_RECIPE", "API_ID_LOG"
+    "API_ID_RECIPE", "API_ID_LOG", "API_ID_SPLASH", "API_ID_ARCHIVE_DIGEST"
 ]
 
 CFG_FOLDER_KEY = "genome_folder"

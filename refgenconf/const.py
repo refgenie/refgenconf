@@ -25,9 +25,9 @@ FILE_DIR_NAMES = ["TEMPLATE_RECIPE_JSON", "TEMPLATE_TARGET", "TEMPLATE_LOG", "OR
 # and the client so that changes of endpoint function names OR endpoints themselves do not influence the connection
 CUSTOM_PFX = "custom_Id"
 API_ID_ASSETS = CUSTOM_PFX + "_assets"
-API_ID_ARCHIVE = CUSTOM_PFX + "_archive"
 API_ID_DEFAULT_TAG = CUSTOM_PFX + "_default_tag"
-API_ID_ASSET_ATTRS = CUSTOM_PFX + "_asset_attrs"
+API_ID_ARCHIVE = CUSTOM_PFX + "_asset_archive"
+API_ID_ASSET_ATTRS = CUSTOM_PFX + "_asset_attributes"
 API_ID_DIGEST = CUSTOM_PFX + "_asset_digest"
 API_ID_RECIPE = CUSTOM_PFX + "_asset_recipe"
 API_ID_LOG = CUSTOM_PFX + "_asset_log"

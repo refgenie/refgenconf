@@ -29,8 +29,8 @@ API_ID_DEFAULT_TAG = CUSTOM_PFX + "_default_tag"
 API_ID_ARCHIVE = CUSTOM_PFX + "_asset_archive"
 API_ID_ASSET_ATTRS = CUSTOM_PFX + "_asset_attributes"
 API_ID_DIGEST = CUSTOM_PFX + "_asset_digest"
-API_ID_RECIPE = CUSTOM_PFX + "_asset_recipe"
-API_ID_LOG = CUSTOM_PFX + "_asset_log"
+API_ID_RECIPE = CUSTOM_PFX + "_asset_build_recipe"
+API_ID_LOG = CUSTOM_PFX + "_asset_build_log"
 API_ID_SPLASH = CUSTOM_PFX + "_asset_splash"
 
 # this dictionary groups the operationIds so that they can be accessed as modules

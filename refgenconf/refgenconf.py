@@ -1223,10 +1223,10 @@ def _get_server_endpoints_mapping(url):
     :return dict: endpoints mapped by their operationIds
     """
     json = _download_json(url + "/openapi.json")
-    return _map_paths_by_id(asciify_json_dict(json) if sys.version_info[0] == 2 else json)
+    return map_paths_by_id(asciify_json_dict(json) if sys.version_info[0] == 2 else json)
 
 
-def _map_paths_by_id(json_dict):
+def map_paths_by_id(json_dict):
     # check the required input dict characteristics to construct the mapping
     if "openapi" not in json_dict or not isinstance(json_dict["openapi"], str) \
             or "paths" not in json_dict or not isinstance(json_dict["paths"], dict):

@@ -455,7 +455,7 @@ class RefGenConf(yacman.YacAttMap):
 
     def pull_asset(self, genome, asset, tag, unpack=True, force=None,
                    get_json_url=lambda server, operation_id: construct_request_url(server, operation_id),
-                   build_signal_handler=_handle_sigint, update=False):
+                   build_signal_handler=_handle_sigint):
         """
         Download and possibly unpack one or more assets for a given ref gen.
 
@@ -481,9 +481,6 @@ class RefGenConf(yacman.YacAttMap):
         :raise refgenconf.RefGenConfError: if the object update is requested in
             a non-writable state
         """
-        if update and not self.writable:
-            raise RefgenconfError("You can't update an object that is not writable. "
-                                  "Use 'writable=True' when you initialize the object.")
         missing_vars = unbound_env_vars(self[CFG_FOLDER_KEY])
         if missing_vars:
             raise UnboundEnvironmentVariablesError(", ".join(missing_vars))
@@ -610,23 +607,18 @@ class RefGenConf(yacman.YacAttMap):
                 shutil.rmtree(tmpdir)
                 if os.path.isfile(filepath):
                     os.remove(filepath)
-            if update and archive_data is not None:
-                self.post_pull_update(gat, archive_data, server_url)
+            if not self.writable:
+                _LOGGER.debug("Making object writable")
+                self.make_writable()
+            [self.chk_digest_update_child(gat[0], x, "{}/{}:{}".format(*gat), server_url)
+             for x in archive_data[CFG_ASSET_PARENTS_KEY] if CFG_ASSET_PARENTS_KEY in archive_data]
+            self.update_tags(*gat, data={attr: archive_data[attr] for attr in ATTRS_COPY_PULL
+                                         if attr in archive_data})
+            self.set_default_pointer(*gat)
+            _LOGGER.debug("Updating config file: {}".format(self.write()))
+            _LOGGER.debug("Making object read-only")
+            self.make_readonly()
             return gat, archive_data, server_url
-
-    def post_pull_update(self, gat, archive_data, server_url):
-        """
-        Perform the object update after the pull
-
-        :param list[str] gat: a list of names (genome, asset, tag)
-        :param dict archive_data: metadadata about the an asset
-        :param str server_url: URL that the parents data should be sourced from
-        """
-        [self.chk_digest_update_child(gat[0], x, "{}/{}:{}".format(*gat), server_url)
-            for x in archive_data[CFG_ASSET_PARENTS_KEY] if CFG_ASSET_PARENTS_KEY in archive_data]
-        self.update_tags(*gat, data={attr: archive_data[attr] for attr in ATTRS_COPY_PULL
-                                     if attr in archive_data})
-        self.set_default_pointer(*gat)
 
     def update_relatives_assets(self, genome, asset, tag=None, data=None, children=False):
         """

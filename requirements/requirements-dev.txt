@@ -3,3 +3,4 @@ pytest-remotedata
 pyyaml>=5
 ubiquerg>=0.3
 veracitools
+-e git+git://github.com/databio/yacman@dev

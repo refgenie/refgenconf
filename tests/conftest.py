@@ -111,7 +111,7 @@ def remove_asset_and_file(rgc, gname, aname, tname):
     """
     try:
         shutil.rmtree(rgc.get_asset(gname, aname, tname, enclosing_dir=True))
-    except (OSError, RefgenconfError):
+    except (OSError, RefgenconfError, KeyError):
         pass
     try:
         rgc.remove_assets(gname, aname, tname)

@@ -106,12 +106,12 @@ def remove_asset_and_file(rgc, gname, aname, tname):
 
     :param RefGenConf rgc: object to remove the asset from
     :param str gname: genome name to remove
-    :param str aname: genome name to remove
-    :param str tname: genome name to remove
+    :param str aname: asset name to remove
+    :param str tname: tag name to remove
     """
     try:
         shutil.rmtree(rgc.get_asset(gname, aname, tname, enclosing_dir=True))
-    except OSError:
+    except (OSError, RefgenconfError):
         pass
     try:
         rgc.remove_assets(gname, aname, tname)

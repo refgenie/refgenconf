@@ -1148,15 +1148,18 @@ def _make_list_of_str(arg):
     :return list: list of strings
     :raise TypeError: if a fault argument was provided
     """
+    def _raise_faulty_arg():
+        raise TypeError("Provided argument has to be a list[str] or a str, got '{}'".format(arg.__class__.__name__))
+
     if isinstance(arg, str):
         return [arg]
     elif isinstance(arg, list):
         if not all(isinstance(i, str) for i in arg):
-            raise TypeError("Provided argument has to be a list[str] or a str, got '{}'".format(arg.__class__.__name__))
+            _raise_faulty_arg()
         else:
             return arg
     else:
-        raise TypeError("Provided argument has to be a list[str] or a str, got '{}'".format(arg.__class__.__name__))
+        _raise_faulty_arg()
 
 
 def _extend_unique(l1, l2):

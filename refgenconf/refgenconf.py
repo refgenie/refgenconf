@@ -626,15 +626,6 @@ class RefGenConf(yacman.YacAttMap):
         :param bool children: a logical indicating whether the relationship to be added is 'children'
         :return RefGenConf: updated object
         """
-        def _extend_unique(l1, l2):
-            """
-            Extend a list with no duplicates
-
-            :param list l1: original list
-            :param list l2: list with items to add
-            :return list: an extended list
-            """
-            return l1 + list(set(l2) - set(l1))
         tag = tag or self.get_default_tag(genome, asset)
         relationship = CFG_ASSET_CHILDREN_KEY if children else CFG_ASSET_PARENTS_KEY
         if _check_insert_data(data, list, "data"):
@@ -775,6 +766,24 @@ class RefGenConf(yacman.YacAttMap):
                 self[CFG_GENOMES_KEY][genome].update(data)
         return self
 
+    def update_genome_servers(self, url, reset=False):
+        """
+        Update the list of genome_servers.
+
+        Use reset argument to overwrite the current list. Otherwise the current one will be appended to.
+
+        :param list[str] | str url: url(s) to update the genome_servers list with
+        :param bool reset: whether the current list should be overwritten
+        """
+        urls = _make_list_of_str(url)
+        if CFG_SERVERS_KEY in self:
+            if reset:
+                self[CFG_SERVERS_KEY] = urls
+            else:
+                self[CFG_SERVERS_KEY] = _extend_unique(self[CFG_SERVERS_KEY], urls)
+        else:
+            raise GenomeConfigFormatError("The '{}' is missing. Can't update the server list".format(CFG_SERVERS_KEY))
+
     def get_genome_attributes(self, genome):
         """
         Get the dictionary attributes, like checksum, contents, description. Does not return the assets.
@@ -797,7 +806,6 @@ class RefGenConf(yacman.YacAttMap):
         """
         tag_data = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag]
         return all([r in tag_data for r in REQ_TAG_ATTRS])
-
 
     def _invert_genomes(self, order=None):
         """ Map each asset type/kind/name to a collection of assemblies.
@@ -1132,6 +1140,36 @@ def _check_insert_data(obj, datatype, name):
     return True
 
 
+def _make_list_of_str(arg):
+    """
+    Convert a str to list of str or ensure a list is a list of str
+
+    :param list[str] | str arg: string or a list of strings to listify
+    :return list: list of strings
+    :raise TypeError: if a fault argument was provided
+    """
+    if isinstance(arg, str):
+        return [arg]
+    elif isinstance(arg, list):
+        if not all(isinstance(i, str) for i in arg):
+            raise TypeError("Provided argument has to be a list[str] or a str, got '{}'".format(arg.__class__.__name__))
+        else:
+            return arg
+    else:
+        raise TypeError("Provided argument has to be a list[str] or a str, got '{}'".format(arg.__class__.__name__))
+
+
+def _extend_unique(l1, l2):
+    """
+    Extend a list with no duplicates
+
+    :param list l1: original list
+    :param list l2: list with items to add
+    :return list: an extended list
+    """
+    return l1 + list(set(l2) - set(l1))
+
+
 def _select_genomes(genomes, genome=None, strict=False):
     """
     Safely select a subset of genomes
@@ -1143,10 +1181,7 @@ def _select_genomes(genomes, genome=None, strict=False):
     :return list: selected subset of genomes
     """
     if genome:
-        if isinstance(genome, str):
-            genome = [genome]
-        elif not isinstance(genome, list) or not all(isinstance(i, str) for i in genome):
-            raise TypeError("genome has to be a list[str] or a str, got '{}'".format(genome.__class__.__name__))
+        genome = _make_list_of_str(genome)
     else:
         return genomes
     if strict:

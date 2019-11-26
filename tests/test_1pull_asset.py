@@ -84,10 +84,14 @@ def test_parent_asset_mismatch(my_rgc, gname, aname, tname):
         my_rgc.pull_asset(gname, "fasta", tname)
     my_rgc.make_writable()
     my_rgc.write()
+    ori = my_rgc[CFG_GENOMES_KEY][gname][CFG_ASSETS_KEY]["fasta"][CFG_ASSET_TAGS_KEY][tname][CFG_ASSET_CHECKSUM_KEY]
     my_rgc[CFG_GENOMES_KEY][gname][CFG_ASSETS_KEY]["fasta"][CFG_ASSET_TAGS_KEY][tname][CFG_ASSET_CHECKSUM_KEY] = "wrong"
     with mock.patch("refgenconf.refgenconf.query_yes_no", return_value=True):
         with pytest.raises(RemoteDigestMismatchError):
             my_rgc.pull_asset(gname, aname, tname)
+    with my_rgc as r:
+        r[CFG_GENOMES_KEY][gname][CFG_ASSETS_KEY]["fasta"][CFG_ASSET_TAGS_KEY][tname][CFG_ASSET_CHECKSUM_KEY] = ori
+    my_rgc.make_readonly()
 
 
 @pytest.mark.parametrize(["gname", "aname", "tname"], [("rCRSd", "bowtie2_index", "default"),
@@ -107,18 +111,16 @@ def test_pull_asset_updates_genome_config(cfg_file, gname, aname, tname):
         print("\nPulling; genome: {}, asset: {}, tag: {}\n".format(gname, aname, tname))
         rgc.pull_asset(gname, aname, tname)
     assert not ori_rgc.to_dict() == rgc.to_dict()
-    post_rgc = RefGenConf(filepath=cfg_file)
+    post_rgc = RefGenConf(filepath=cfg_file, writable=False)
     assert isinstance(post_rgc.get_asset(gname, aname, tname), str)
 
 
-@pytest.mark.parametrize(["gname", "aname", "tname"], [("human_repeats", "fasta", "default"), ("mouse_chrM2x", "fasta", "default")])
-def test_pull_asset_works_with_nonwritable_and_writable_rgc(cfg_file, gname, aname, tname):
-    rgc_ro = RefGenConf(filepath=cfg_file, writable=False)
-    rgc_rw = RefGenConf(filepath=cfg_file, writable=True)
-    remove_asset_and_file(rgc_rw, gname, aname, tname)
-    remove_asset_and_file(rgc_ro, gname, aname, tname)
+@pytest.mark.parametrize(["gname", "aname", "tname", "state"],
+                         [("human_repeats", "fasta", "default", True),
+                          ("mouse_chrM2x", "fasta", "default", False)])
+def test_pull_asset_works_with_nonwritable_and_writable_rgc(cfg_file, gname, aname, tname, state):
+    rgc = RefGenConf(filepath=cfg_file, writable=state)
+    remove_asset_and_file(rgc, gname, aname, tname)
     with mock.patch("refgenconf.refgenconf.query_yes_no", return_value=True):
         print("\nPulling; genome: {}, asset: {}, tag: {}\n".format(gname, aname, tname))
-        rgc_rw.pull_asset(gname, aname, tname)
-        rgc_ro.pull_asset(gname, aname, tname)
-    assert rgc_rw.to_dict() == rgc_ro.to_dict()
+        rgc.pull_asset(gname, aname, tname)

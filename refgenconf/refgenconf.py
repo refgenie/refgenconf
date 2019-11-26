@@ -607,17 +607,12 @@ class RefGenConf(yacman.YacAttMap):
                 shutil.rmtree(tmpdir)
                 if os.path.isfile(filepath):
                     os.remove(filepath)
-            if not self.writable:
-                _LOGGER.debug("Making object writable")
-                self.make_writable()
-            [self.chk_digest_update_child(gat[0], x, "{}/{}:{}".format(*gat), server_url)
-             for x in archive_data[CFG_ASSET_PARENTS_KEY] if CFG_ASSET_PARENTS_KEY in archive_data]
-            self.update_tags(*gat, data={attr: archive_data[attr] for attr in ATTRS_COPY_PULL
-                                         if attr in archive_data})
-            self.set_default_pointer(*gat)
-            _LOGGER.debug("Updating config file: {}".format(self.write()))
-            _LOGGER.debug("Making object read-only")
-            self.make_readonly()
+            with self as rgc:
+                [rgc.chk_digest_update_child(gat[0], x, "{}/{}:{}".format(*gat), server_url)
+                 for x in archive_data[CFG_ASSET_PARENTS_KEY] if CFG_ASSET_PARENTS_KEY in archive_data]
+                rgc.update_tags(*gat, data={attr: archive_data[attr]
+                                            for attr in ATTRS_COPY_PULL if attr in archive_data})
+                rgc.set_default_pointer(*gat)
             return gat, archive_data, server_url
 
     def update_relatives_assets(self, genome, asset, tag=None, data=None, children=False):

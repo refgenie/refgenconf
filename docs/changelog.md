@@ -8,6 +8,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - `get_asset_digest` method for asset digest retrieval
 - `dir` to the `filepath` method to return an archive enclosing directory
 - `get_asset_digest` method to return the digest for the specified asset
+- `update_genome_servers` method for `genome_servers` attribute manipulation 
 
 ### Changed
 - `pull_asset` method so that it downloads the archive from a server, makes the object writable, updates it and writes the updates to the refgenie configuration file on disk

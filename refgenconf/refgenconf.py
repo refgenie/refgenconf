@@ -712,7 +712,6 @@ class RefGenConf(yacman.YacAttMap):
         :raise TypeError: if genome argument type is not a list or str
         :return RefGenConf: updated object
         """
-        # TODO: add unit tests
         def _del_if_empty(obj, attr, alt=None):
             """
             Internal function for Mapping attribute deleting.

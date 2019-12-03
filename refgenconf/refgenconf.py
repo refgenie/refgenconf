@@ -777,7 +777,7 @@ class RefGenConf(yacman.YacAttMap):
         urls = _make_list_of_str(url)
         if CFG_SERVERS_KEY in self:
             if reset:
-                self[CFG_SERVERS_KEY] = urls
+                self[CFG_SERVERS_KEY] = _extend_unique([], urls)
             else:
                 self[CFG_SERVERS_KEY] = _extend_unique(self[CFG_SERVERS_KEY], urls)
         else:

@@ -4,7 +4,7 @@ import os
 import pytest
 from attmap import PathExAttMap
 from refgenconf import RefGenConf, MissingConfigDataError, ConfigNotCompliantError
-from refgenconf.const import CFG_FOLDER_KEY, CFG_GENOMES_KEY, CFG_SERVER_KEY, \
+from refgenconf.const import CFG_FOLDER_KEY, CFG_GENOMES_KEY, CFG_SERVERS_KEY, \
     DEFAULT_SERVER
 
 __author__ = "Vince Reuter"
@@ -37,16 +37,16 @@ class TestRefGenConf:
                     fout.write("{}: {}\n".format(CFG_FOLDER_KEY, expected))
                 else:
                     fout.write(l)
-                    if l.startswith(CFG_SERVER_KEY):
+                    if l.startswith(CFG_SERVERS_KEY):
                         found = True
             if not found:
-                fout.write("{}: {}".format(CFG_SERVER_KEY, DEFAULT_SERVER))
+                fout.write("{}: {}".format(CFG_SERVERS_KEY, DEFAULT_SERVER))
         rgc = RefGenConf(filepath=conf_file)
         assert expected != os.path.dirname(conf_file)
         assert expected == rgc[CFG_FOLDER_KEY]
 
     def test_empty_rgc_is_false(self):
-        assert bool(RefGenConf(entries={CFG_SERVER_KEY: DEFAULT_SERVER})) is False
+        assert bool(RefGenConf(entries={CFG_SERVERS_KEY: DEFAULT_SERVER})) is False
 
     def test_nonempty_rgc_is_true(self, rgc):
         assert bool(rgc) is True
@@ -56,7 +56,7 @@ class TestRefGenConf:
         rgc = RefGenConf(entries={
             CFG_FOLDER_KEY: tmpdir.strpath,
             CFG_GENOMES_KEY: genomes,
-            CFG_SERVER_KEY: DEFAULT_SERVER
+            CFG_SERVERS_KEY: DEFAULT_SERVER
         })
         res = rgc[CFG_GENOMES_KEY]
         assert isinstance(res, PathExAttMap)

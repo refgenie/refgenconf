@@ -3,7 +3,6 @@
 import os
 import pytest
 from refgenconf import CFG_FOLDER_KEY, UnboundEnvironmentVariablesError as UEVErr
-from tests.conftest import get_get_url, REQUESTS
 
 __author__ = "Vince Reuter"
 __email__ = "vreuter@virginia.edu"

@@ -2,6 +2,21 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format. 
 
+## [0.6.0] - 2019-12-06
+
+### Added
+- `get_asset_digest` method for asset digest retrieval
+- `dir` to the `filepath` method to return an archive enclosing directory
+- `get_asset_digest` method to return the digest for the specified asset
+- `update_genome_servers` method for `genome_servers` attribute manipulation 
+
+### Changed
+- `pull_asset` method so that it downloads the archive from a server, makes the object writable, updates it and writes the updates to the refgenie configuration file on disk
+- the way of distribution of `refgenieserver` endpoints operationIds. They are grouped and mapped to a short description   
+
+### Fixed
+- overloaded colon in progress bar descriptions; [#73](https://github.com/databio/refgenconf/issues/73)
+
 ## [0.5.4] - 2019-11-05
 
 ### Added

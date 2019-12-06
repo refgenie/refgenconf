@@ -12,6 +12,9 @@ import pytest
 from refgenconf.const import *
 from refgenconf.exceptions import *
 from refgenconf.refgenconf import _download_url_progress
+from refgenconf import RefGenConf
+
+from .conftest import remove_asset_and_file
 
 __author__ = "Vince Reuter"
 __email__ = "vreuter@virginia.edu"
@@ -79,6 +82,45 @@ def test_parent_asset_mismatch(my_rgc, gname, aname, tname):
     """ Test that an exception is raised when remote and local parent checksums do not match on pull"""
     with mock.patch("refgenconf.refgenconf.query_yes_no", return_value=True):
         my_rgc.pull_asset(gname, "fasta", tname)
+    my_rgc.make_writable()
+    my_rgc.write()
+    ori = my_rgc[CFG_GENOMES_KEY][gname][CFG_ASSETS_KEY]["fasta"][CFG_ASSET_TAGS_KEY][tname][CFG_ASSET_CHECKSUM_KEY]
     my_rgc[CFG_GENOMES_KEY][gname][CFG_ASSETS_KEY]["fasta"][CFG_ASSET_TAGS_KEY][tname][CFG_ASSET_CHECKSUM_KEY] = "wrong"
-    with pytest.raises(RefgenconfError):
-        my_rgc.pull_asset(gname, aname, tname)
+    with mock.patch("refgenconf.refgenconf.query_yes_no", return_value=True):
+        with pytest.raises(RemoteDigestMismatchError):
+            my_rgc.pull_asset(gname, aname, tname)
+    with my_rgc as r:
+        r[CFG_GENOMES_KEY][gname][CFG_ASSETS_KEY]["fasta"][CFG_ASSET_TAGS_KEY][tname][CFG_ASSET_CHECKSUM_KEY] = ori
+    my_rgc.make_readonly()
+
+
+@pytest.mark.parametrize(["gname", "aname", "tname"], [("rCRSd", "bowtie2_index", "default"),
+                                                       ("mouse_chrM2x", "bwa_index", "default")])
+def test_pull_asset_updates_genome_config(cfg_file, gname, aname, tname):
+    """
+    Test that the object that was identical prior to the asset pull differs afterwards
+    and the pulled asset metadata has been written to the config file
+    """
+    ori_rgc = RefGenConf(filepath=cfg_file, writable=False)
+    rgc = RefGenConf(filepath=cfg_file, writable=False)
+    remove_asset_and_file(rgc, gname, aname, tname)
+    remove_asset_and_file(ori_rgc, gname, aname, tname)
+    # ori_rgc.remove_assets(gname, aname, tname)
+    assert ori_rgc.to_dict() == rgc.to_dict()
+    with mock.patch("refgenconf.refgenconf.query_yes_no", return_value=True):
+        print("\nPulling; genome: {}, asset: {}, tag: {}\n".format(gname, aname, tname))
+        rgc.pull_asset(gname, aname, tname)
+    assert not ori_rgc.to_dict() == rgc.to_dict()
+    post_rgc = RefGenConf(filepath=cfg_file, writable=False)
+    assert isinstance(post_rgc.get_asset(gname, aname, tname), str)
+
+
+@pytest.mark.parametrize(["gname", "aname", "tname", "state"],
+                         [("human_repeats", "fasta", "default", True),
+                          ("mouse_chrM2x", "fasta", "default", False)])
+def test_pull_asset_works_with_nonwritable_and_writable_rgc(cfg_file, gname, aname, tname, state):
+    rgc = RefGenConf(filepath=cfg_file, writable=state)
+    remove_asset_and_file(rgc, gname, aname, tname)
+    with mock.patch("refgenconf.refgenconf.query_yes_no", return_value=True):
+        print("\nPulling; genome: {}, asset: {}, tag: {}\n".format(gname, aname, tname))
+        rgc.pull_asset(gname, aname, tname)

@@ -155,7 +155,7 @@ class RefGenConf(yacman.YacAttMap):
                             asset_sep=asset_sep, order=order)
         return "\n".join([make_line(g, self[CFG_GENOMES_KEY][g][CFG_ASSETS_KEY]) for g in refgens])
 
-    def filepath(self, genome, asset, tag, ext=".tgz"):
+    def filepath(self, genome, asset, tag, ext=".tgz", dir=False):
         """
         Determine path to a particular asset for a particular genome.
 
@@ -165,7 +165,8 @@ class RefGenConf(yacman.YacAttMap):
         :param str ext: file extension
         :return str: path to asset for given genome and asset kind/name
         """
-        return os.path.join(self[CFG_FOLDER_KEY], genome, asset, tag, asset + "__" + tag + ext)
+        tag_dir = os.path.join(self[CFG_FOLDER_KEY], genome, asset, tag)
+        return os.path.join(tag_dir, asset + "__" + tag + ext) if not dir else tag_dir
 
     def genomes_list(self, order=None):
         """
@@ -471,11 +472,14 @@ class RefGenConf(yacman.YacAttMap):
         :param function(str) -> function build_signal_handler: how to create
             a signal handler to use during the download; the single argument
             to this function factory is the download filepath
-        :return list: a list of genome, asset, tag names and a key-value pair with
-            which genome config file should be updated if pull succeeds,
-             else asset key and a null value.
+        :param bool update: whether the object should be updated with downloaded archive data
+        :return (list[str], dict, str): a list of genome, asset, tag names
+            and a key-value pair with which genome config file should be updated
+            if pull succeeds, else asset key and a null value
         :raise refgenconf.UnboundEnvironmentVariablesError: if genome folder
             path contains any env. var. that's unbound
+        :raise refgenconf.RefGenConfError: if the object update is requested in
+            a non-writable state
         """
         missing_vars = unbound_env_vars(self[CFG_FOLDER_KEY])
         if missing_vars:
@@ -603,6 +607,12 @@ class RefGenConf(yacman.YacAttMap):
                 shutil.rmtree(tmpdir)
                 if os.path.isfile(filepath):
                     os.remove(filepath)
+            with self as rgc:
+                [rgc.chk_digest_update_child(gat[0], x, "{}/{}:{}".format(*gat), server_url)
+                 for x in archive_data[CFG_ASSET_PARENTS_KEY] if CFG_ASSET_PARENTS_KEY in archive_data]
+                rgc.update_tags(*gat, data={attr: archive_data[attr]
+                                            for attr in ATTRS_COPY_PULL if attr in archive_data})
+                rgc.set_default_pointer(*gat)
             return gat, archive_data, server_url
 
     def update_relatives_assets(self, genome, asset, tag=None, data=None, children=False):
@@ -616,15 +626,6 @@ class RefGenConf(yacman.YacAttMap):
         :param bool children: a logical indicating whether the relationship to be added is 'children'
         :return RefGenConf: updated object
         """
-        def _extend_unique(l1, l2):
-            """
-            Extend a list with no duplicates
-
-            :param list l1: original list
-            :param list l2: list with items to add
-            :return list: an extended list
-            """
-            return l1 + list(set(l2) - set(l1))
         tag = tag or self.get_default_tag(genome, asset)
         relationship = CFG_ASSET_CHILDREN_KEY if children else CFG_ASSET_PARENTS_KEY
         if _check_insert_data(data, list, "data"):
@@ -711,7 +712,6 @@ class RefGenConf(yacman.YacAttMap):
         :raise TypeError: if genome argument type is not a list or str
         :return RefGenConf: updated object
         """
-        # TODO: add unit tests
         def _del_if_empty(obj, attr, alt=None):
             """
             Internal function for Mapping attribute deleting.
@@ -764,6 +764,24 @@ class RefGenConf(yacman.YacAttMap):
             if _check_insert_data(data, Mapping, "data"):
                 self[CFG_GENOMES_KEY][genome].update(data)
         return self
+
+    def update_genome_servers(self, url, reset=False):
+        """
+        Update the list of genome_servers.
+
+        Use reset argument to overwrite the current list. Otherwise the current one will be appended to.
+
+        :param list[str] | str url: url(s) to update the genome_servers list with
+        :param bool reset: whether the current list should be overwritten
+        """
+        urls = _make_list_of_str(url)
+        if CFG_SERVERS_KEY in self:
+            if reset:
+                self[CFG_SERVERS_KEY] = _extend_unique([], urls)
+            else:
+                self[CFG_SERVERS_KEY] = _extend_unique(self[CFG_SERVERS_KEY], urls)
+        else:
+            raise GenomeConfigFormatError("The '{}' is missing. Can't update the server list".format(CFG_SERVERS_KEY))
 
     def get_genome_attributes(self, genome):
         """
@@ -833,11 +851,10 @@ class RefGenConf(yacman.YacAttMap):
                             format(genome, asset, tag))
             return
         try:
-            local_digest = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY]\
-                [tag][CFG_ASSET_CHECKSUM_KEY]
+            local_digest = self.get_asset_digest(genome, asset, tag)
             if remote_digest != local_digest:
                 raise RemoteDigestMismatchError(asset, local_digest, remote_digest)
-        except KeyError:
+        except RefgenconfError:
             _LOGGER.debug("Could not find '{}/{}:{}' digest. Digest for this parent will be populated "
                           "with the server one after the pull".format(genome, asset, tag))
             return
@@ -851,7 +868,7 @@ class RefGenConf(yacman.YacAttMap):
         :param str genome: name of the genome to check the asset digests for
         :param str remote_asset_name: asset and tag names, formatted like: asset:tag
         :param str child_name: name to be appended to the children of the parent
-        :param str server_url: addres of the server to query for the digests
+        :param str server_url: address of the server to query for the digests
         :raise RefgenconfError: if the local digest does not match its remote counterpart
         """
         remote_asset_data = prp(remote_asset_name)
@@ -878,6 +895,21 @@ class RefGenConf(yacman.YacAttMap):
                 raise RemoteDigestMismatchError(asset, local_digest, remote_digest)
         finally:
             self.update_relatives_assets(genome, asset, tag, [child_name], children=True)
+
+    def get_asset_digest(self, genome, asset, tag=None):
+        """
+        Returns the digest for the specified asset. The defined default tag will be used if not provided as an argument
+
+        :param str genome: genome identifier
+        :param str asset: asset identifier
+        :param str tag: tag identifier
+        :return str: asset digest for the tag
+        """
+        _assert_gat_exists(self[CFG_GENOMES_KEY], genome, asset, tag)
+        tag = tag or self.get_default_tag(genome, asset)
+        if CFG_ASSET_CHECKSUM_KEY in self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag]:
+            return self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_CHECKSUM_KEY]
+        raise MissingConfigDataError("Digest does not exist for: {}/{}:{}".format(genome, asset, tag))
 
 
 class DownloadProgressBar(tqdm):
@@ -925,7 +957,7 @@ def _download_url_progress(url, output_path, name, params=None):
     :param dict params: query parameters to be added to the request
     """
     url = url if params is None else url + "?{}".format(urllib.parse.urlencode(params))
-    with DownloadProgressBar(unit_scale=True, desc=name, unit="B") as dpb:
+    with DownloadProgressBar(unit_scale=True, desc=name, unit="B", bar_format=CUSTOM_BAR_FMT, leave=False) as dpb:
         urllib.request.urlretrieve(url, filename=output_path, reporthook=dpb.update_to)
 
 
@@ -1107,6 +1139,39 @@ def _check_insert_data(obj, datatype, name):
     return True
 
 
+def _make_list_of_str(arg):
+    """
+    Convert a str to list of str or ensure a list is a list of str
+
+    :param list[str] | str arg: string or a list of strings to listify
+    :return list: list of strings
+    :raise TypeError: if a fault argument was provided
+    """
+    def _raise_faulty_arg():
+        raise TypeError("Provided argument has to be a list[str] or a str, got '{}'".format(arg.__class__.__name__))
+
+    if isinstance(arg, str):
+        return [arg]
+    elif isinstance(arg, list):
+        if not all(isinstance(i, str) for i in arg):
+            _raise_faulty_arg()
+        else:
+            return arg
+    else:
+        _raise_faulty_arg()
+
+
+def _extend_unique(l1, l2):
+    """
+    Extend a list with no duplicates
+
+    :param list l1: original list
+    :param list l2: list with items to add
+    :return list: an extended list
+    """
+    return l1 + list(set(l2) - set(l1))
+
+
 def _select_genomes(genomes, genome=None, strict=False):
     """
     Safely select a subset of genomes
@@ -1118,10 +1183,7 @@ def _select_genomes(genomes, genome=None, strict=False):
     :return list: selected subset of genomes
     """
     if genome:
-        if isinstance(genome, str):
-            genome = [genome]
-        elif not isinstance(genome, list) or not all(isinstance(i, str) for i in genome):
-            raise TypeError("genome has to be a list[str] or a str, got '{}'".format(genome.__class__.__name__))
+        genome = _make_list_of_str(genome)
     else:
         return genomes
     if strict:
@@ -1185,10 +1247,10 @@ def _get_server_endpoints_mapping(url):
     :return dict: endpoints mapped by their operationIds
     """
     json = _download_json(url + "/openapi.json")
-    return _map_paths_by_id(asciify_json_dict(json) if sys.version_info[0] == 2 else json)
+    return map_paths_by_id(asciify_json_dict(json) if sys.version_info[0] == 2 else json)
 
 
-def _map_paths_by_id(json_dict):
+def map_paths_by_id(json_dict):
     # check the required input dict characteristics to construct the mapping
     if "openapi" not in json_dict or not isinstance(json_dict["openapi"], str) \
             or "paths" not in json_dict or not isinstance(json_dict["paths"], dict):

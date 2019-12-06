@@ -9,6 +9,7 @@ from attmap import PathExAttMap
 from refgenconf import __version__ as package_version
 from refgenconf import RefGenConf
 from refgenconf.const import *
+from refgenconf.exceptions import *
 
 __author__ = "Vince Reuter"
 __email__ = "vreuter@virginia.edu"
@@ -99,20 +100,25 @@ def gencfg(temp_genome_config_file):
     return fp
 
 
-def get_get_url(base=URL_BASE):
+def remove_asset_and_file(rgc, gname, aname, tname):
     """
-    Create 3-arg function that determines URL from genome and asset names.
+    safely remove asset from cfg and disk
 
-    :param str genome: the reference genome assembly ID, e.g. mm10
-    :param str asset: the name of the asset to use in the URL, e.g. bowtie2
-    :param str base: the base of the URL to create
-    :return function(object, str, str): function with which to build URL
-        based on reference genome assembly ID, asset name, and one unused
-        positional argument
+    :param RefGenConf rgc: object to remove the asset from
+    :param str gname: genome name to remove
+    :param str aname: asset name to remove
+    :param str tname: tag name to remove
     """
-    # return lambda _, v, g, a: "{base}/{g}/{fn}".\
-    #     format(base=base, v=API_VERSION, g=genome, fn=a + REMOTE_ASSETS[g][asset])
-    return lambda base: base + "/{genome}/{asset}.tgz"
+    try:
+        shutil.rmtree(rgc.get_asset(gname, aname, tname, enclosing_dir=True))
+    except Exception as e:
+        print("file not removed: {}".format(e))
+        pass
+    try:
+        rgc.remove_assets(gname, aname, tname)
+    except Exception as e:
+        print("asset not removed: {}".format(e))
+        pass
 
 
 @pytest.fixture(scope="session")

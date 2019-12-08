@@ -615,7 +615,7 @@ class RefGenConf(yacman.YacAttMap):
                 rgc.set_default_pointer(*gat)
             return gat, archive_data, server_url
 
-    def remove_asset_from_relatives(self, genome, asset, tag=None):
+    def remove_asset_from_relatives(self, genome, asset, tag):
         """
         Remove any relationship links associated with the selected asset
 
@@ -623,7 +623,6 @@ class RefGenConf(yacman.YacAttMap):
         :param str asset: asset to be removed from its relatives' relatives list
         :param str tag: tag to be removed from its relatives' relatives list
         """
-        tag = tag or self.get_default_tag(genome, asset)
         to_remove = "{}/{}:{}".format(genome, asset, tag)
         for rel_type in CFG_ASSET_RELATIVES_KEYS:
             tmp = CFG_ASSET_RELATIVES_KEYS[len(CFG_ASSET_RELATIVES_KEYS) - 1 - CFG_ASSET_RELATIVES_KEYS.index(rel_type)]
@@ -633,8 +632,11 @@ class RefGenConf(yacman.YacAttMap):
             for rel in tag_data[rel_type]:
                 parsed = prp(rel)
                 _LOGGER.debug("Removing '{}' from '{}' {}".format(to_remove, rel, tmp))
-                self[CFG_GENOMES_KEY][parsed["namespace"]][CFG_ASSETS_KEY][parsed["item"]]\
-                    [CFG_ASSET_TAGS_KEY][parsed["tag"]][tmp].remove(to_remove)
+                try:
+                    self[CFG_GENOMES_KEY][parsed["namespace"] or genome][CFG_ASSETS_KEY][parsed["item"]]\
+                        [CFG_ASSET_TAGS_KEY][parsed["tag"]][tmp].remove(to_remove)
+                except (KeyError, ValueError):
+                    pass
 
     def update_relatives_assets(self, genome, asset, tag=None, data=None, children=False):
         """

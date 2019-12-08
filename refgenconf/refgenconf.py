@@ -750,11 +750,11 @@ class RefGenConf(yacman.YacAttMap):
                     if alt[1] in alt[0]:
                         del alt[0][alt[1]]
 
-
         tag = tag or self.get_default_tag(genome, asset)
         if _check_insert_data(genome, str, "genome"):
             if _check_insert_data(asset, str, "asset"):
                 if _check_insert_data(tag, str, "tag"):
+                    self.remove_asset_from_relatives(genome, asset, tag)
                     del self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag]
                     _del_if_empty(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset], CFG_ASSET_TAGS_KEY,
                                   [self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY], asset])

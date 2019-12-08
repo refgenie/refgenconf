@@ -615,6 +615,27 @@ class RefGenConf(yacman.YacAttMap):
                 rgc.set_default_pointer(*gat)
             return gat, archive_data, server_url
 
+    def remove_asset_from_relatives(self, genome, asset, tag=None):
+        """
+        Remove any relationship links associated with the selected asset
+
+        :param str genome: genome to be removed from its relatives' relatives list
+        :param str asset: asset to be removed from its relatives' relatives list
+        :param str tag: tag to be removed from its relatives' relatives list
+        """
+        tag = tag or self.get_default_tag(genome, asset)
+        to_remove = "{}/{}:{}".format(genome, asset, tag)
+        for rel_type in CFG_ASSET_RELATIVES_KEYS:
+            tmp = CFG_ASSET_RELATIVES_KEYS[len(CFG_ASSET_RELATIVES_KEYS) - 1 - CFG_ASSET_RELATIVES_KEYS.index(rel_type)]
+            tag_data = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag]
+            if rel_type not in tag_data:
+                continue
+            for rel in tag_data[rel_type]:
+                parsed = prp(rel)
+                _LOGGER.debug("Removing '{}' from '{}' {}".format(to_remove, rel, tmp))
+                self[CFG_GENOMES_KEY][parsed["namespace"]][CFG_ASSETS_KEY][parsed["item"]]\
+                    [CFG_ASSET_TAGS_KEY][parsed["tag"]][tmp].remove(to_remove)
+
     def update_relatives_assets(self, genome, asset, tag=None, data=None, children=False):
         """
         A convenience method which wraps the update assets and uses it to update the asset relatives of an asset.
@@ -728,6 +749,7 @@ class RefGenConf(yacman.YacAttMap):
                 else:
                     if alt[1] in alt[0]:
                         del alt[0][alt[1]]
+
 
         tag = tag or self.get_default_tag(genome, asset)
         if _check_insert_data(genome, str, "genome"):

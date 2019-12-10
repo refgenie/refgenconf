@@ -25,13 +25,13 @@ import warnings
 import shutil
 
 from attmap import PathExAttMap as PXAM
-from ubiquerg import checksum, is_url, query_yes_no, parse_registry_path as prp, untar
+from ubiquerg import checksum, is_url, query_yes_no, parse_registry_path as prp, untar, is_writable
 from tqdm import tqdm
 
 import yacman
 
 from .const import *
-from .helpers import unbound_env_vars, asciify_json_dict
+from .helpers import unbound_env_vars, asciify_json_dict, select_genome_config
 from .exceptions import *
 
 
@@ -116,6 +116,30 @@ class RefGenConf(yacman.YacAttMap):
         return not minkeys or bool(self[CFG_GENOMES_KEY])
 
     __nonzero__ = __bool__
+
+    def initialize_config_file(self, filepath=None):
+        """
+
+        :param str filepath: a valid path where the configuration file should be initialized
+        :return str: the filepath the file was initialized at
+        :raise OSError: in case the file could not be initialized due to insufficient permissions or pre-existence
+        """
+        def _write_fail_msg(reason):
+            OSError("Can't initialize, {}: {} ".format(reason, filepath))
+
+        filepath = select_genome_config(filepath, check_exist=False)
+        if not isinstance(filepath, str):
+            raise TypeError("Could not determine a valid path to "
+                            "initialize a configuration file: {}".format(str(filepath)))
+        if os.path.exists(filepath):
+            _write_fail_msg("file exists")
+        if not is_writable(filepath, check_exist=False):
+            _write_fail_msg("insufficient permissions")
+        self.make_writable(filepath)
+        self.write()
+        self.make_readonly()
+        _LOGGER.info("Initialized genome configuration file: {}".format(filepath))
+        return filepath
 
     def assets_dict(self, genome=None, order=None, include_tags=False):
         """
@@ -601,7 +625,8 @@ class RefGenConf(yacman.YacAttMap):
                 _LOGGER.info("Extracting asset tarball and saving to: {}".format(tag_dir))
                 tmpdir = tempfile.mkdtemp(dir=genome_dir_path)  # TODO: use context manager here when we drop support for py2
                 untar(filepath, tmpdir)
-                # here we suspect the unarchived asset to be an asset-named directory with the asset data inside
+                # here we suspect the unarchived asset to be an asset-named directory
+                # the asset data inside
                 # and we transfer it to the tag-named subdirectory
                 shutil.move(os.path.join(tmpdir, asset), tag_dir)
                 shutil.rmtree(tmpdir)

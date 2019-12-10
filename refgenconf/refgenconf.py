@@ -72,7 +72,7 @@ class RefGenConf(yacman.YacAttMap):
         """
 
         def _missing_key_msg(key, value):
-            print("Config lacks '{}' key. Setting to: {}".format(key, value))
+            _LOGGER.debug("Config lacks '{}' key. Setting to: {}".format(key, value))
 
         super(RefGenConf, self).__init__(filepath=filepath, entries=entries, writable=writable, wait_max=wait_max)
         genomes = self.setdefault(CFG_GENOMES_KEY, PXAM())

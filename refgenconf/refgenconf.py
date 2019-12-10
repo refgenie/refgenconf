@@ -119,22 +119,24 @@ class RefGenConf(yacman.YacAttMap):
 
     def initialize_config_file(self, filepath=None):
         """
+        Initialize genome configuration file on disk
 
         :param str filepath: a valid path where the configuration file should be initialized
         :return str: the filepath the file was initialized at
         :raise OSError: in case the file could not be initialized due to insufficient permissions or pre-existence
+        :raise TypeError: if no valid filepath cat be determined
         """
-        def _write_fail_msg(reason):
-            OSError("Can't initialize, {}: {} ".format(reason, filepath))
+        def _write_fail_err(reason):
+            raise OSError("Can't initialize, {}: {} ".format(reason, filepath))
 
         filepath = select_genome_config(filepath, check_exist=False)
         if not isinstance(filepath, str):
             raise TypeError("Could not determine a valid path to "
                             "initialize a configuration file: {}".format(str(filepath)))
         if os.path.exists(filepath):
-            _write_fail_msg("file exists")
+            _write_fail_err("file exists")
         if not is_writable(filepath, check_exist=False):
-            _write_fail_msg("insufficient permissions")
+            _write_fail_err("insufficient permissions")
         self.make_writable(filepath)
         self.write()
         self.make_readonly()

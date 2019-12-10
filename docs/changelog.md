@@ -6,9 +6,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 - `remove_asset_from_relatives` method for assets' relationship links removal
+- `initialize_config_file` method
 
 ### Changed
 - `remove_assets` method removes the asset relatives links
+- in `select_genome_config` function the `filepath` argument is not required anymore; the `$REFGENIE` environment variable can used instead
 
 ## [0.6.0] - 2019-12-06
 

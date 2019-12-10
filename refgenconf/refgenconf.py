@@ -70,6 +70,10 @@ class RefGenConf(yacman.YacAttMap):
             item is missing
         :raise ValueError: if entries is given as a string and is not a file
         """
+
+        def _missing_key_msg(key, value):
+            print("Config lacks '{}' key. Setting to: {}".format(key, value))
+
         super(RefGenConf, self).__init__(filepath=filepath, entries=entries, writable=writable, wait_max=wait_max)
         genomes = self.setdefault(CFG_GENOMES_KEY, PXAM())
         if not isinstance(genomes, PXAM):
@@ -79,10 +83,12 @@ class RefGenConf(yacman.YacAttMap):
             self[CFG_GENOMES_KEY] = PXAM()
         if CFG_FOLDER_KEY not in self:
             self[CFG_FOLDER_KEY] = os.path.dirname(entries) if isinstance(entries, str) else os.getcwd()
+            _missing_key_msg(CFG_FOLDER_KEY, self[CFG_FOLDER_KEY])
         try:
             version = self[CFG_VERSION_KEY]
         except KeyError:
-            _LOGGER.warning("Config lacks version key: {}".format(CFG_VERSION_KEY))
+            _missing_key_msg(CFG_VERSION_KEY, REQ_CFG_VERSION)
+            self[CFG_VERSION_KEY] = REQ_CFG_VERSION
         else:
             try:
                 version = float(version)
@@ -109,10 +115,11 @@ class RefGenConf(yacman.YacAttMap):
                 self[CFG_SERVERS_KEY] = self[CFG_SERVERS_KEY].rstrip("/")
                 self[CFG_SERVERS_KEY] = [self[CFG_SERVERS_KEY]]
         except KeyError:
-            raise MissingConfigDataError(CFG_SERVER_KEY)
+            _missing_key_msg(CFG_SERVERS_KEY, str([DEFAULT_SERVER]))
+            self[CFG_SERVERS_KEY] = [DEFAULT_SERVER]
 
     def __bool__(self):
-        minkeys = set(self.keys()) == {CFG_SERVERS_KEY, CFG_FOLDER_KEY, CFG_GENOMES_KEY}
+        minkeys = set(self.keys()) == set(RGC_REQ_KEYS)
         return not minkeys or bool(self[CFG_GENOMES_KEY])
 
     __nonzero__ = __bool__
@@ -634,6 +641,7 @@ class RefGenConf(yacman.YacAttMap):
                 shutil.rmtree(tmpdir)
                 if os.path.isfile(filepath):
                     os.remove(filepath)
+
             with self as rgc:
                 [rgc.chk_digest_update_child(gat[0], x, "{}/{}:{}".format(*gat), server_url)
                  for x in archive_data[CFG_ASSET_PARENTS_KEY] if CFG_ASSET_PARENTS_KEY in archive_data]

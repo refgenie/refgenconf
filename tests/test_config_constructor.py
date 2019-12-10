@@ -3,9 +3,9 @@
 import os
 import pytest
 from attmap import PathExAttMap
-from refgenconf import RefGenConf, MissingConfigDataError, ConfigNotCompliantError
+from refgenconf import RefGenConf, ConfigNotCompliantError
 from refgenconf.const import CFG_FOLDER_KEY, CFG_GENOMES_KEY, CFG_SERVERS_KEY, \
-    DEFAULT_SERVER
+    DEFAULT_SERVER, RGC_REQ_KEYS
 
 __author__ = "Vince Reuter"
 __email__ = "vreuter@virginia.edu"
@@ -15,12 +15,8 @@ class TestRefGenConf:
     def test_reads_file(self, cfg_file):
         assert isinstance(RefGenConf(cfg_file), RefGenConf)
 
-    @pytest.mark.parametrize("present", [[], [(CFG_FOLDER_KEY, lambda d: d.strpath)]])
-    def test_missing_server_key(self, tmpdir, present):
-        """ Omission of required config items causes expected exception """
-        data = {k: f(tmpdir) for k, f in present}
-        with pytest.raises(MissingConfigDataError):
-            RefGenConf(entries=data)
+    def test_creation_of_empty_object_sets_req_attrs(self):
+        assert all([k in RefGenConf() for k in RGC_REQ_KEYS])
 
     def test_genome_folder_is_pwd_if_no_folder_key_and_raw_entries_passed(self, ro_rgc):
         data = PathExAttMap({k: v for k, v in ro_rgc.items() if k != CFG_FOLDER_KEY})
@@ -44,12 +40,6 @@ class TestRefGenConf:
         rgc = RefGenConf(filepath=conf_file)
         assert expected != os.path.dirname(conf_file)
         assert expected == rgc[CFG_FOLDER_KEY]
-
-    def test_empty_rgc_is_false(self):
-        assert bool(RefGenConf(entries={CFG_SERVERS_KEY: DEFAULT_SERVER})) is False
-
-    def test_nonempty_rgc_is_true(self, rgc):
-        assert bool(rgc) is True
 
     @pytest.mark.parametrize("genomes", [None, "genomes", 10] + [dt(["mm10", "hg38"]) for dt in [list, set, tuple]])
     def test_illegal_genomes_mapping_type_gets_converted_to_empty_mapping(self, genomes, tmpdir):

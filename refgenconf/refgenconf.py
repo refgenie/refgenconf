@@ -418,8 +418,8 @@ class RefGenConf(yacman.YacAttMap):
         asset_mapping = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]
         if tag is None:
             raise ValueError("You must explicitly specify the tag of the asset "
-                             "you want to reassign. \nCurrently defined "
-                             "tags for '{}/{}' are: {}".format(genome, asset,", ".join(get_asset_tags(asset_mapping))))
+                             "you want to reassign. Currently defined "
+                             "tags for '{}/{}' are: {}".format(genome, asset, ", ".join(get_asset_tags(asset_mapping))))
         if new_tag in asset_mapping[CFG_ASSET_TAGS_KEY]:
             if not query_yes_no("You already have a '{}' asset tagged as '{}', do you wish to override?".
                                         format(asset, new_tag)):
@@ -479,9 +479,10 @@ class RefGenConf(yacman.YacAttMap):
                     ori_relative_data = prp(relative)
                     if ori_relative_data["item"] == asset and ori_relative_data["tag"] == tag:
                         ori_relative_data["tag"] = new_tag
-                        updated_relatives.append("{}:{}".format(asset, new_tag))
+                        updated_relatives.append("{}/{}:{}".format(genome, asset, new_tag))
                     else:
-                        updated_relatives.append("{}:{}".format(ori_relative_data["item"], ori_relative_data["tag"]))
+                        updated_relatives.append("{}/{}:{}".format(ori_relative_data["namespace"],
+                                                                   ori_relative_data["item"], ori_relative_data["tag"]))
             self.update_relatives_assets(genome, r_data["item"], r_data["tag"], updated_relatives, update_children)
             self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][r_data["item"]][CFG_ASSET_TAGS_KEY][r_data["tag"]]\
                 [relative_key] = updated_relatives
@@ -754,7 +755,7 @@ class RefGenConf(yacman.YacAttMap):
                     self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset].update(data)
         return self
 
-    def remove_assets(self, genome, asset, tag=None):
+    def remove_assets(self, genome, asset, tag=None, relationships=True):
         """
         Remove data associated with a specified genome:asset:tag combination.
         If no tags are specified, the entire asset is removed from the genome.
@@ -767,6 +768,8 @@ class RefGenConf(yacman.YacAttMap):
         :param str genome: genome to be removed
         :param str asset: asset package to be removed
         :param str tag: tag to be removed
+        :param bool relationships: whether the asset being removed should
+            be removed from its relatives as well
         :raise TypeError: if genome argument type is not a list or str
         :return RefGenConf: updated object
         """
@@ -791,7 +794,8 @@ class RefGenConf(yacman.YacAttMap):
         if _check_insert_data(genome, str, "genome"):
             if _check_insert_data(asset, str, "asset"):
                 if _check_insert_data(tag, str, "tag"):
-                    self.remove_asset_from_relatives(genome, asset, tag)
+                    if relationships:
+                        self.remove_asset_from_relatives(genome, asset, tag)
                     del self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag]
                     _del_if_empty(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset], CFG_ASSET_TAGS_KEY,
                                   [self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY], asset])

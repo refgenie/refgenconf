@@ -25,13 +25,13 @@ import warnings
 import shutil
 
 from attmap import PathExAttMap as PXAM
-from ubiquerg import checksum, is_url, query_yes_no, parse_registry_path as prp, untar
+from ubiquerg import checksum, is_url, query_yes_no, parse_registry_path as prp, untar, is_writable
 from tqdm import tqdm
 
 import yacman
 
 from .const import *
-from .helpers import unbound_env_vars, asciify_json_dict
+from .helpers import unbound_env_vars, asciify_json_dict, select_genome_config
 from .exceptions import *
 
 
@@ -70,6 +70,10 @@ class RefGenConf(yacman.YacAttMap):
             item is missing
         :raise ValueError: if entries is given as a string and is not a file
         """
+
+        def _missing_key_msg(key, value):
+            _LOGGER.debug("Config lacks '{}' key. Setting to: {}".format(key, value))
+
         super(RefGenConf, self).__init__(filepath=filepath, entries=entries, writable=writable, wait_max=wait_max)
         genomes = self.setdefault(CFG_GENOMES_KEY, PXAM())
         if not isinstance(genomes, PXAM):
@@ -79,10 +83,12 @@ class RefGenConf(yacman.YacAttMap):
             self[CFG_GENOMES_KEY] = PXAM()
         if CFG_FOLDER_KEY not in self:
             self[CFG_FOLDER_KEY] = os.path.dirname(entries) if isinstance(entries, str) else os.getcwd()
+            _missing_key_msg(CFG_FOLDER_KEY, self[CFG_FOLDER_KEY])
         try:
             version = self[CFG_VERSION_KEY]
         except KeyError:
-            _LOGGER.warning("Config lacks version key: {}".format(CFG_VERSION_KEY))
+            _missing_key_msg(CFG_VERSION_KEY, REQ_CFG_VERSION)
+            self[CFG_VERSION_KEY] = REQ_CFG_VERSION
         else:
             try:
                 version = float(version)
@@ -109,13 +115,40 @@ class RefGenConf(yacman.YacAttMap):
                 self[CFG_SERVERS_KEY] = self[CFG_SERVERS_KEY].rstrip("/")
                 self[CFG_SERVERS_KEY] = [self[CFG_SERVERS_KEY]]
         except KeyError:
-            raise MissingConfigDataError(CFG_SERVER_KEY)
+            _missing_key_msg(CFG_SERVERS_KEY, str([DEFAULT_SERVER]))
+            self[CFG_SERVERS_KEY] = [DEFAULT_SERVER]
 
     def __bool__(self):
-        minkeys = set(self.keys()) == {CFG_SERVERS_KEY, CFG_FOLDER_KEY, CFG_GENOMES_KEY}
+        minkeys = set(self.keys()) == set(RGC_REQ_KEYS)
         return not minkeys or bool(self[CFG_GENOMES_KEY])
 
     __nonzero__ = __bool__
+
+    def initialize_config_file(self, filepath=None):
+        """
+        Initialize genome configuration file on disk
+
+        :param str filepath: a valid path where the configuration file should be initialized
+        :return str: the filepath the file was initialized at
+        :raise OSError: in case the file could not be initialized due to insufficient permissions or pre-existence
+        :raise TypeError: if no valid filepath cat be determined
+        """
+        def _write_fail_err(reason):
+            raise OSError("Can't initialize, {}: {} ".format(reason, filepath))
+
+        filepath = select_genome_config(filepath, check_exist=False)
+        if not isinstance(filepath, str):
+            raise TypeError("Could not determine a valid path to "
+                            "initialize a configuration file: {}".format(str(filepath)))
+        if os.path.exists(filepath):
+            _write_fail_err("file exists")
+        if not is_writable(filepath, check_exist=False):
+            _write_fail_err("insufficient permissions")
+        self.make_writable(filepath)
+        self.write()
+        self.make_readonly()
+        _LOGGER.info("Initialized genome configuration file: {}".format(filepath))
+        return filepath
 
     def assets_dict(self, genome=None, order=None, include_tags=False):
         """
@@ -385,8 +418,8 @@ class RefGenConf(yacman.YacAttMap):
         asset_mapping = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]
         if tag is None:
             raise ValueError("You must explicitly specify the tag of the asset "
-                             "you want to reassign. \nCurrently defined "
-                             "tags for '{}/{}' are: {}".format(genome, asset,", ".join(get_asset_tags(asset_mapping))))
+                             "you want to reassign. Currently defined "
+                             "tags for '{}/{}' are: {}".format(genome, asset, ", ".join(get_asset_tags(asset_mapping))))
         if new_tag in asset_mapping[CFG_ASSET_TAGS_KEY]:
             if not query_yes_no("You already have a '{}' asset tagged as '{}', do you wish to override?".
                                         format(asset, new_tag)):
@@ -446,9 +479,10 @@ class RefGenConf(yacman.YacAttMap):
                     ori_relative_data = prp(relative)
                     if ori_relative_data["item"] == asset and ori_relative_data["tag"] == tag:
                         ori_relative_data["tag"] = new_tag
-                        updated_relatives.append("{}:{}".format(asset, new_tag))
+                        updated_relatives.append("{}/{}:{}".format(genome, asset, new_tag))
                     else:
-                        updated_relatives.append("{}:{}".format(ori_relative_data["item"], ori_relative_data["tag"]))
+                        updated_relatives.append("{}/{}:{}".format(ori_relative_data["namespace"],
+                                                                   ori_relative_data["item"], ori_relative_data["tag"]))
             self.update_relatives_assets(genome, r_data["item"], r_data["tag"], updated_relatives, update_children)
             self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][r_data["item"]][CFG_ASSET_TAGS_KEY][r_data["tag"]]\
                 [relative_key] = updated_relatives
@@ -601,12 +635,14 @@ class RefGenConf(yacman.YacAttMap):
                 _LOGGER.info("Extracting asset tarball and saving to: {}".format(tag_dir))
                 tmpdir = tempfile.mkdtemp(dir=genome_dir_path)  # TODO: use context manager here when we drop support for py2
                 untar(filepath, tmpdir)
-                # here we suspect the unarchived asset to be an asset-named directory with the asset data inside
+                # here we suspect the unarchived asset to be an asset-named directory
+                # the asset data inside
                 # and we transfer it to the tag-named subdirectory
                 shutil.move(os.path.join(tmpdir, asset), tag_dir)
                 shutil.rmtree(tmpdir)
                 if os.path.isfile(filepath):
                     os.remove(filepath)
+
             with self as rgc:
                 [rgc.chk_digest_update_child(gat[0], x, "{}/{}:{}".format(*gat), server_url)
                  for x in archive_data[CFG_ASSET_PARENTS_KEY] if CFG_ASSET_PARENTS_KEY in archive_data]
@@ -614,6 +650,29 @@ class RefGenConf(yacman.YacAttMap):
                                             for attr in ATTRS_COPY_PULL if attr in archive_data})
                 rgc.set_default_pointer(*gat)
             return gat, archive_data, server_url
+
+    def remove_asset_from_relatives(self, genome, asset, tag):
+        """
+        Remove any relationship links associated with the selected asset
+
+        :param str genome: genome to be removed from its relatives' relatives list
+        :param str asset: asset to be removed from its relatives' relatives list
+        :param str tag: tag to be removed from its relatives' relatives list
+        """
+        to_remove = "{}/{}:{}".format(genome, asset, tag)
+        for rel_type in CFG_ASSET_RELATIVES_KEYS:
+            tmp = CFG_ASSET_RELATIVES_KEYS[len(CFG_ASSET_RELATIVES_KEYS) - 1 - CFG_ASSET_RELATIVES_KEYS.index(rel_type)]
+            tag_data = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag]
+            if rel_type not in tag_data:
+                continue
+            for rel in tag_data[rel_type]:
+                parsed = prp(rel)
+                _LOGGER.debug("Removing '{}' from '{}' {}".format(to_remove, rel, tmp))
+                try:
+                    self[CFG_GENOMES_KEY][parsed["namespace"] or genome][CFG_ASSETS_KEY][parsed["item"]]\
+                        [CFG_ASSET_TAGS_KEY][parsed["tag"]][tmp].remove(to_remove)
+                except (KeyError, ValueError):
+                    pass
 
     def update_relatives_assets(self, genome, asset, tag=None, data=None, children=False):
         """
@@ -696,7 +755,7 @@ class RefGenConf(yacman.YacAttMap):
                     self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset].update(data)
         return self
 
-    def remove_assets(self, genome, asset, tag=None):
+    def remove_assets(self, genome, asset, tag=None, relationships=True):
         """
         Remove data associated with a specified genome:asset:tag combination.
         If no tags are specified, the entire asset is removed from the genome.
@@ -709,6 +768,8 @@ class RefGenConf(yacman.YacAttMap):
         :param str genome: genome to be removed
         :param str asset: asset package to be removed
         :param str tag: tag to be removed
+        :param bool relationships: whether the asset being removed should
+            be removed from its relatives as well
         :raise TypeError: if genome argument type is not a list or str
         :return RefGenConf: updated object
         """
@@ -733,6 +794,8 @@ class RefGenConf(yacman.YacAttMap):
         if _check_insert_data(genome, str, "genome"):
             if _check_insert_data(asset, str, "asset"):
                 if _check_insert_data(tag, str, "tag"):
+                    if relationships:
+                        self.remove_asset_from_relatives(genome, asset, tag)
                     del self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag]
                     _del_if_empty(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset], CFG_ASSET_TAGS_KEY,
                                   [self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY], asset])

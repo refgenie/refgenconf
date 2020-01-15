@@ -196,6 +196,7 @@ class RefGenConf(yacman.YacAttMap):
         :param str asset: asset name
         :param str tag: tag name
         :param str ext: file extension
+        :param bool dir: whether to return the enclosing directory instead of the file
         :return str: path to asset for given genome and asset kind/name
         """
         tag_dir = os.path.join(self[CFG_FOLDER_KEY], genome, asset, tag)
@@ -506,7 +507,6 @@ class RefGenConf(yacman.YacAttMap):
         :param function(str) -> function build_signal_handler: how to create
             a signal handler to use during the download; the single argument
             to this function factory is the download filepath
-        :param bool update: whether the object should be updated with downloaded archive data
         :return (list[str], dict, str): a list of genome, asset, tag names
             and a key-value pair with which genome config file should be updated
             if pull succeeds, else asset key and a null value

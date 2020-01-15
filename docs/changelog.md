@@ -2,7 +2,13 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format. 
 
-## [0.6.2] - unreleased
+## [0.6.2] - 2020-01-15
+
+### Added
+- `genome_archive_config` key to the genome configuration file
+
+### Changed
+- `genome_archive` key to `genome_archive_folder` in the config file. 
 
 ## [0.6.1] - 2019-12-13
 

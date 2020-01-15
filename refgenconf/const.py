@@ -51,7 +51,8 @@ API_IDS = [
 CFG_FOLDER_KEY = "genome_folder"
 CFG_SERVERS_KEY = "genome_servers"
 CFG_SERVER_KEY = "genome_server"
-CFG_ARCHIVE_KEY = "genome_archive"
+CFG_ARCHIVE_KEY = "genome_archive_folder"
+CFG_ARCHIVE_CONFIG_KEY = "genome_archive_config"
 CFG_VERSION_KEY = "config_version"
 CFG_GENOMES_KEY = "genomes"
 

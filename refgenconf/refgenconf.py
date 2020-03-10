@@ -964,7 +964,7 @@ class RefGenConf(yacman.YacAttMap):
                             format(genome, asset, tag))
             return
         try:
-            local_digest = self.get_asset_digest(genome, asset, tag)
+            local_digest = self.id(genome, asset, tag)
             if remote_digest != local_digest:
                 raise RemoteDigestMismatchError(asset, local_digest, remote_digest)
         except RefgenconfError:
@@ -1009,9 +1009,10 @@ class RefGenConf(yacman.YacAttMap):
         finally:
             self.update_relatives_assets(genome, asset, tag, [child_name], children=True)
 
-    def get_asset_digest(self, genome, asset, tag=None):
+    def id(self, genome, asset, tag=None):
         """
-        Returns the digest for the specified asset. The defined default tag will be used if not provided as an argument
+        Returns the digest for the specified asset.
+        The defined default tag will be used if not provided as an argument
 
         :param str genome: genome identifier
         :param str asset: asset identifier
@@ -1020,9 +1021,11 @@ class RefGenConf(yacman.YacAttMap):
         """
         _assert_gat_exists(self[CFG_GENOMES_KEY], genome, asset, tag)
         tag = tag or self.get_default_tag(genome, asset)
-        if CFG_ASSET_CHECKSUM_KEY in self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag]:
-            return self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_CHECKSUM_KEY]
-        raise MissingConfigDataError("Digest does not exist for: {}/{}:{}".format(genome, asset, tag))
+        a = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]
+        if CFG_ASSET_CHECKSUM_KEY in a[CFG_ASSET_TAGS_KEY][tag]:
+            return a[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_CHECKSUM_KEY]
+        raise MissingConfigDataError("Digest does not exist for: {}/{}:{}".
+                                     format(genome, asset, tag))
 
 
 class DownloadProgressBar(tqdm):

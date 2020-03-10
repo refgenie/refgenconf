@@ -221,10 +221,43 @@ class RefGenConf(yacman.YacAttMap):
         """
         return ", ".join(self.genomes_list(order))
 
-    def get_asset(self, genome_name, asset_name, tag_name=None, seek_key=None, strict_exists=True,
-                  check_exist=lambda p: os.path.exists(p) or is_url(p), enclosing_dir=False):
+    def seek(self, genome_name, asset_name, tag_name=None, seek_key=None,
+             strict_exists=None, enclosing_dir=False,
+             check_exist=lambda p: os.path.exists(p) or is_url(p)):
         """
-        Get an asset for a particular assembly.
+        Seek path to a specified genome-asset-tag
+
+        :param str genome_name: name of a reference genome assembly of interest
+        :param str asset_name: name of the particular asset to fetch
+        :param str tag_name: name of the particular asset tag to fetch
+        :param str seek_key: name of the particular subasset to fetch
+        :param bool | NoneType strict_exists: how to handle case in which
+            path doesn't exist; True to raise IOError, False to raise
+            RuntimeWarning, and None to do nothing at all. Default: None (do not check).
+        :param function(callable) -> bool check_exist: how to check for
+            asset/path existence
+        :param bool enclosing_dir: whether a path to the entire enclosing directory should be returned, e.g.
+            for a fasta asset that has 3 seek_keys pointing to 3 files in an asset dir, that asset dir is returned
+        :return str: path to the asset
+        :raise TypeError: if the existence check is not a one-arg function
+        :raise refgenconf.MissingGenomeError: if the named assembly isn't known
+            to this configuration instance
+        :raise refgenconf.MissingAssetError: if the names assembly is known to
+            this configuration instance, but the requested asset is unknown
+        """
+        return self.get_asset(genome_name=genome_name,
+                              asset_name=asset_name,
+                              tag_name=tag_name,
+                              seek_key=seek_key,
+                              strict_exists=strict_exists,
+                              check_exist=check_exist,
+                              enclosing_dir=enclosing_dir)
+
+    def get_asset(self, genome_name, asset_name, tag_name=None, seek_key=None, strict_exists=True,
+             check_exist=lambda p: os.path.exists(p) or is_url(p), enclosing_dir=False):
+        """
+        Get a path to the a specified genome-asset-tag.
+        Note: enforces file existence checks by default
 
         :param str genome_name: name of a reference genome assembly of interest
         :param str asset_name: name of the particular asset to fetch

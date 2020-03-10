@@ -112,7 +112,7 @@ def test_pull_asset_updates_genome_config(cfg_file, gname, aname, tname):
         rgc.pull_asset(gname, aname, tname)
     assert not ori_rgc.to_dict() == rgc.to_dict()
     post_rgc = RefGenConf(filepath=cfg_file, writable=False)
-    assert isinstance(post_rgc.get_asset(gname, aname, tname), str)
+    assert isinstance(post_rgc.seek(gname, aname, tname), str)
 
 
 @pytest.mark.parametrize(["gname", "aname", "tname", "state"],

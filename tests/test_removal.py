@@ -11,7 +11,7 @@ class TestRemoveAssets:
         """ The default asset is removed if specific not provided """
         my_rgc.remove_assets(gname, aname, tname)
         with pytest.raises(MissingAssetError):
-            my_rgc.get_asset(gname, aname, tname)
+            my_rgc.seek(gname, aname, tname)
 
     @pytest.mark.parametrize("gname", ["rCRSd", "mouse_chrM2x"])
     def test_genome_removal_after_last_asset_removed(self, my_rgc, gname):
@@ -20,7 +20,7 @@ class TestRemoveAssets:
         for asset in assets:
             my_rgc.remove_assets(gname, asset)
         with pytest.raises(MissingGenomeError):
-            my_rgc.get_asset(gname, assets[0])
+            my_rgc.seek(gname, assets[0])
 
     @pytest.mark.parametrize(["gname", "aname"], [("rCRSd", "fasta"), ("mouse_chrM2x", "fasta")])
     def test_asset_removal_after_last_tag_removed(self, my_rgc, gname, aname):
@@ -29,4 +29,4 @@ class TestRemoveAssets:
         for t in asset[CFG_ASSET_TAGS_KEY]:
             my_rgc.remove_assets(gname, aname, t)
         with pytest.raises(MissingAssetError):
-            my_rgc.get_asset(gname, aname, t)
+            my_rgc.seek(gname, aname, t)

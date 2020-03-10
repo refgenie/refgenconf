@@ -150,9 +150,9 @@ class RefGenConf(yacman.YacAttMap):
         _LOGGER.info("Initialized genome configuration file: {}".format(filepath))
         return filepath
 
-    def assets_dict(self, genome=None, order=None, include_tags=False):
+    def list(self, genome=None, order=None, include_tags=False):
         """
-        Map each assembly name to a list of available asset names.
+        List local assets; map each namespace to a list of available asset names
 
         :param function(str) -> object order: how to key genome IDs for sort
         :param list[str] | str genome: genomes that the assets should be found for
@@ -371,8 +371,8 @@ class RefGenConf(yacman.YacAttMap):
             one is provided, else the full mapping between assembly ID and
             collection available asset type names
         """
-        return self.assets_dict(genome, order, include_tags=include_tags)[genome] if genome is not None \
-            else self.assets_dict(order, include_tags=include_tags)
+        return self.list(genome, order, include_tags=include_tags)[genome] if genome is not None \
+            else self.list(order, include_tags=include_tags)
 
     def list_genomes_by_asset(self, asset=None, order=None):
         """
@@ -391,7 +391,7 @@ class RefGenConf(yacman.YacAttMap):
             sorted([g for g, data in self[CFG_GENOMES_KEY].items()
                     if asset in data.get(CFG_ASSETS_KEY)], key=order)
 
-    def list_local(self, genome=None, order=None):
+    def get_local_data_str(self, genome=None, order=None):
         """
         List locally available reference genome IDs and assets by ID.
 
@@ -415,7 +415,7 @@ class RefGenConf(yacman.YacAttMap):
             else ", ".join(_select_genomes(sorted(self[CFG_GENOMES_KEY].keys(), key=order), genome))
         return genomes_str, self.assets_str(genome=genome, order=order)
 
-    def list_remote(self, genome=None, order=None, get_url=lambda server, id: construct_request_url(server, id)):
+    def get_remote_data_str(self, genome=None, order=None, get_url=lambda server, id: construct_request_url(server, id)):
         """
         List genomes and assets available remotely.
 
@@ -427,9 +427,26 @@ class RefGenConf(yacman.YacAttMap):
         :return str, str: text reps of remotely available genomes and assets
         """
         url = get_url(self[CFG_SERVERS_KEY], API_ID_ASSETS)
-        _LOGGER.info("Querying available assets from server: {}".format(url))
+        _LOGGER.info("Querying available assets: {}".format(url))
         genomes, assets = _list_remote(url, genome, order)
         return genomes, assets
+
+    def listr(self, genome=None, order=None, get_url=lambda server, id: construct_request_url(server, id)):
+        """
+        List genomes and assets available remotely.
+
+        :param function(refgenconf.RefGenConf) -> str get_url: how to determine
+            URL request, given RefGenConf instance
+        :param list[str] | str genome: genomes that the assets should be found for
+        :param order: function(str) -> object how to key genome IDs and asset
+            names for sort
+        :return str, str: text reps of remotely available genomes and assets
+        """
+        data_by_server = {}
+        for url in self[CFG_SERVERS_KEY]:
+            url = get_url(url, API_ID_ASSETS)
+            data_by_server[url] = _list_remote(url, genome, order, False)
+        return data_by_server
 
     def tag_asset(self, genome, asset, tag, new_tag):
         """
@@ -1153,7 +1170,7 @@ def _is_large_archive(size):
     return size.endswith("TB") or (size.endswith("GB") and float("".join(c for c in size if c in '0123456789.')) > 5)
 
 
-def _list_remote(url, genome, order=None):
+def _list_remote(url, genome, order=None, as_str=True):
     """
     List genomes and assets available remotely.
 
@@ -1163,11 +1180,17 @@ def _list_remote(url, genome, order=None):
     :return str, str: text reps of remotely available genomes and assets
     """
     genomes_data = _read_remote_data(url)
-    refgens = _select_genomes(sorted(genomes_data.keys(), key=order), genome, strict=True)
+    refgens = _select_genomes(sorted(genomes_data.keys(), key=order), genome,
+                              strict=True)
     if not refgens:
-        return None, None
-    filtered_genomes_data = {refgen: genomes_data[refgen] for refgen in refgens}
-    asset_texts = ["{}/   {}".format(g.rjust(20), ", ".join(a)) for g, a in filtered_genomes_data.items()]
+        return None, None if as_str else dict()
+    filtered_genomes_data = OrderedDict(
+        [(rg, sorted(genomes_data[rg], key=order)) for rg in refgens]
+    )
+    if not as_str:
+        return filtered_genomes_data
+    asset_texts = ["{}/   {}".format(g.rjust(20), ", ".join(a))
+                   for g, a in filtered_genomes_data.items()]
     return ", ".join(refgens), "\n".join(asset_texts)
 
 

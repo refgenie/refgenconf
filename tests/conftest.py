@@ -110,7 +110,8 @@ def remove_asset_and_file(rgc, gname, aname, tname):
     :param str tname: tag name to remove
     """
     try:
-        shutil.rmtree(rgc.get_asset(gname, aname, tname, enclosing_dir=True))
+        shutil.rmtree(rgc.seek(gname, aname, tname, strict_exists=True,
+                               enclosing_dir=True))
     except Exception as e:
         print("file not removed: {}".format(e))
         pass

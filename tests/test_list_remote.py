@@ -17,7 +17,7 @@ def test_list_remote(rgc, tmpdir):
     print("NEW RGC KEYS: {}".format(list(new_rgc.keys())))
     with mock.patch("refgenconf.refgenconf._read_remote_data",
                     return_value=rgc.genomes):
-        genomes, assets = new_rgc.list_remote()
+        genomes, assets = new_rgc.get_remote_data_str()
     _assert_eq_as_sets(rgc.genomes_str(), genomes)
 
 

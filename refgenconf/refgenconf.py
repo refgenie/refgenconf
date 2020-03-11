@@ -448,7 +448,7 @@ class RefGenConf(yacman.YacAttMap):
             data_by_server[url] = _list_remote(url, genome, order, False)
         return data_by_server
 
-    def tag_asset(self, genome, asset, tag, new_tag):
+    def tag(self, genome, asset, tag, new_tag):
         """
         Retags the asset selected by the tag with the new_tag.
         Prompts if default already exists and overrides upon confirmation.
@@ -538,9 +538,9 @@ class RefGenConf(yacman.YacAttMap):
             self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][r_data["item"]][CFG_ASSET_TAGS_KEY][r_data["tag"]]\
                 [relative_key] = updated_relatives
 
-    def pull_asset(self, genome, asset, tag, unpack=True, force=None,
-                   get_json_url=lambda server, operation_id: construct_request_url(server, operation_id),
-                   build_signal_handler=_handle_sigint):
+    def pull(self, genome, asset, tag, unpack=True, force=None,
+             get_json_url=lambda server, operation_id: construct_request_url(server, operation_id),
+             build_signal_handler=_handle_sigint):
         """
         Download and possibly unpack one or more assets for a given ref gen.
 

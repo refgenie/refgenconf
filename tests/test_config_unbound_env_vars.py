@@ -21,7 +21,7 @@ def test_missing_env_vars_in_genome_config_path_raises_exception(rgc, tmpdir, ev
     assert path == rgc[CFG_FOLDER_KEY]
     assert not os.path.exists(path)
     with pytest.raises(UEVErr) as err_ctx:
-        rgc.pull_asset(genome=genome, asset=asset, tag=tag)
+        rgc.pull(genome=genome, asset=asset, tag=tag)
     err_msg = str(err_ctx.value)
     print("Observed error message: {}".format(err_msg))
     missing = [v for v in evs if v not in err_msg]

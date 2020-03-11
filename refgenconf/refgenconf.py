@@ -393,10 +393,11 @@ class RefGenConf(yacman.YacAttMap):
             names for sort
         :return str, str: text reps of remotely available genomes and assets
         """
-        url = get_url(self[CFG_SERVERS_KEY], API_ID_ASSETS)
-        _LOGGER.info("Querying available assets from server: {}".format(url))
-        genomes, assets = _list_remote(url, genome, order)
-        return genomes, assets
+        for server in self[CFG_SERVERS_KEY]:
+            url = get_url(server, API_ID_ASSETS)
+            _LOGGER.info("Querying available assets from server: {}".format(url))
+            genomes, assets = _list_remote(url, genome, order)
+            return genomes, assets
 
     def tag_asset(self, genome, asset, tag, new_tag):
         """

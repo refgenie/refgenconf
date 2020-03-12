@@ -981,7 +981,7 @@ class RefGenConf(yacman.YacAttMap):
                 self[CFG_GENOMES_KEY][genome].update(data)
         return self
 
-    def update_genome_servers(self, url, reset=False):
+    def _update_genome_servers(self, url, reset=False):
         """
         Update the list of genome_servers.
 
@@ -998,6 +998,39 @@ class RefGenConf(yacman.YacAttMap):
                 self[CFG_SERVERS_KEY] = _extend_unique(self[CFG_SERVERS_KEY], urls)
         else:
             raise GenomeConfigFormatError("The '{}' is missing. Can't update the server list".format(CFG_SERVERS_KEY))
+
+    def subscribe(self, urls, reset=False):
+        """
+        Add URLs the list of genome_servers.
+
+        Use reset argument to overwrite the current list.
+        Otherwise the current one will be appended to.
+
+        :param list[str] | str urls: urls to update the genome_servers list with
+        :param bool reset: whether the current list should be overwritten
+        """
+        with self as r:
+            r._update_genome_servers(url=urls, reset=reset)
+        _LOGGER.info("Subscribed to: {}".format(", ".join(urls)))
+
+    def unsubscribe(self, urls):
+        """
+        Remove URLs the list of genome_servers.
+
+        :param list[str] | str urls: urls to update the genome_servers list with
+        """
+        unsub_list = []
+        ori_servers = self[CFG_SERVERS_KEY]
+        for s in urls:
+            try:
+                ori_servers.remove(s)
+                unsub_list.append(s)
+            except ValueError:
+                _LOGGER.warning("URL '{}' not in genome_servers list: {}".format(s, ori_servers))
+        with self as r:
+            r._update_genome_servers(ori_servers, reset=True)
+        if unsub_list:
+            _LOGGER.info("Unsubscribed from: {}".format(", ".join(unsub_list)))
 
     def get_genome_attributes(self, genome):
         """

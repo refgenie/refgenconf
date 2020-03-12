@@ -448,7 +448,49 @@ class RefGenConf(yacman.YacAttMap):
             data_by_server[url] = _list_remote(url, genome, order, False)
         return data_by_server
 
-    def tag(self, genome, asset, tag, new_tag):
+    def tag(self, genome, asset, tag, new_tag, files=True):
+        """
+        Retags the asset selected by the tag with the new_tag.
+        Prompts if default already exists and overrides upon confirmation.
+
+        This method does not override the original asset entry in the RefGenConf
+        object. It creates its copy and tags it with the new_tag.
+        Additionally, if the retagged asset has any children their parent will
+        be retagged as new_tag that was introduced upon this method execution.
+        By default, the files on disk will be also renamed to reflect the
+        genome configuration file changes
+
+        :param str genome: name of a reference genome assembly of interest
+        :param str asset: name of particular asset of interest
+        :param str tag: name of the tag that identifies the asset of interest
+        :param str new_tag: name of particular the new tag
+        :param bool files: whether the asset files on disk should be renamed
+        :raise ValueError: when the original tag is not specified
+        :return bool: a logical indicating whether the tagging was successful
+        """
+        ori_path = self.get_asset(genome, asset, tag, enclosing_dir=True)
+        new_path = os.path.abspath(os.path.join(ori_path, os.pardir, new_tag))
+        with self as r:
+            if not r.cfg_tag_asset(genome, asset, tag, new_tag):
+                sys.exit(0)
+        if not files:
+            return
+        try:
+            if os.path.exists(new_path):
+                _remove(new_path)
+            os.rename(ori_path, new_path)
+        except FileNotFoundError:
+            _LOGGER.warning("Could not rename original asset tag directory '{}'"
+                            " to the new one '{}'".format(ori_path, new_path))
+        else:
+            with self as r:
+                r.cfg_remove_assets(genome, asset, tag, relationships=False)
+            _LOGGER.debug("Asset '{}/{}' tagged with '{}' has been removed from"
+                          " the genome config".format(genome, asset, tag))
+            _LOGGER.debug("Original asset has been moved from '{}' to '{}'".
+                          format(ori_path, new_path))
+
+    def cfg_tag_asset(self, genome, asset, tag, new_tag):
         """
         Retags the asset selected by the tag with the new_tag.
         Prompts if default already exists and overrides upon confirmation.
@@ -839,7 +881,8 @@ class RefGenConf(yacman.YacAttMap):
             asset_path = self.get_asset(genome, asset, tag, enclosing_dir=True)
             if os.path.exists(asset_path):
                 removed.append(_remove(asset_path))
-                self.cfg_remove_assets(genome, asset, tag, relationships)
+                with self as r:
+                    r.cfg_remove_assets(genome, asset, tag, relationships)
             try:
                 self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]
             except (KeyError, TypeError):
@@ -853,8 +896,8 @@ class RefGenConf(yacman.YacAttMap):
                         os.path.abspath(os.path.join(asset_dir, os.path.pardir))
                     _entity_dir_removal_log(genome_dir, "genome", req_dict, removed)
                     try:
-                        del self[CFG_GENOMES_KEY][genome]
-                        self.write()
+                        with self as r:
+                            del r[CFG_GENOMES_KEY][genome]
                     except (KeyError, TypeError):
                         _LOGGER.debug(
                             "Could not remove genome '{}' from the config; it "
@@ -862,7 +905,8 @@ class RefGenConf(yacman.YacAttMap):
             _LOGGER.info("Successfully removed entities:\n- {}".
                          format("\n- ".join(removed)))
         else:
-            self.cfg_remove_assets(genome, asset, tag, relationships)
+            with self as r:
+                r.cfg_remove_assets(genome, asset, tag, relationships)
 
     def cfg_remove_assets(self, genome, asset, tag=None, relationships=True):
         """

@@ -496,7 +496,7 @@ class RefGenConf(yacman.YacAttMap):
             asset_mapping[CFG_ASSET_TAGS_KEY][tag]
         if CFG_ASSET_DEFAULT_TAG_KEY in asset_mapping and asset_mapping[CFG_ASSET_DEFAULT_TAG_KEY] == tag:
             self.set_default_pointer(genome, asset, new_tag, force=True)
-        self.remove_assets(genome, asset, tag)
+        self.cfg_remove_assets(genome, asset, tag)
         return True
 
     def _update_relatives_tags(self, genome, asset, tag, new_tag, relatives, update_children):
@@ -805,7 +805,66 @@ class RefGenConf(yacman.YacAttMap):
                     self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset].update(data)
         return self
 
-    def remove_assets(self, genome, asset, tag=None, relationships=True):
+    def remove(self, genome, asset, tag=None, relationships=True, files=True, force=False):
+        """
+        Remove data associated with a specified genome:asset:tag combination.
+        If no tags are specified, the entire asset is removed from the genome.
+
+        If no more tags are defined for the selected genome:asset after tag removal,
+        the parent asset will be removed as well
+        If no more assets are defined for the selected genome after asset removal,
+        the parent genome will be removed as well
+
+        :param str genome: genome to be removed
+        :param str asset: asset package to be removed
+        :param str tag: tag to be removed
+        :param bool relationships: whether the asset being removed should
+            be removed from its relatives as well
+        :raise TypeError: if genome argument type is not a list or str
+        :return RefGenConf: updated object
+        :param bool files: whether the asset files from disk should be removed
+        :param bool force: whether the removal prompts should be skipped
+        :return:
+        """
+        tag = tag or self.get_default_tag(genome, asset, use_existing=False)
+        if files:
+            req_dict = {"genome": genome, "asset": asset, "tag": tag}
+            _LOGGER.debug("Attempting removal: {}".format(req_dict))
+            if not force and \
+                    not query_yes_no("Remove '{genome}/{asset}:{tag}'?".
+                                             format(**req_dict)):
+                _LOGGER.info("Action aborted by the user")
+                return
+            removed = []
+            asset_path = self.get_asset(genome, asset, tag, enclosing_dir=True)
+            if os.path.exists(asset_path):
+                removed.append(_remove(asset_path))
+                self.cfg_remove_assets(genome, asset, tag, relationships)
+            try:
+                self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]
+            except (KeyError, TypeError):
+                asset_dir = os.path.abspath(
+                    os.path.join(asset_path, os.path.pardir))
+                _entity_dir_removal_log(asset_dir, "asset", req_dict, removed)
+                try:
+                    self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY]
+                except (KeyError, TypeError):
+                    genome_dir = \
+                        os.path.abspath(os.path.join(asset_dir, os.path.pardir))
+                    _entity_dir_removal_log(genome_dir, "genome", req_dict, removed)
+                    try:
+                        del self[CFG_GENOMES_KEY][genome]
+                        self.write()
+                    except (KeyError, TypeError):
+                        _LOGGER.debug(
+                            "Could not remove genome '{}' from the config; it "
+                            "does not exist".format(genome))
+            _LOGGER.info("Successfully removed entities:\n- {}".
+                         format("\n- ".join(removed)))
+        else:
+            self.cfg_remove_assets(genome, asset, tag, relationships)
+
+    def cfg_remove_assets(self, genome, asset, tag=None, relationships=True):
         """
         Remove data associated with a specified genome:asset:tag combination.
         If no tags are specified, the entire asset is removed from the genome.
@@ -1378,3 +1437,38 @@ def map_paths_by_id(json_dict):
             or "paths" not in json_dict or not isinstance(json_dict["paths"], dict):
         raise ValueError("The provided mapping is not a valid representation of a JSON openAPI description")
     return {values["get"]["operationId"]: endpoint for endpoint, values in json_dict["paths"].items()}
+
+def _remove(path):
+    """
+    remove asset if it is a dir or a file
+
+    :param str path: path to the entity to remove, either a file or a dir
+    :return str: removed path
+    """
+    from shutil import rmtree
+    if os.path.isfile(path):
+        os.remove(path)
+    elif os.path.isdir(path):
+        rmtree(path)
+    else:
+        raise ValueError("path '{}' is neither a file nor a dir.".format(path))
+    return path
+
+
+def _entity_dir_removal_log(directory, entity_class, asset_dict, removed_entities):
+    """
+    Message and save removed entity data
+
+    :param str directory: removed dir
+    :param str entity_class: class of the entity
+    :param dict asset_dict: selected genome/asset:tag combination
+    :param list removed_entities: list of the removed entities to append to
+    """
+    subclass = "asset" if entity_class == "genome" else "tag"
+    if os.path.basename(directory) == asset_dict[entity_class]:
+        _LOGGER.info("Last {sub} for {ec} '{en}' has been removed, removing {ec} directory".
+                     format(sub=subclass, ec=entity_class, en=asset_dict[entity_class]))
+        removed_entities.append(_remove(directory))
+    else:
+        _LOGGER.debug("Didn't remove '{}' since it does not match the {} name: {}".
+                      format(directory, entity_class, asset_dict[entity_class]))

@@ -290,7 +290,7 @@ class RefGenConf(yacman.YacAttMap):
         if check_exist(fullpath):
             return fullpath
         elif strict_exists is None:
-            return path
+            return fullpath
         msg = "For genome '{}' the asset '{}.{}:{}' doesn't exist; tried {} and {}".\
             format(genome_name, asset_name, seek_key, tag_name, path, fullpath)
         extant = []

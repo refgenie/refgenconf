@@ -862,11 +862,10 @@ class RefGenConf(yacman.YacAttMap):
         :param str tag: tag to be removed
         :param bool relationships: whether the asset being removed should
             be removed from its relatives as well
-        :raise TypeError: if genome argument type is not a list or str
-        :return RefGenConf: updated object
         :param bool files: whether the asset files from disk should be removed
         :param bool force: whether the removal prompts should be skipped
-        :return:
+        :raise TypeError: if genome argument type is not a list or str
+        :return RefGenConf: updated object
         """
         tag = tag or self.get_default_tag(genome, asset, use_existing=False)
         if files:

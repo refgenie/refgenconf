@@ -627,6 +627,7 @@ class RefGenConf(yacman.YacAttMap):
                 bad_servers.append(server_url)
                 continue
             else:
+                determined_tag = str(determined_tag)
                 _LOGGER.debug("Determined tag: {}".format(determined_tag))
                 unpack or raise_unpack_error()
             gat = [genome, asset, determined_tag]

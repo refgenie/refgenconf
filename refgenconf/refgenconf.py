@@ -341,6 +341,8 @@ class RefGenConf(yacman.YacAttMap):
                                   "Returning '{}' instead. Make sure it does not corrupt your workflow."
                                   .format(CFG_ASSET_DEFAULT_TAG_KEY, genome, asset, alt), RuntimeWarning)
                 return alt
+        except TypeError:
+            _raise_not_mapping(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset], "Asset section ")
 
     def set_default_pointer(self, genome, asset, tag, force=False):
         """
@@ -789,7 +791,8 @@ class RefGenConf(yacman.YacAttMap):
 
     def update_seek_keys(self, genome, asset, tag=None, keys=None):
         """
-        A convenience method which wraps the update assets and uses it to update the seek keys for a tagged asset.
+        A convenience method which wraps the update assets and uses it to
+        update the seek keys for a tagged asset.
 
         :param str genome: genome to be added/updated
         :param str asset: asset to be added/updated
@@ -799,11 +802,11 @@ class RefGenConf(yacman.YacAttMap):
         """
         tag = tag or self.get_default_tag(genome, asset)
         if _check_insert_data(keys, Mapping, "keys"):
-            self.update_tags(genome, asset, tag)  # creates/asserts the genome/asset:tag combination
-            self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag].setdefault(CFG_SEEK_KEYS_KEY,
-                                                                                                     PXAM())
-            self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag][CFG_SEEK_KEYS_KEY].\
-                update(keys)
+            self.update_tags(genome, asset, tag)
+            asset = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]
+            _safe_setdef(asset[CFG_ASSET_TAGS_KEY][tag], CFG_SEEK_KEYS_KEY,
+                         PXAM())
+            asset[CFG_ASSET_TAGS_KEY][tag][CFG_SEEK_KEYS_KEY].update(keys)
         return self
 
     def update_tags(self, genome, asset=None, tag=None, data=None):
@@ -818,15 +821,20 @@ class RefGenConf(yacman.YacAttMap):
         :return RefGenConf: updated object
         """
         if _check_insert_data(genome, str, "genome"):
-            self[CFG_GENOMES_KEY].setdefault(genome, PXAM())
+            _safe_setdef(self[CFG_GENOMES_KEY], genome, PXAM())
             if _check_insert_data(asset, str, "asset"):
-                self[CFG_GENOMES_KEY][genome].setdefault(CFG_ASSETS_KEY, PXAM())
-                self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY].setdefault(asset, PXAM())
+                _safe_setdef(self[CFG_GENOMES_KEY][genome], CFG_ASSETS_KEY,
+                             PXAM())
+                _safe_setdef(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY],
+                             asset, PXAM())
                 if _check_insert_data(tag, str, "tag"):
-                    self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset].setdefault(CFG_ASSET_TAGS_KEY, PXAM())
-                    self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY].setdefault(tag, PXAM())
+                    _safe_setdef(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY]
+                                 [asset], CFG_ASSET_TAGS_KEY, PXAM())
+                    _safe_setdef(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY]
+                                 [asset][CFG_ASSET_TAGS_KEY], tag, PXAM())
                     if _check_insert_data(data, Mapping, "data"):
-                        self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag].update(data)
+                        self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]
+                        [CFG_ASSET_TAGS_KEY][tag].update(data)
         return self
 
     def update_assets(self, genome, asset=None, data=None):
@@ -840,12 +848,15 @@ class RefGenConf(yacman.YacAttMap):
         :return RefGenConf: updated object
         """
         if _check_insert_data(genome, str, "genome"):
-            self[CFG_GENOMES_KEY].setdefault(genome, PXAM())
+            _safe_setdef(self[CFG_GENOMES_KEY], genome, PXAM())
             if _check_insert_data(asset, str, "asset"):
-                self[CFG_GENOMES_KEY][genome].setdefault(CFG_ASSETS_KEY, PXAM())
-                self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY].setdefault(asset, PXAM())
+                _safe_setdef(self[CFG_GENOMES_KEY][genome], CFG_ASSETS_KEY,
+                             PXAM())
+                _safe_setdef(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY],
+                             asset, PXAM())
                 if _check_insert_data(data, Mapping, "data"):
-                    self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset].update(data)
+                    self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset].\
+                        update(data)
         return self
 
     def remove(self, genome, asset, tag=None, relationships=True, files=True, force=False):
@@ -976,7 +987,8 @@ class RefGenConf(yacman.YacAttMap):
         :return RefGenConf: updated object
         """
         if _check_insert_data(genome, str, "genome"):
-            self[CFG_GENOMES_KEY].setdefault(genome, PXAM({CFG_ASSETS_KEY: PXAM()}))
+            _safe_setdef(self[CFG_GENOMES_KEY], genome,
+                         PXAM({CFG_ASSETS_KEY: PXAM()}))
             if _check_insert_data(data, Mapping, "data"):
                 self[CFG_GENOMES_KEY][genome].update(data)
         return self
@@ -1304,12 +1316,16 @@ def _assert_gat_exists(genomes, gname, aname=None, tname=None, allow_incomplete=
             asset_data = genome[CFG_ASSETS_KEY][aname]
         except KeyError:
             raise MissingAssetError("Genome '{}' exists, but asset '{}' is missing".format(gname, aname))
+        except TypeError:
+            _raise_not_mapping(asset_data, "Asset section ")
         if tname is not None:
             try:
                 tag_data = asset_data[CFG_ASSET_TAGS_KEY][tname]
             except KeyError:
                 raise MissingTagError(
                     "genome/asset bundle '{}/{}' exists, but tag '{}' is missing".format(gname, aname, tname))
+            except TypeError:
+                _raise_not_mapping(asset_data, "Asset section ")
             try:
                 tag_data[CFG_SEEK_KEYS_KEY]
             except KeyError:
@@ -1569,3 +1585,28 @@ def _entity_dir_removal_log(directory, entity_class, asset_dict, removed_entitie
     else:
         _LOGGER.debug("Didn't remove '{}' since it does not match the {} name: {}".
                       format(directory, entity_class, asset_dict[entity_class]))
+
+
+def _safe_setdef(mapping, attr, val):
+    """
+    Set default value for a mapping, but catch errors caused by the mapping to
+    be updated being an object of incorrect type. Raise an informative error.
+
+    :param Mapping mapping: mapping to update
+    :param str attr: attribute to update
+    :param val: value to assign as the default
+    :raise GenomeConfigFormatError: if mapping is of incorrect class
+    :return Mapping: updated mapping
+    """
+    try:
+        mapping.setdefault(attr, val)
+    except (TypeError, AttributeError):
+        _raise_not_mapping(mapping, "Cannot update; Section '{}' ".format(attr))
+    return mapping
+
+
+def _raise_not_mapping(mapping, prefix=""):
+    raise GenomeConfigFormatError(
+        prefix + "is not a mapping but '{}'. This is usually a result of "
+                 "a previous error".format(type(mapping).__name__)
+    )

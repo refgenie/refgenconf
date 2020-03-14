@@ -154,7 +154,7 @@ class RefGenConf(yacman.YacAttMap):
         """
         List local assets; map each namespace to a list of available asset names
 
-        :param function(str) -> object order: how to key genome IDs for sort
+        :param callable(str) -> object order: how to key genome IDs for sort
         :param list[str] | str genome: genomes that the assets should be found for
         :param bool include_tags: whether asset tags should be included in the returned dict
         :return Mapping[str, Iterable[str]]: mapping from assembly name to
@@ -179,7 +179,7 @@ class RefGenConf(yacman.YacAttMap):
         :param str genome_assets_delim: the delimiter to place between
             reference genome assembly name and its list of asset names
         :param list[str] | str genome: genomes that the assets should be found for
-        :param order: function(str) -> object how to key genome IDs and asset
+        :param function(str) -> object order: how to key genome IDs and asset
             names for sort
         :return str: text representing genome-to-asset mapping
         """
@@ -215,7 +215,7 @@ class RefGenConf(yacman.YacAttMap):
         """
         Get as single string this configuration's reference genome assembly IDs.
 
-        :param order: function(str) -> object how to key genome IDs for sort
+        :param function(str) -> object order: how to key genome IDs for sort
         :return str: single string that lists this configuration's known
             reference genome assembly IDs
         """
@@ -365,7 +365,7 @@ class RefGenConf(yacman.YacAttMap):
 
         :param str | NoneType genome: reference genome assembly ID, optional;
             if omitted, the full mapping from genome to asset names
-        :param order: function(str) -> object how to key genome IDs and asset
+        :param function(str) -> object order: how to key genome IDs and asset
             names for sort
         :param bool include_tags: whether asset tags should be included in the returned dict
         :return Iterable[str] | Mapping[str, Iterable[str]]: collection of
@@ -381,7 +381,7 @@ class RefGenConf(yacman.YacAttMap):
         List assemblies for which a particular asset is available.
 
         :param str | NoneType asset: name of type of asset of interest, optional
-        :param order: function(str) -> object how to key genome IDs and asset
+        :param function(str) -> object order: how to key genome IDs and asset
             names for sort
         :return Iterable[str] | Mapping[str, Iterable[str]]: collection of
             assemblies for which the given asset is available; if asset
@@ -398,7 +398,7 @@ class RefGenConf(yacman.YacAttMap):
         List locally available reference genome IDs and assets by ID.
 
         :param list[str] | str genome: genomes that the assets should be found for
-        :param order: function(str) -> object how to key genome IDs and asset
+        :param function(str) -> object order: how to key genome IDs and asset
             names for sort
         :return str, str: text reps of locally available genomes and assets
         """
@@ -424,7 +424,7 @@ class RefGenConf(yacman.YacAttMap):
         :param function(refgenconf.RefGenConf) -> str get_url: how to determine
             URL request, given RefGenConf instance
         :param list[str] | str genome: genomes that the assets should be found for
-        :param order: function(str) -> object how to key genome IDs and asset
+        :param function(str) -> object order: how to key genome IDs and asset
             names for sort
         :return str, str: text reps of remotely available genomes and assets
         """
@@ -440,7 +440,7 @@ class RefGenConf(yacman.YacAttMap):
         :param function(refgenconf.RefGenConf) -> str get_url: how to determine
             URL request, given RefGenConf instance
         :param list[str] | str genome: genomes that the assets should be found for
-        :param order: function(str) -> object how to key genome IDs and asset
+        :param function(str) -> object order: how to key genome IDs and asset
             names for sort
         :return str, str: text reps of remotely available genomes and assets
         """
@@ -1096,7 +1096,7 @@ class RefGenConf(yacman.YacAttMap):
         necessarily lost in this inversion, but we can collect genome IDs by
         asset ID.
 
-        :param order: function(str) -> object how to key genome IDs and asset
+        :param function(str) -> object order: how to key genome IDs and asset
             names for sort
         :return OrderedDict[str, Iterable[str]] binding between asset kind/key/name
             and collection of reference genome assembly names for which the
@@ -1350,7 +1350,7 @@ def _list_remote(url, genome, order=None, as_str=True):
     List genomes and assets available remotely.
 
     :param url: location or ref genome config data
-    :param order: function(str) -> object how to key genome IDs and asset
+    :param function(str) -> object order: how to key genome IDs and asset
         names for sort
     :return str, str: text reps of remotely available genomes and assets
     """
@@ -1380,7 +1380,7 @@ def _make_genome_assets_line(gen, assets, offset_text="  ", genome_assets_delim=
     :param str genome_assets_delim: delimiter between a genome ID and text
         showing names of assets for that genome
     :param str asset_sep: delimiter between asset names
-    :param order: function(str) -> object how to key asset names for sort
+    :param function(str) -> object order: how to key asset names for sort
     :return str: text representation of a single assembly's name and assets
     """
     tagged_assets = asset_sep.join(sorted(_make_asset_tags_product(assets, asset_tag_delim), key=order))

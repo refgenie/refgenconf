@@ -472,8 +472,12 @@ class RefGenConf(yacman.YacAttMap):
         """
         ori_path = self.get_asset(genome, asset, tag, enclosing_dir=True)
         new_path = os.path.abspath(os.path.join(ori_path, os.pardir, new_tag))
-        with self as r:
-            if not r.cfg_tag_asset(genome, asset, tag, new_tag):
+        if self.file_path:
+            with self as r:
+                if not r.cfg_tag_asset(genome, asset, tag, new_tag):
+                    sys.exit(0)
+        else:
+            if not self.cfg_tag_asset(genome, asset, tag, new_tag):
                 sys.exit(0)
         if not files:
             return
@@ -485,8 +489,11 @@ class RefGenConf(yacman.YacAttMap):
             _LOGGER.warning("Could not rename original asset tag directory '{}'"
                             " to the new one '{}'".format(ori_path, new_path))
         else:
-            with self as r:
-                r.cfg_remove_assets(genome, asset, tag, relationships=False)
+            if self.file_path:
+                with self as r:
+                    r.cfg_remove_assets(genome, asset, tag, relationships=False)
+            else:
+                self.cfg_remove_assets(genome, asset, tag, relationships=False)
             _LOGGER.debug("Asset '{}/{}' tagged with '{}' has been removed from"
                           " the genome config".format(genome, asset, tag))
             _LOGGER.debug("Original asset has been moved from '{}' to '{}'".
@@ -737,13 +744,19 @@ class RefGenConf(yacman.YacAttMap):
                 shutil.rmtree(tmpdir)
                 if os.path.isfile(filepath):
                     os.remove(filepath)
-
-            with self as rgc:
-                [rgc.chk_digest_update_child(gat[0], x, "{}/{}:{}".format(*gat), server_url)
-                 for x in archive_data[CFG_ASSET_PARENTS_KEY] if CFG_ASSET_PARENTS_KEY in archive_data]
-                rgc.update_tags(*gat, data={attr: archive_data[attr]
-                                            for attr in ATTRS_COPY_PULL if attr in archive_data})
-                rgc.set_default_pointer(*gat)
+            if self.file_path:
+                with self as rgc:
+                    [rgc.chk_digest_update_child(gat[0], x, "{}/{}:{}".format(*gat), server_url)
+                     for x in archive_data[CFG_ASSET_PARENTS_KEY] if CFG_ASSET_PARENTS_KEY in archive_data]
+                    rgc.update_tags(*gat, data={attr: archive_data[attr]
+                                                for attr in ATTRS_COPY_PULL if attr in archive_data})
+                    rgc.set_default_pointer(*gat)
+                return gat, archive_data, server_url
+            [self.chk_digest_update_child(gat[0], x, "{}/{}:{}".format(*gat), server_url)
+             for x in archive_data[CFG_ASSET_PARENTS_KEY] if CFG_ASSET_PARENTS_KEY in archive_data]
+            self.update_tags(*gat, data={attr: archive_data[attr]
+                                        for attr in ATTRS_COPY_PULL if attr in archive_data})
+            self.set_default_pointer(*gat)
             return gat, archive_data, server_url
 
     def remove_asset_from_relatives(self, genome, asset, tag):
@@ -891,14 +904,21 @@ class RefGenConf(yacman.YacAttMap):
             asset_path = self.get_asset(genome, asset, tag, enclosing_dir=True, strict_exists=False)
             if os.path.exists(asset_path):
                 removed.append(_remove(asset_path))
-                with self as r:
-                    r.cfg_remove_assets(genome, asset, tag, relationships)
+                if self.file_path:
+                    with self as r:
+                        r.cfg_remove_assets(genome, asset, tag, relationships)
+                else:
+                    self.cfg_remove_assets(genome, asset, tag, relationships)
             else:
                 _LOGGER.warning("Selected asset does not exist on disk ({}). "
                                 "Removing from genome config.".
                                 format(asset_path))
-                with self as r:
-                    r.cfg_remove_assets(genome, asset, tag, relationships)
+                if self.file_path:
+                    with self as r:
+                        r.cfg_remove_assets(genome, asset, tag, relationships)
+                        return
+                else:
+                    self.cfg_remove_assets(genome, asset, tag, relationships)
                     return
             try:
                 self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]
@@ -913,8 +933,11 @@ class RefGenConf(yacman.YacAttMap):
                         os.path.abspath(os.path.join(asset_dir, os.path.pardir))
                     _entity_dir_removal_log(genome_dir, "genome", req_dict, removed)
                     try:
-                        with self as r:
-                            del r[CFG_GENOMES_KEY][genome]
+                        if self.file_path:
+                            with self as r:
+                                del r[CFG_GENOMES_KEY][genome]
+                        else:
+                            del self[CFG_GENOMES_KEY][genome]
                     except (KeyError, TypeError):
                         _LOGGER.debug(
                             "Could not remove genome '{}' from the config; it "
@@ -922,8 +945,11 @@ class RefGenConf(yacman.YacAttMap):
             _LOGGER.info("Successfully removed entities:\n- {}".
                          format("\n- ".join(removed)))
         else:
-            with self as r:
-                r.cfg_remove_assets(genome, asset, tag, relationships)
+            if self.file_path:
+                with self as r:
+                    r.cfg_remove_assets(genome, asset, tag, relationships)
+            else:
+                self.cfg_remove_assets(genome, asset, tag, relationships)
 
     def cfg_remove_assets(self, genome, asset, tag=None, relationships=True):
         """
@@ -1027,8 +1053,11 @@ class RefGenConf(yacman.YacAttMap):
         :param list[str] | str urls: urls to update the genome_servers list with
         :param bool reset: whether the current list should be overwritten
         """
-        with self as r:
-            r._update_genome_servers(url=urls, reset=reset)
+        if self.file_path:
+            with self as r:
+                r._update_genome_servers(url=urls, reset=reset)
+        else:
+            self._update_genome_servers(url=urls, reset=reset)
         _LOGGER.info("Subscribed to: {}".format(", ".join(urls)))
 
     def unsubscribe(self, urls):
@@ -1045,8 +1074,11 @@ class RefGenConf(yacman.YacAttMap):
                 unsub_list.append(s)
             except ValueError:
                 _LOGGER.warning("URL '{}' not in genome_servers list: {}".format(s, ori_servers))
-        with self as r:
-            r._update_genome_servers(ori_servers, reset=True)
+        if self.file_path:
+            with self as r:
+                r._update_genome_servers(ori_servers, reset=True)
+        else:
+            self._update_genome_servers(ori_servers, reset=True)
         if unsub_list:
             _LOGGER.info("Unsubscribed from: {}".format(", ".join(unsub_list)))
 

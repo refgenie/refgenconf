@@ -1,10 +1,10 @@
 import pytest
-from .conftest import REQUESTS
 from collections import Mapping
 
 
-@pytest.mark.parametrize(["genome", "asset", "tag"], REQUESTS)
+@pytest.mark.parametrize(["genome", "asset", "tag"], [("rCRSd", "fasta", "default")])
 def test_is_asset_complete_returns_correct_result(genome, asset, tag, ro_rgc):
+    ro_rgc.pull(genome, asset, tag)
     assert ro_rgc.is_asset_complete(genome, asset, tag)
 
 

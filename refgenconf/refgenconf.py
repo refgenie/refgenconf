@@ -302,7 +302,7 @@ class RefGenConf(yacman.YacAttMap):
         if extant:
             msg += ". These paths exist: {}".format(extant)
         if strict_exists is True:
-            raise IOError(msg)
+            raise OSError(msg)
         else:
             warnings.warn(msg, RuntimeWarning)
         return path
@@ -888,11 +888,18 @@ class RefGenConf(yacman.YacAttMap):
                 _LOGGER.info("Action aborted by the user")
                 return
             removed = []
-            asset_path = self.get_asset(genome, asset, tag, enclosing_dir=True)
+            asset_path = self.get_asset(genome, asset, tag, enclosing_dir=True, strict_exists=False)
             if os.path.exists(asset_path):
                 removed.append(_remove(asset_path))
                 with self as r:
                     r.cfg_remove_assets(genome, asset, tag, relationships)
+            else:
+                _LOGGER.warning("Selected asset does not exist on disk ({}). "
+                                "Removing from genome config.".
+                                format(asset_path))
+                with self as r:
+                    r.cfg_remove_assets(genome, asset, tag, relationships)
+                    return
             try:
                 self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]
             except (KeyError, TypeError):

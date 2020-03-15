@@ -146,7 +146,7 @@ def rgc(made_genome_config_file):
 
 @pytest.fixture
 def my_rgc(cfg_file):
-    return RefGenConf(filepath=cfg_file, writable=True)
+    return RefGenConf(filepath=cfg_file)
 
 
 @pytest.fixture

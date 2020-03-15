@@ -22,7 +22,6 @@ __email__ = "vreuter@virginia.edu"
 
 DOWNLOAD_FUNCTION = "refgenconf.refgenconf.{}".format(_download_url_progress.__name__)
 
-
 @pytest.mark.parametrize(
     ["genome", "asset", "tag"], [("rCRSd", "fasta", "default"), ("rCRSd", "fasta", "default")])
 def test_no_unpack(rgc, genome, asset, tag):

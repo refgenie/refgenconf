@@ -833,8 +833,7 @@ class RefGenConf(yacman.YacAttMap):
                     _safe_setdef(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY]
                                  [asset][CFG_ASSET_TAGS_KEY], tag, PXAM())
                     if _check_insert_data(data, Mapping, "data"):
-                        self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]
-                        [CFG_ASSET_TAGS_KEY][tag].update(data)
+                        self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag].update(data)
         return self
 
     def update_assets(self, genome, asset=None, data=None):

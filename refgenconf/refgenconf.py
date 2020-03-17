@@ -245,13 +245,39 @@ class RefGenConf(yacman.YacAttMap):
         :raise refgenconf.MissingAssetError: if the names assembly is known to
             this configuration instance, but the requested asset is unknown
         """
-        return self.get_asset(genome_name=genome_name,
-                              asset_name=asset_name,
-                              tag_name=tag_name,
-                              seek_key=seek_key,
-                              strict_exists=strict_exists,
-                              check_exist=check_exist,
-                              enclosing_dir=enclosing_dir)
+        tag_name = tag_name or self.get_default_tag(genome_name, asset_name)
+        _LOGGER.debug(
+            "getting asset: '{}/{}.{}:{}'".format(genome_name, asset_name, seek_key,
+                                                  tag_name))
+        if not callable(check_exist) or len(finspect(check_exist).args) != 1:
+            raise TypeError("Asset existence check must be a one-arg function.")
+        path = _genome_asset_path(self[CFG_GENOMES_KEY], genome_name, asset_name,
+                                  tag_name, seek_key, enclosing_dir)
+        if os.path.isabs(path) and check_exist(path):
+            return path
+        _LOGGER.debug("Relative or nonexistent path: {}".format(path))
+        fullpath = os.path.join(self[CFG_FOLDER_KEY], genome_name, path)
+        _LOGGER.debug("Trying path relative to genome folder: {}".format(fullpath))
+        if check_exist(fullpath):
+            return fullpath
+        elif strict_exists is None:
+            return fullpath
+        msg = "For genome '{}' the asset '{}.{}:{}' doesn't exist; " \
+              "tried {} and {}".format(genome_name, asset_name, seek_key,
+                                       tag_name, path, fullpath)
+        extant = []
+        for base, ext in itertools.product([path, fullpath], [".tar.gz", ".tar"]):
+            # Attempt to enrich message with extra guidance.
+            p_prime = base + ext
+            if check_exist(p_prime):
+                extant.append(p_prime)
+        if extant:
+            msg += ". These paths exist: {}".format(extant)
+        if strict_exists is True:
+            raise OSError(msg)
+        else:
+            warnings.warn(msg, RuntimeWarning)
+        return path
 
     def get_asset(self, genome_name, asset_name, tag_name=None, seek_key=None, strict_exists=True,
              check_exist=lambda p: os.path.exists(p) or is_url(p), enclosing_dir=False):
@@ -277,35 +303,14 @@ class RefGenConf(yacman.YacAttMap):
         :raise refgenconf.MissingAssetError: if the names assembly is known to
             this configuration instance, but the requested asset is unknown
         """
-        tag_name = tag_name or self.get_default_tag(genome_name, asset_name)
-        _LOGGER.debug("getting asset: '{}/{}.{}:{}'".format(genome_name, asset_name, seek_key, tag_name))
-        if not callable(check_exist) or len(finspect(check_exist).args) != 1:
-            raise TypeError("Asset existence check must be a one-arg function.")
-        path = _genome_asset_path(self[CFG_GENOMES_KEY], genome_name, asset_name, tag_name, seek_key, enclosing_dir)
-        if os.path.isabs(path) and check_exist(path):
-            return path
-        _LOGGER.debug("Relative or nonexistent path: {}".format(path))
-        fullpath = os.path.join(self[CFG_FOLDER_KEY], genome_name, path)
-        _LOGGER.debug("Trying path relative to genome folder: {}".format(fullpath))
-        if check_exist(fullpath):
-            return fullpath
-        elif strict_exists is None:
-            return fullpath
-        msg = "For genome '{}' the asset '{}.{}:{}' doesn't exist; tried {} and {}".\
-            format(genome_name, asset_name, seek_key, tag_name, path, fullpath)
-        extant = []
-        for base, ext in itertools.product([path, fullpath], [".tar.gz", ".tar"]):
-            # Attempt to enrich message with extra guidance.
-            p_prime = base + ext
-            if check_exist(p_prime):
-                extant.append(p_prime)
-        if extant:
-            msg += ". These paths exist: {}".format(extant)
-        if strict_exists is True:
-            raise OSError(msg)
-        else:
-            warnings.warn(msg, RuntimeWarning)
-        return path
+        warnings.warn(
+            "Please use seek method instead; get_asset will be removed "
+            "in the next release.", category=DeprecationWarning
+        )
+        return self.seek(genome_name=genome_name, asset_name=asset_name,
+                         tag_name=tag_name, seek_key=seek_key,
+                         strict_exists=strict_exists, check_exist=check_exist,
+                         enclosing_dir=enclosing_dir)
 
     def get_default_tag(self, genome, asset, use_existing=True):
         """

@@ -475,7 +475,7 @@ class RefGenConf(yacman.YacAttMap):
         :raise ValueError: when the original tag is not specified
         :return bool: a logical indicating whether the tagging was successful
         """
-        ori_path = self.get_asset(genome, asset, tag, enclosing_dir=True)
+        ori_path = self.seek(genome, asset, tag, enclosing_dir=True, strict_exists=True)
         new_path = os.path.abspath(os.path.join(ori_path, os.pardir, new_tag))
         if self.file_path:
             with self as r:
@@ -906,7 +906,7 @@ class RefGenConf(yacman.YacAttMap):
                 _LOGGER.info("Action aborted by the user")
                 return
             removed = []
-            asset_path = self.get_asset(genome, asset, tag, enclosing_dir=True, strict_exists=False)
+            asset_path = self.seek(genome, asset, tag, enclosing_dir=True, strict_exists=False)
             if os.path.exists(asset_path):
                 removed.append(_remove(asset_path))
                 if self.file_path:
@@ -1096,7 +1096,7 @@ class RefGenConf(yacman.YacAttMap):
         :param str locus: coordinates of desired sequence, e.g. 'chr1:1-10'
         """
         import pyfaidx
-        fa = pyfaidx.Fasta(self.get_asset(genome, "fasta"))
+        fa = pyfaidx.Fasta(self.seek(genome, "fasta", strict_exists=True))
         locus_split = locus.split(":")
 
         if len(locus_split) > 1:

@@ -22,20 +22,19 @@ __email__ = "vreuter@virginia.edu"
 
 DOWNLOAD_FUNCTION = "refgenconf.refgenconf.{}".format(_download_url_progress.__name__)
 
-
 @pytest.mark.parametrize(
     ["genome", "asset", "tag"], [("rCRSd", "fasta", "default"), ("rCRSd", "fasta", "default")])
 def test_no_unpack(rgc, genome, asset, tag):
     """ Tarballs must be unpacked. """
     with pytest.raises(NotImplementedError):
-        rgc.pull_asset(genome, asset, tag, unpack=False)
+        rgc.pull(genome, asset, tag, unpack=False)
 
 
 @pytest.mark.parametrize(["gname", "aname"], [("human_repeats", 1), ("mouse_chrM2x", None)])
 def test_pull_asset_illegal_asset_name(rgc, gname, aname):
     """ TypeError occurs if asset argument is not iterable. """
     with pytest.raises(TypeError):
-        rgc.pull_asset(gname, aname)
+        rgc.pull(gname, aname)
 
 @pytest.mark.parametrize(["gname", "aname", "tname"],
                          [("human_repeats", "bowtie2_index", "default"), ("mouse_chrM2x", "bwa_index", "default")])
@@ -43,7 +42,7 @@ def test_negative_response_to_large_download_prompt(rgc, gname, aname, tname):
     """ Test responsiveness to user abortion of pull request. """
     with mock.patch("refgenconf.refgenconf._is_large_archive", return_value=True), \
          mock.patch("refgenconf.refgenconf.query_yes_no", return_value=False):
-        gat, archive_dict, server_url = rgc.pull_asset(gname, aname, tname)
+        gat, archive_dict, server_url = rgc.pull(gname, aname, tname)
     assert gat == [gname, aname, tname]
 
 
@@ -61,7 +60,7 @@ def test_download_interruption(my_rgc, gname, aname, tname, caplog):
          mock.patch("refgenconf.refgenconf.query_yes_no", return_value=True), \
          caplog.at_level(logging.WARNING), \
          pytest.raises(SystemExit):
-        my_rgc.pull_asset(gname, aname, tname)
+        my_rgc.pull(gname, aname, tname)
     records = caplog.records
     assert 1 == len(records)
     r = records[0]
@@ -73,7 +72,7 @@ def test_download_interruption(my_rgc, gname, aname, tname, caplog):
 def test_pull_asset(my_rgc, gname, aname, tname):
     with mock.patch("refgenconf.refgenconf.query_yes_no", return_value=True):
         print("\nPulling; genome: {}, asset: {}, tag: {}\n".format(gname, aname, tname))
-        my_rgc.pull_asset(gname, aname, tname)
+        my_rgc.pull(gname, aname, tname)
 
 
 @pytest.mark.parametrize(["gname", "aname", "tname"],
@@ -81,14 +80,14 @@ def test_pull_asset(my_rgc, gname, aname, tname):
 def test_parent_asset_mismatch(my_rgc, gname, aname, tname):
     """ Test that an exception is raised when remote and local parent checksums do not match on pull"""
     with mock.patch("refgenconf.refgenconf.query_yes_no", return_value=True):
-        my_rgc.pull_asset(gname, "fasta", tname)
+        my_rgc.pull(gname, "fasta", tname)
     my_rgc.make_writable()
     my_rgc.write()
     ori = my_rgc[CFG_GENOMES_KEY][gname][CFG_ASSETS_KEY]["fasta"][CFG_ASSET_TAGS_KEY][tname][CFG_ASSET_CHECKSUM_KEY]
     my_rgc[CFG_GENOMES_KEY][gname][CFG_ASSETS_KEY]["fasta"][CFG_ASSET_TAGS_KEY][tname][CFG_ASSET_CHECKSUM_KEY] = "wrong"
     with mock.patch("refgenconf.refgenconf.query_yes_no", return_value=True):
         with pytest.raises(RemoteDigestMismatchError):
-            my_rgc.pull_asset(gname, aname, tname)
+            my_rgc.pull(gname, aname, tname)
     with my_rgc as r:
         r[CFG_GENOMES_KEY][gname][CFG_ASSETS_KEY]["fasta"][CFG_ASSET_TAGS_KEY][tname][CFG_ASSET_CHECKSUM_KEY] = ori
     my_rgc.make_readonly()
@@ -109,10 +108,10 @@ def test_pull_asset_updates_genome_config(cfg_file, gname, aname, tname):
     assert ori_rgc.to_dict() == rgc.to_dict()
     with mock.patch("refgenconf.refgenconf.query_yes_no", return_value=True):
         print("\nPulling; genome: {}, asset: {}, tag: {}\n".format(gname, aname, tname))
-        rgc.pull_asset(gname, aname, tname)
+        rgc.pull(gname, aname, tname)
     assert not ori_rgc.to_dict() == rgc.to_dict()
     post_rgc = RefGenConf(filepath=cfg_file, writable=False)
-    assert isinstance(post_rgc.get_asset(gname, aname, tname), str)
+    assert isinstance(post_rgc.seek(gname, aname, tname), str)
 
 
 @pytest.mark.parametrize(["gname", "aname", "tname", "state"],
@@ -123,4 +122,4 @@ def test_pull_asset_works_with_nonwritable_and_writable_rgc(cfg_file, gname, ana
     remove_asset_and_file(rgc, gname, aname, tname)
     with mock.patch("refgenconf.refgenconf.query_yes_no", return_value=True):
         print("\nPulling; genome: {}, asset: {}, tag: {}\n".format(gname, aname, tname))
-        rgc.pull_asset(gname, aname, tname)
+        rgc.pull(gname, aname, tname)

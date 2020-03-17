@@ -2,6 +2,25 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format. 
 
+## [0.7.0] - Unreleased
+
+### Added
+- `RefGenConf` methods update the file on disk that's bound to the object if one exists
+- `seek` method. Works similarily to `get_asset`, but does not check for asset file existence on disk by default.
+
+### Changed
+- `RefGenConf` method names to match the `refgenie` (CLI) terminology
+	- `remove_assets` to `remove`
+	- `asset_dict` to `list`
+	- `list_remote` to `listr`
+	- `tag_asset` to `tag`
+	- `pull_asset` to `pull`
+	- `get_asset_digest` to `id`
+  	- `get_asset` to `seek`. Moreover the file existence 
+
+### Deprecated
+- `get_asset` method. Use `seek` instead
+
 ## [0.6.2] - 2020-01-15
 
 ### Added

@@ -1,5 +1,4 @@
 from ._version import __version__
-import pkg_resources
 
 from .const import *
 from .exceptions import *

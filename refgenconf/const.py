@@ -95,18 +95,19 @@ CFG_KEY_NAMES = [
     "CFG_ASSET_RELATIVES_KEYS", "CFG_ARCHIVE_CONFIG_KEY", "CFG_ARCHIVE_KEY_OLD"]
 
 # hook identifiers, A_* (after/post) B_* (before/pre)
-B_UPDATE_HOOK = "pre_update"
-A_UPDATE_HOOK = "post_update"
-B_PULL_HOOK = "pre_pull"
-A_PULL_HOOK = "post_pull"
-B_TAG_HOOK = "pre_tag"
-A_TAG_HOOK = "post_tag"
-B_LIST_HOOK = "pre_list"
-A_LIST_HOOK = "post_list"
+PRE_UPDATE_HOOK = "pre_update"
+POST_UPDATE_HOOK = "post_update"
+PRE_PULL_HOOK = "pre_pull"
+POST_PULL_HOOK = "post_pull"
+PRE_TAG_HOOK = "pre_tag"
+POST_TAG_HOOK = "post_tag"
+PRE_LIST_HOOK = "pre_list"
+POST_LIST_HOOK = "post_list"
 # HOOKS is a list of all available plugin entry points
-HOOK_NAMES = ["A_LIST_HOOK", "A_PULL_HOOK", "A_TAG_HOOK", "A_UPDATE_HOOK",
-              "B_TAG_HOOK", "B_LIST_HOOK", "B_PULL_HOOK", "B_UPDATE_HOOK"]
-HOOKS = JSON_METADATA_VALUES = [eval(x) for x in HOOK_NAMES]
+HOOK_NAMES = [
+    "PRE_LIST_HOOK", "PRE_PULL_HOOK", "PRE_TAG_HOOK", "PRE_UPDATE_HOOK",
+    "POST_TAG_HOOK", "POST_LIST_HOOK", "POST_PULL_HOOK", "POST_UPDATE_HOOK"]
+HOOKS = [eval(x) for x in HOOK_NAMES]
 
 # other consts
 REQ_CFG_VERSION = 0.3

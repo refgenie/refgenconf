@@ -160,12 +160,14 @@ class RefGenConf(yacman.YacAttMap):
         :return Mapping[str, Iterable[str]]: mapping from assembly name to
             collection of available asset names.
         """
-        self.run_plugins(B_LIST_HOOK)
+        self.run_plugins(PRE_LIST_HOOK)
         refgens = _select_genomes(sorted(self[CFG_GENOMES_KEY].keys(), key=order), genome)
         if include_tags:
+            self.run_plugins(POST_LIST_HOOK)
             return OrderedDict(
                 [(g, sorted(_make_asset_tags_product(self[CFG_GENOMES_KEY][g][CFG_ASSETS_KEY], ":"), key=order))
                  for g in refgens])
+        self.run_plugins(POST_LIST_HOOK)
         return OrderedDict([(g, sorted(list(self[CFG_GENOMES_KEY][g][CFG_ASSETS_KEY].keys()), key=order))
                             for g in refgens])
 
@@ -476,7 +478,7 @@ class RefGenConf(yacman.YacAttMap):
         :raise ValueError: when the original tag is not specified
         :return bool: a logical indicating whether the tagging was successful
         """
-        self.run_plugins(B_TAG_HOOK)
+        self.run_plugins(PRE_TAG_HOOK)
         ori_path = self.seek(genome, asset, tag, enclosing_dir=True, strict_exists=True)
         new_path = os.path.abspath(os.path.join(ori_path, os.pardir, new_tag))
         if self.file_path:
@@ -487,6 +489,7 @@ class RefGenConf(yacman.YacAttMap):
             if not self.cfg_tag_asset(genome, asset, tag, new_tag):
                 sys.exit(0)
         if not files:
+            self.run_plugins(POST_TAG_HOOK)
             return
         try:
             if os.path.exists(new_path):
@@ -505,6 +508,7 @@ class RefGenConf(yacman.YacAttMap):
                           " the genome config".format(genome, asset, tag))
             _LOGGER.debug("Original asset has been moved from '{}' to '{}'".
                           format(ori_path, new_path))
+        self.run_plugins(POST_TAG_HOOK)
 
     def cfg_tag_asset(self, genome, asset, tag, new_tag):
         """
@@ -623,12 +627,16 @@ class RefGenConf(yacman.YacAttMap):
         :raise refgenconf.RefGenConfError: if the object update is requested in
             a non-writable state
         """
-        self.run_plugins(B_PULL_HOOK)
+        self.run_plugins(PRE_PULL_HOOK)
         missing_vars = unbound_env_vars(self[CFG_FOLDER_KEY])
         if missing_vars:
             raise UnboundEnvironmentVariablesError(", ".join(missing_vars))
 
-        def raise_unpack_error():
+        def _null_return():
+            self.run_plugins(POST_PULL_HOOK)
+            return gat, None, None
+
+        def _raise_unpack_error():
             raise NotImplementedError("Option to not extract tarballs is not yet supported.")
 
         num_servers = 0
@@ -646,7 +654,7 @@ class RefGenConf(yacman.YacAttMap):
             else:
                 determined_tag = str(determined_tag)
                 _LOGGER.debug("Determined tag: {}".format(determined_tag))
-                unpack or raise_unpack_error()
+                unpack or _raise_unpack_error()
             gat = [genome, asset, determined_tag]
             url_attrs = get_json_url(server_url, API_ID_ASSET_ATTRS).format(genome=genome, asset=asset)
             url_archive = get_json_url(server_url, API_ID_ARCHIVE).format(genome=genome, asset=asset)
@@ -659,7 +667,7 @@ class RefGenConf(yacman.YacAttMap):
                 if num_servers == len(self[CFG_SERVERS_KEY]):
                     _LOGGER.error("Asset '{}/{}:{}' not available on any of the following servers: {}".
                                   format(genome, asset, determined_tag, ", ".join(no_asset_json)))
-                    return gat, None, None
+                    return _null_return()
                 continue
 
             if sys.version_info[0] == 2:
@@ -675,7 +683,7 @@ class RefGenConf(yacman.YacAttMap):
             if os.path.exists(tag_dir):
                 def preserve():
                     _LOGGER.debug("Preserving existing: {}".format(tag_dir))
-                    return gat, None, None
+                    return _null_return()
 
                 def msg_overwrite():
                     _LOGGER.debug("Overwriting: {}".format(tag_dir))
@@ -699,7 +707,7 @@ class RefGenConf(yacman.YacAttMap):
             _LOGGER.debug("'{}' archive size: {}".format(bundle_name, archsize))
             if _is_large_archive(archsize) and not query_yes_no("Are you sure you want to download this large archive?"):
                 _LOGGER.info("pull action aborted by user")
-                return gat, None, None
+                return _null_return()
 
             if not os.path.exists(genome_dir_path):
                 _LOGGER.debug("Creating directory: {}".format(genome_dir_path))
@@ -714,7 +722,7 @@ class RefGenConf(yacman.YacAttMap):
                 _LOGGER.error("Asset archive '{}/{}:{}' is missing on the server: {s}".format(*gat, s=server_url))
                 if server_url == self[CFG_SERVERS_KEY][-1]:
                     # it this was the last server on the list, return
-                    return gat, None, None
+                    return _null_return()
                 else:
                     _LOGGER.info("Trying next server")
                     # set the tag value back to what user requested
@@ -724,11 +732,11 @@ class RefGenConf(yacman.YacAttMap):
                 _LOGGER.error(str(e))
                 _LOGGER.error("Server {}/{} refused download. Check your internet settings".format(server_url,
                                                                                                    API_VERSION))
-                return gat, None, None
+                return _null_return()
             except ContentTooShortError as e:
                 _LOGGER.error(str(e))
                 _LOGGER.error("'{}' download incomplete".format(bundle_name))
-                return gat, None, None
+                return _null_return()
             else:
                 _LOGGER.info("Download complete: {}".format(filepath))
 
@@ -736,7 +744,7 @@ class RefGenConf(yacman.YacAttMap):
             old_checksum = archive_data and archive_data.get(CFG_ARCHIVE_CHECKSUM_KEY)
             if old_checksum and new_checksum != old_checksum:
                 _LOGGER.error("Checksum mismatch: ({}, {})".format(new_checksum, old_checksum))
-                return gat, None, None
+                return _null_return()
             else:
                 _LOGGER.debug("Matched checksum: '{}'".format(old_checksum))
             import tempfile
@@ -759,12 +767,14 @@ class RefGenConf(yacman.YacAttMap):
                     rgc.update_tags(*gat, data={attr: archive_data[attr]
                                                 for attr in ATTRS_COPY_PULL if attr in archive_data})
                     rgc.set_default_pointer(*gat)
+                self.run_plugins(POST_PULL_HOOK)
                 return gat, archive_data, server_url
             [self.chk_digest_update_child(gat[0], x, "{}/{}:{}".format(*gat), server_url)
              for x in archive_data[CFG_ASSET_PARENTS_KEY] if CFG_ASSET_PARENTS_KEY in archive_data]
             self.update_tags(*gat, data={attr: archive_data[attr]
                                         for attr in ATTRS_COPY_PULL if attr in archive_data})
             self.set_default_pointer(*gat)
+            self.run_plugins(POST_PULL_HOOK)
             return gat, archive_data, server_url
 
     def remove_asset_from_relatives(self, genome, asset, tag):
@@ -1245,15 +1255,16 @@ class RefGenConf(yacman.YacAttMap):
         """
         Runs all installed plugins for the specified hook.
 
-        :param str hook: hook idenfier
+        :param str hook: hook identifier
         """
         for name, func in plugins[hook].items():
             _LOGGER.debug("Running {} plugin: {}".format(hook, name))
             func(self)
 
     def write(self):
+        self.run_plugins(PRE_UPDATE_HOOK)
         super(RefGenConf, self).write()
-        self.run_plugins(A_UPDATE_HOOK)
+        self.run_plugins(POST_UPDATE_HOOK)
 
 
 class DownloadProgressBar(tqdm):

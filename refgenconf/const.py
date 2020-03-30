@@ -104,8 +104,9 @@ A_TAG_HOOK = "post_tag"
 B_LIST_HOOK = "pre_list"
 A_LIST_HOOK = "post_list"
 # HOOKS is a list of all available plugin entry points
-HOOKS = [A_LIST_HOOK, A_PULL_HOOK, A_TAG_HOOK, A_UPDATE_HOOK, B_TAG_HOOK,
-         B_LIST_HOOK, B_PULL_HOOK, B_UPDATE_HOOK]
+HOOK_NAMES = ["A_LIST_HOOK", "A_PULL_HOOK", "A_TAG_HOOK", "A_UPDATE_HOOK",
+              "B_TAG_HOOK", "B_LIST_HOOK", "B_PULL_HOOK", "B_UPDATE_HOOK"]
+HOOKS = JSON_METADATA_VALUES = [eval(x) for x in HOOK_NAMES]
 
 # other consts
 REQ_CFG_VERSION = 0.3
@@ -118,7 +119,7 @@ CUSTOM_BAR_FMT = "{desc}{percentage:3.0f}%|{bar}| {n_fmt} [{elapsed}<{remaining}
 __all__ = ["DEFAULT_SERVER", "CFG_ASSET_DEFAULT_TAG_KEY", "CFG_KEY_NAMES", "CFG_GENOME_DESC_KEY", "REQ_CFG_VERSION",
            "CFG_ASSETS_KEY", "CFG_GENOME_ATTRS_KEYS", "REFGENIE_BY_CFG", "DEFAULT_TAG", "ATTRS_COPY_PULL",
            "RGC_REQ_KEYS", "REQ_TAG_ATTRS", "CUSTOM_BAR_FMT", "API_VERSION", "CONF_STRUCTURE", "OPERATION_IDS",
-           "CUSTOM_PFX", "HOOKS"] + FILE_DIR_NAMES + CFG_CONST + CFG_KEY_NAMES + API_IDS
+           "CUSTOM_PFX", "HOOKS"] + FILE_DIR_NAMES + CFG_CONST + CFG_KEY_NAMES + API_IDS + HOOK_NAMES
 
 CONF_STRUCTURE = """
 # example genome configuration structure

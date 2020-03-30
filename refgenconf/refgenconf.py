@@ -33,7 +33,7 @@ import yacman
 from .const import *
 from .helpers import unbound_env_vars, asciify_json_dict, select_genome_config
 from .exceptions import *
-
+from .plugins import plugins
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -160,6 +160,7 @@ class RefGenConf(yacman.YacAttMap):
         :return Mapping[str, Iterable[str]]: mapping from assembly name to
             collection of available asset names.
         """
+        self.run_plugins("pre_list")
         refgens = _select_genomes(sorted(self[CFG_GENOMES_KEY].keys(), key=order), genome)
         if include_tags:
             return OrderedDict(
@@ -245,6 +246,7 @@ class RefGenConf(yacman.YacAttMap):
         :raise refgenconf.MissingAssetError: if the names assembly is known to
             this configuration instance, but the requested asset is unknown
         """
+        
         tag_name = tag_name or self.get_default_tag(genome_name, asset_name)
         _LOGGER.debug(
             "getting asset: '{}/{}.{}:{}'".format(genome_name, asset_name, seek_key,
@@ -475,6 +477,7 @@ class RefGenConf(yacman.YacAttMap):
         :raise ValueError: when the original tag is not specified
         :return bool: a logical indicating whether the tagging was successful
         """
+        self.run_plugins("pre_tag")
         ori_path = self.seek(genome, asset, tag, enclosing_dir=True, strict_exists=True)
         new_path = os.path.abspath(os.path.join(ori_path, os.pardir, new_tag))
         if self.file_path:
@@ -503,6 +506,7 @@ class RefGenConf(yacman.YacAttMap):
                           " the genome config".format(genome, asset, tag))
             _LOGGER.debug("Original asset has been moved from '{}' to '{}'".
                           format(ori_path, new_path))
+
 
     def cfg_tag_asset(self, genome, asset, tag, new_tag):
         """
@@ -621,6 +625,7 @@ class RefGenConf(yacman.YacAttMap):
         :raise refgenconf.RefGenConfError: if the object update is requested in
             a non-writable state
         """
+        self.run_plugins("pre_pull")
         missing_vars = unbound_env_vars(self[CFG_FOLDER_KEY])
         if missing_vars:
             raise UnboundEnvironmentVariablesError(", ".join(missing_vars))
@@ -764,6 +769,7 @@ class RefGenConf(yacman.YacAttMap):
             self.set_default_pointer(*gat)
             return gat, archive_data, server_url
 
+
     def remove_asset_from_relatives(self, genome, asset, tag):
         """
         Remove any relationship links associated with the selected asset
@@ -809,7 +815,7 @@ class RefGenConf(yacman.YacAttMap):
 
     def update_seek_keys(self, genome, asset, tag=None, keys=None):
         """
-        A convenience method which wraps the update assets and uses it to
+        A convenience method which wraps the updated assets and uses it to
         update the seek keys for a tagged asset.
 
         :param str genome: genome to be added/updated
@@ -1237,6 +1243,21 @@ class RefGenConf(yacman.YacAttMap):
             return a[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_CHECKSUM_KEY]
         raise MissingConfigDataError("Digest does not exist for: {}/{}:{}".
                                      format(genome, asset, tag))
+
+    def run_plugins(self, hook):
+        """
+        Runs all installed plugins for the specified hook.
+
+        :param str hook: hook idenfier
+        """
+        _LOGGER.debug("Activating plugins...")
+        for name, func in plugins[hook].items():
+            _LOGGER.debug("Running {} plugin: {}".format(hook, name))
+            func(self)
+
+    def write(self):
+        super(RefGenConf, self).write()
+        self.run_plugins("post_update")
 
 
 class DownloadProgressBar(tqdm):

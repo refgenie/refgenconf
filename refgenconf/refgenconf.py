@@ -160,7 +160,7 @@ class RefGenConf(yacman.YacAttMap):
         :return Mapping[str, Iterable[str]]: mapping from assembly name to
             collection of available asset names.
         """
-        self.run_plugins("pre_list")
+        self.run_plugins(B_LIST_HOOK)
         refgens = _select_genomes(sorted(self[CFG_GENOMES_KEY].keys(), key=order), genome)
         if include_tags:
             return OrderedDict(
@@ -476,7 +476,7 @@ class RefGenConf(yacman.YacAttMap):
         :raise ValueError: when the original tag is not specified
         :return bool: a logical indicating whether the tagging was successful
         """
-        self.run_plugins("pre_tag")
+        self.run_plugins(B_TAG_HOOK)
         ori_path = self.seek(genome, asset, tag, enclosing_dir=True, strict_exists=True)
         new_path = os.path.abspath(os.path.join(ori_path, os.pardir, new_tag))
         if self.file_path:
@@ -623,7 +623,7 @@ class RefGenConf(yacman.YacAttMap):
         :raise refgenconf.RefGenConfError: if the object update is requested in
             a non-writable state
         """
-        self.run_plugins("pre_pull")
+        self.run_plugins(B_PULL_HOOK)
         missing_vars = unbound_env_vars(self[CFG_FOLDER_KEY])
         if missing_vars:
             raise UnboundEnvironmentVariablesError(", ".join(missing_vars))
@@ -1253,7 +1253,7 @@ class RefGenConf(yacman.YacAttMap):
 
     def write(self):
         super(RefGenConf, self).write()
-        self.run_plugins("post_update")
+        self.run_plugins(A_UPDATE_HOOK)
 
 
 class DownloadProgressBar(tqdm):

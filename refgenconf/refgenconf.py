@@ -1250,7 +1250,6 @@ class RefGenConf(yacman.YacAttMap):
 
         :param str hook: hook idenfier
         """
-        _LOGGER.debug("Activating plugins...")
         for name, func in plugins[hook].items():
             _LOGGER.debug("Running {} plugin: {}".format(hook, name))
             func(self)

@@ -1261,10 +1261,23 @@ class RefGenConf(yacman.YacAttMap):
             _LOGGER.debug("Running {} plugin: {}".format(hook, name))
             func(self)
 
-    def write(self):
+    def write(self, filepath=None):
+        """
+        Write the contents to a file.
+        If pre- and post-update plugins are defined, they will be executed automatically
+
+        :param str filepath: a file path to write to
+        :raise OSError: when the object has been created in a read only mode or other process has locked the file
+        :raise TypeError: when the filepath cannot be determined.
+            This takes place only if YacAttMap initialized with a Mapping as an input, not read from file.
+        :raise OSError: when the write is called on an object with no write capabilities
+            or when writing to a file that is locked by a different object
+        :return str: the path to the created files
+        """
         self.run_plugins(PRE_UPDATE_HOOK)
-        super(RefGenConf, self).write()
+        path = super(RefGenConf, self).write(filepath=filepath)
         self.run_plugins(POST_UPDATE_HOOK)
+        return path
 
 
 class DownloadProgressBar(tqdm):

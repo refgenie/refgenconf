@@ -23,7 +23,9 @@ import os
 import signal
 import warnings
 import shutil
+import json
 
+from refget import RefGetHenge
 from attmap import PathExAttMap as PXAM
 from ubiquerg import checksum, is_url, query_yes_no, parse_registry_path as prp, untar, is_writable
 from tqdm import tqdm
@@ -281,39 +283,6 @@ class RefGenConf(yacman.YacAttMap):
         else:
             warnings.warn(msg, RuntimeWarning)
         return path
-
-    def get_asset(self, genome_name, asset_name, tag_name=None, seek_key=None, strict_exists=True,
-             check_exist=lambda p: os.path.exists(p) or is_url(p), enclosing_dir=False):
-        """
-        Get a path to the a specified genome-asset-tag.
-        Note: enforces file existence checks by default
-
-        :param str genome_name: name of a reference genome assembly of interest
-        :param str asset_name: name of the particular asset to fetch
-        :param str tag_name: name of the particular asset tag to fetch
-        :param str seek_key: name of the particular subasset to fetch
-        :param bool | NoneType strict_exists: how to handle case in which
-            path doesn't exist; True to raise IOError, False to raise
-            RuntimeWarning, and None to do nothing at all
-        :param function(callable) -> bool check_exist: how to check for
-            asset/path existence
-        :param bool enclosing_dir: whether a path to the entire enclosing directory should be returned, e.g.
-            for a fasta asset that has 3 seek_keys pointing to 3 files in an asset dir, that asset dir is returned
-        :return str: path to the asset
-        :raise TypeError: if the existence check is not a one-arg function
-        :raise refgenconf.MissingGenomeError: if the named assembly isn't known
-            to this configuration instance
-        :raise refgenconf.MissingAssetError: if the names assembly is known to
-            this configuration instance, but the requested asset is unknown
-        """
-        warnings.warn(
-            "Please use seek method instead; get_asset will be removed "
-            "in the next release.", category=DeprecationWarning
-        )
-        return self.seek(genome_name=genome_name, asset_name=asset_name,
-                         tag_name=tag_name, seek_key=seek_key,
-                         strict_exists=strict_exists, check_exist=check_exist,
-                         enclosing_dir=enclosing_dir)
 
     def get_default_tag(self, genome, asset, use_existing=True):
         """
@@ -642,6 +611,9 @@ class RefGenConf(yacman.YacAttMap):
         num_servers = 0
         bad_servers = []
         no_asset_json = []
+        if CFG_SERVERS_KEY not in self or self[CFG_SERVERS_KEY] is None:
+            _LOGGER.error("You are not subscribed to any asset servers")
+            return _null_return()
         for server_url in self[CFG_SERVERS_KEY]:
             num_servers += 1
             try:
@@ -767,15 +739,45 @@ class RefGenConf(yacman.YacAttMap):
                     rgc.update_tags(*gat, data={attr: archive_data[attr]
                                                 for attr in ATTRS_COPY_PULL if attr in archive_data})
                     rgc.set_default_pointer(*gat)
-                self.run_plugins(POST_PULL_HOOK)
-                return gat, archive_data, server_url
-            [self.chk_digest_update_child(gat[0], x, "{}/{}:{}".format(*gat), server_url)
-             for x in archive_data[CFG_ASSET_PARENTS_KEY] if CFG_ASSET_PARENTS_KEY in archive_data]
-            self.update_tags(*gat, data={attr: archive_data[attr]
-                                        for attr in ATTRS_COPY_PULL if attr in archive_data})
-            self.set_default_pointer(*gat)
+            else:
+                [self.chk_digest_update_child(gat[0], x, "{}/{}:{}".format(*gat), server_url)
+                 for x in archive_data[CFG_ASSET_PARENTS_KEY] if CFG_ASSET_PARENTS_KEY in archive_data]
+                self.update_tags(*gat, data={attr: archive_data[attr]
+                                            for attr in ATTRS_COPY_PULL if attr in archive_data})
+                self.set_default_pointer(*gat)
+            if gat[1] == "fasta":
+                self.initialize_genome(gat)
             self.run_plugins(POST_PULL_HOOK)
             return gat, archive_data, server_url
+
+    def initialize_genome(self, gat):
+        """
+        Initialize a genome
+
+        Create a JSON file with Derived Recursive Unique Indentifiers (DRUIDs)
+        for the FASTA file in the genome directory.
+
+        :param list[str] gat: list of genome, asset and tag names
+        :return
+        """
+        g = gat[0]
+        _LOGGER.info("Initializing genome: {}".format(g))
+        d, c = RefGetHenge({}).load_fasta(self.seek(*gat, strict_exists=True))
+        pth = self.get_asds_path(g)
+        with open(pth, "w") as jfp:
+            json.dump(c, jfp)
+        _LOGGER.debug("Saved DRUIDs to JSON: {}".format(pth))
+        return d, c
+
+    def get_asds_path(self, genome):
+        """
+        Get path to the Annotated Sequence Digests JSON file for a given genome.
+        Note that the path and/or genome may not exist.
+
+        :param str genome: genome name
+        :return str: ASDs path
+        """
+        return os.path.join(self[CFG_FOLDER_KEY], genome, genome + "__ASDs.json")
 
     def remove_asset_from_relatives(self, genome, asset, tag):
         """
@@ -1251,6 +1253,42 @@ class RefGenConf(yacman.YacAttMap):
         raise MissingConfigDataError("Digest does not exist for: {}/{}:{}".
                                      format(genome, asset, tag))
 
+    def compare(self, genome1, genome2, explain=False):
+        """
+        Check genomes compatibility level.
+
+        Compares Annotated Sequence Digests (ASDs) -- digested sequences and metadata
+
+        :param str genome1: name of the first genome to compare
+        :param str genome2: name of the first genome to compare
+        :param bool explain: whether the returned code explanation should
+            be displayed
+        :return int: compatibility code
+        """
+        def _get_asds_for_genome(rgc, genome):
+            """
+            Read JSON file containing ASDs for a specified genome
+
+            :param refgenconf.RefGenConf rgc: object to find the genome for
+            :param str genome: genome to find the file for
+            :return list[dict]: list of ASDs, ready to compare
+            """
+            rgc.seek(genome, "fasta", strict_exists=True)
+            json_file = rgc.get_asds_path(genome)
+            if not os.path.exists(json_file):
+                raise OSError(
+                    "File containing Annotated Sequence Digests (ASDs) not "
+                    "found for genome: {g}. Pull or build '{g}/fasta' again to "
+                    "check the compatibility.".format(g=genome))
+            with open(json_file, "r") as jfp:
+                return json.load(jfp)
+
+        return RefGetHenge({}).compare_asds(
+            _get_asds_for_genome(self, genome1),
+            _get_asds_for_genome(self, genome2),
+            explain=explain
+        )
+
     def run_plugins(self, hook):
         """
         Runs all installed plugins for the specified hook.
@@ -1501,7 +1539,6 @@ def _read_remote_data(url):
     :param str url: data request
     :return dict: JSON parsed from the response from given URL request
     """
-    import json
     with urllib.request.urlopen(url) as response:
         encoding = response.info().get_content_charset('utf8')
         return json.loads(response.read().decode(encoding))

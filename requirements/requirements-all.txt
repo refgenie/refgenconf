@@ -5,3 +5,4 @@ tqdm>=4.38.0
 ubiquerg>=0.5.0
 yacman>=0.6.6
 future
+refget>=0.0.1

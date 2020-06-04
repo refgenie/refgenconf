@@ -739,14 +739,16 @@ class RefGenConf(yacman.YacAttMap):
                     rgc.update_tags(*gat, data={attr: archive_data[attr]
                                                 for attr in ATTRS_COPY_PULL if attr in archive_data})
                     rgc.set_default_pointer(*gat)
+                    if gat[1] == "fasta":
+                        self.initialize_genome(gat)
             else:
                 [self.chk_digest_update_child(gat[0], x, "{}/{}:{}".format(*gat), server_url)
                  for x in archive_data[CFG_ASSET_PARENTS_KEY] if CFG_ASSET_PARENTS_KEY in archive_data]
                 self.update_tags(*gat, data={attr: archive_data[attr]
                                             for attr in ATTRS_COPY_PULL if attr in archive_data})
                 self.set_default_pointer(*gat)
-            if gat[1] == "fasta":
-                self.initialize_genome(gat)
+                if gat[1] == "fasta":
+                    self.initialize_genome(gat)
             self.run_plugins(POST_PULL_HOOK)
             return gat, archive_data, server_url
 
@@ -754,7 +756,7 @@ class RefGenConf(yacman.YacAttMap):
         """
         Initialize a genome
 
-        Create a JSON file with Derived Recursive Unique Indentifiers (DRUIDs)
+        Create a JSON file with Annotated Sequence Digests (ASDs)
         for the FASTA file in the genome directory.
 
         :param list[str] gat: list of genome, asset and tag names
@@ -766,7 +768,8 @@ class RefGenConf(yacman.YacAttMap):
         pth = self.get_asds_path(g)
         with open(pth, "w") as jfp:
             json.dump(c, jfp)
-        _LOGGER.debug("Saved DRUIDs to JSON: {}".format(pth))
+        _LOGGER.debug("Saved ASDs to JSON: {}".format(pth))
+        self[CFG_GENOMES_KEY][g][CFG_CHECKSUM_KEY] = d
         return d, c
 
     def get_asds_path(self, genome):

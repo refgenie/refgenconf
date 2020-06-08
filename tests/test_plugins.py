@@ -6,6 +6,10 @@ __author__ = "Michal Stolarczyk"
 __email__ = "michal@virginia.edu"
 
 
+def get_flag_pth(rgc):
+    return os.path.join(os.path.dirname(rgc.file_path), "plugin.flag")
+
+
 def set_flag(rgc):
     """
     Creates a flag file next to the genome configuration file.
@@ -15,7 +19,7 @@ def set_flag(rgc):
 
     :param refgenconf.RefGenConf rgc: object to create the flag for
     """
-    pth = os.path.join(os.path.dirname(rgc.file_path), "plugin.flag")
+    pth = get_flag_pth(rgc)
     if not os.path.exists(pth):
         write_flags = os.O_CREAT | os.O_EXCL | os.O_WRONLY
         fd = os.open(pth, write_flags)
@@ -38,11 +42,9 @@ class TestPlugins:
             mock_plugins.return_value = PLUGINS_DICT
             rgc = RefGenConf(cfg_file, writable=False)
             rgc.list()
-            assert os.path.exists(os.path.join(os.path.dirname(rgc.file_path),
-                                               "plugin.flag"))
-        os.remove(os.path.join(os.path.dirname(rgc.file_path), "plugin.flag"))
-        assert not os.path.exists(
-            os.path.join(os.path.dirname(rgc.file_path), "plugin.flag"))
+            assert get_flag_pth(rgc)
+        os.remove(get_flag_pth(rgc))
+        assert not os.path.exists(get_flag_pth(rgc))
 
     def test_plugin_entrypoints_scanning(self, ro_rgc):
         """

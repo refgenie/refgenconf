@@ -94,7 +94,7 @@ CFG_KEY_NAMES = [
     "CFG_ASSET_CHILDREN_KEY", "CFG_TAG_DESC_KEY", "CFG_ASSET_CHECKSUM_KEY", "CFG_ASSET_TAGS_KEY",
     "CFG_ASSET_RELATIVES_KEYS", "CFG_ARCHIVE_CONFIG_KEY", "CFG_ARCHIVE_KEY_OLD"]
 
-# hook identifiers, A_* (after/post) B_* (before/pre)
+# hook identifiers
 PRE_UPDATE_HOOK = "pre_update"
 POST_UPDATE_HOOK = "post_update"
 PRE_PULL_HOOK = "pre_pull"

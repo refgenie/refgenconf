@@ -29,13 +29,13 @@ from refget import RefGetHenge
 from attmap import PathExAttMap as PXAM
 from ubiquerg import checksum, is_url, query_yes_no, parse_registry_path as prp, untar, is_writable
 from tqdm import tqdm
+from pkg_resources import iter_entry_points
 
 import yacman
 
 from .const import *
 from .helpers import unbound_env_vars, asciify_json_dict, select_genome_config
 from .exceptions import *
-from .plugins import plugins
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -125,6 +125,17 @@ class RefGenConf(yacman.YacAttMap):
         return not minkeys or bool(self[CFG_GENOMES_KEY])
 
     __nonzero__ = __bool__
+
+    @property
+    def plugins(self):
+        """
+        Plugins registered by entry points in the current Python env
+
+        :return dict[dict[function(refgenconf.RefGenConf)]]: dict which keys
+            are names of all possible hooks and values are dicts mapping
+            registered funcions names to their values
+        """
+        return {h: {ep.name: ep.load() for ep in iter_entry_points('refgenie.hooks.' + h)} for h in HOOKS}
 
     def initialize_config_file(self, filepath=None):
         """
@@ -1298,7 +1309,7 @@ class RefGenConf(yacman.YacAttMap):
 
         :param str hook: hook identifier
         """
-        for name, func in plugins[hook].items():
+        for name, func in self.plugins[hook].items():
             _LOGGER.debug("Running {} plugin: {}".format(hook, name))
             func(self)
 

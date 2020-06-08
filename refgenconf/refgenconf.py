@@ -133,7 +133,7 @@ class RefGenConf(yacman.YacAttMap):
 
         :return dict[dict[function(refgenconf.RefGenConf)]]: dict which keys
             are names of all possible hooks and values are dicts mapping
-            registered funcions names to their values
+            registered functions names to their values
         """
         return {h: {ep.name: ep.load() for ep in iter_entry_points('refgenie.hooks.' + h)} for h in HOOKS}
 
@@ -730,11 +730,11 @@ class RefGenConf(yacman.YacAttMap):
                 return _null_return()
             else:
                 _LOGGER.debug("Matched checksum: '{}'".format(old_checksum))
-            import tempfile
+            from tempfile import mkdtemp
             # successfully downloaded and moved tarball; untar it
             if unpack and filepath.endswith(".tgz"):
                 _LOGGER.info("Extracting asset tarball and saving to: {}".format(tag_dir))
-                tmpdir = tempfile.mkdtemp(dir=genome_dir_path)  # TODO: use context manager here when we drop support for py2
+                tmpdir = mkdtemp(dir=genome_dir_path)  # TODO: use context manager here when we drop support for py2
                 untar(filepath, tmpdir)
                 # here we suspect the unarchived asset to be an asset-named directory
                 # the asset data inside

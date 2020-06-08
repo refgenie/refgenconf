@@ -5,6 +5,7 @@ import mock
 from refgenconf.exceptions import *
 from refgenconf.const import *
 
+
 class TestRemoveAssets:
     @pytest.mark.parametrize(["gname", "aname", "tname"], [("rCRSd", "fasta", None), ("mouse_chrM2x", "fasta", None)])
     def test_default_tag_removal(self, my_rgc, gname, aname, tname):

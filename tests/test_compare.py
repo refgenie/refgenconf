@@ -25,3 +25,5 @@ class TestCompare:
         with pytest.raises(OSError):
             ro_rgc.compare(gname1, gname2)
         os.rename(jfp + "_renamed", jfp)
+
+

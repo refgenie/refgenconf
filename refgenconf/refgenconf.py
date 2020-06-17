@@ -763,6 +763,68 @@ class RefGenConf(yacman.YacAttMap):
             self.run_plugins(POST_PULL_HOOK)
             return gat, archive_data, server_url
 
+    def get_genome_digest(self, alias):
+        """
+        Get the genome digest for human readable alias
+
+        :param str alias: human-readable alias to get the genome digest for
+        :return str: genome digest
+        :raise GenomeConfigFormatError: if "genome_digests" section does
+            not exist in the config
+        :raise UndefinedAliasError: if a no digest has been defined for the
+            requested alias
+        """
+        if CFG_ALIASES_KEY not in self:
+            raise GenomeConfigFormatError(
+                "'{}' not in genome config".format(CFG_ALIASES_KEY))
+        if alias not in self[CFG_ALIASES_KEY].keys():
+            raise UndefinedAliasError("No digest defined for '{}'".format(alias))
+        return self[CFG_ALIASES_KEY][alias]
+
+    def get_alias(self, digest):
+        """
+        Get the human readable alias for a genome digest
+
+        :param str digest: digest to find human-readable alias for
+        :return str: human-readable alias
+        :raise GenomeConfigFormatError: if "genome_digests" section does
+            not exist in the config
+        :raise UndefinedAliasError: if a no alias has been defined for the
+            requested digest
+        """
+        if CFG_ALIASES_KEY not in self:
+            raise GenomeConfigFormatError(
+                "'{}' not in genome config".format(CFG_ALIASES_KEY))
+        for a, d in self[CFG_ALIASES_KEY].items():
+            if d == digest:
+                return a
+        raise UndefinedAliasError("No alias defined for '{}'".format(digest))
+
+    def set_alias(self, genome, digest=None):
+        """
+        Assign a human-readable alias to a genome identifier.
+
+        Genomes are identified by a unique identifier which is derived from the
+        FASTA file (fasta asset). This way we can ensure genome provenance and
+        compatibility with the server. This function maps a human-readable
+        identifier to make referring to the genomes easier.
+
+        :param str genome: name of the genome to assign to an identifier
+        :param str digest: identifier to use
+        :return bool: whether the alias has been established
+        """
+        if not digest:
+            raise NotImplementedError("Digest lookup from server is not implemented yet")
+        with self as r:
+            r.setdefault(CFG_ALIASES_KEY, {})
+            if genome in r[CFG_ALIASES_KEY]:
+                _LOGGER.warning("'{}' already in aliases ({})".
+                                format(genome, r[CFG_ALIASES_KEY][genome]))
+                return False
+            r[CFG_ALIASES_KEY][genome] = digest
+            _LOGGER.info("Added new alias ({}: {})".format(genome, digest))
+            return True
+
     def initialize_genome(self, gat):
         """
         Initialize a genome
@@ -771,7 +833,8 @@ class RefGenConf(yacman.YacAttMap):
         for the FASTA file in the genome directory.
 
         :param list[str] gat: list of genome, asset and tag names
-        :return
+        :return str, list[dict[str]]: a pair of genome digest and list of
+            annotated sequence digests
         """
         g = gat[0]
         _LOGGER.info("Initializing genome: {}".format(g))
@@ -780,7 +843,7 @@ class RefGenConf(yacman.YacAttMap):
         with open(pth, "w") as jfp:
             json.dump(c, jfp)
         _LOGGER.debug("Saved ASDs to JSON: {}".format(pth))
-        self[CFG_GENOMES_KEY][g][CFG_CHECKSUM_KEY] = d
+        self.set_alias(g, d)
         return d, c
 
     def get_asds_path(self, genome):

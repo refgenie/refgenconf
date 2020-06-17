@@ -6,9 +6,6 @@ python:
   - "3.8"
 os:
   - linux
-before_install: #installing unreleased packages
-    - pip install git+https://github.com/databio/henge.git
-    - pip install git+https://github.com/databio/refget-py
 install:
   - pip install .
   - pip install -r requirements/requirements-dev.txt

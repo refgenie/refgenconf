@@ -25,7 +25,6 @@ import warnings
 import shutil
 import json
 
-from refget import RefGetHenge
 from attmap import PathExAttMap as PXAM
 from ubiquerg import checksum, is_url, query_yes_no, parse_registry_path as prp, untar, is_writable
 from tqdm import tqdm
@@ -713,8 +712,9 @@ class RefGenConf(yacman.YacAttMap):
                     continue
             except ConnectionRefusedError as e:
                 _LOGGER.error(str(e))
-                _LOGGER.error("Server {}/{} refused download. Check your internet settings".format(server_url,
-                                                                                                   API_VERSION))
+                _LOGGER.error("Server {}/{} refused download. "
+                              "Check your internet settings".
+                              format(server_url, API_VERSION))
                 return _null_return()
             except ContentTooShortError as e:
                 _LOGGER.error(str(e))
@@ -750,111 +750,14 @@ class RefGenConf(yacman.YacAttMap):
                     rgc.update_tags(*gat, data={attr: archive_data[attr]
                                                 for attr in ATTRS_COPY_PULL if attr in archive_data})
                     rgc.set_default_pointer(*gat)
-                    if gat[1] == "fasta":
-                        self.initialize_genome(gat)
             else:
                 [self.chk_digest_update_child(gat[0], x, "{}/{}:{}".format(*gat), server_url)
                  for x in archive_data[CFG_ASSET_PARENTS_KEY] if CFG_ASSET_PARENTS_KEY in archive_data]
                 self.update_tags(*gat, data={attr: archive_data[attr]
-                                            for attr in ATTRS_COPY_PULL if attr in archive_data})
+                                             for attr in ATTRS_COPY_PULL if attr in archive_data})
                 self.set_default_pointer(*gat)
-                if gat[1] == "fasta":
-                    self.initialize_genome(gat)
             self.run_plugins(POST_PULL_HOOK)
             return gat, archive_data, server_url
-
-    def get_genome_digest(self, alias):
-        """
-        Get the genome digest for human readable alias
-
-        :param str alias: human-readable alias to get the genome digest for
-        :return str: genome digest
-        :raise GenomeConfigFormatError: if "genome_digests" section does
-            not exist in the config
-        :raise UndefinedAliasError: if a no digest has been defined for the
-            requested alias
-        """
-        if CFG_ALIASES_KEY not in self:
-            raise GenomeConfigFormatError(
-                "'{}' not in genome config".format(CFG_ALIASES_KEY))
-        if alias not in self[CFG_ALIASES_KEY].keys():
-            raise UndefinedAliasError("No digest defined for '{}'".format(alias))
-        return self[CFG_ALIASES_KEY][alias]
-
-    def get_alias(self, digest):
-        """
-        Get the human readable alias for a genome digest
-
-        :param str digest: digest to find human-readable alias for
-        :return str: human-readable alias
-        :raise GenomeConfigFormatError: if "genome_digests" section does
-            not exist in the config
-        :raise UndefinedAliasError: if a no alias has been defined for the
-            requested digest
-        """
-        if CFG_ALIASES_KEY not in self:
-            raise GenomeConfigFormatError(
-                "'{}' not in genome config".format(CFG_ALIASES_KEY))
-        for a, d in self[CFG_ALIASES_KEY].items():
-            if d == digest:
-                return a
-        raise UndefinedAliasError("No alias defined for '{}'".format(digest))
-
-    def set_alias(self, genome, digest=None):
-        """
-        Assign a human-readable alias to a genome identifier.
-
-        Genomes are identified by a unique identifier which is derived from the
-        FASTA file (fasta asset). This way we can ensure genome provenance and
-        compatibility with the server. This function maps a human-readable
-        identifier to make referring to the genomes easier.
-
-        :param str genome: name of the genome to assign to an identifier
-        :param str digest: identifier to use
-        :return bool: whether the alias has been established
-        """
-        if not digest:
-            raise NotImplementedError("Digest lookup from server is not implemented yet")
-        with self as r:
-            r.setdefault(CFG_ALIASES_KEY, {})
-            if genome in r[CFG_ALIASES_KEY]:
-                _LOGGER.warning("'{}' already in aliases ({})".
-                                format(genome, r[CFG_ALIASES_KEY][genome]))
-                return False
-            r[CFG_ALIASES_KEY][genome] = digest
-            _LOGGER.info("Added new alias ({}: {})".format(genome, digest))
-            return True
-
-    def initialize_genome(self, gat):
-        """
-        Initialize a genome
-
-        Create a JSON file with Annotated Sequence Digests (ASDs)
-        for the FASTA file in the genome directory.
-
-        :param list[str] gat: list of genome, asset and tag names
-        :return str, list[dict[str]]: a pair of genome digest and list of
-            annotated sequence digests
-        """
-        g = gat[0]
-        _LOGGER.info("Initializing genome: {}".format(g))
-        d, c = RefGetHenge({}).load_fasta(self.seek(*gat, strict_exists=True))
-        pth = self.get_asds_path(g)
-        with open(pth, "w") as jfp:
-            json.dump(c, jfp)
-        _LOGGER.debug("Saved ASDs to JSON: {}".format(pth))
-        self.set_alias(g, d)
-        return d, c
-
-    def get_asds_path(self, genome):
-        """
-        Get path to the Annotated Sequence Digests JSON file for a given genome.
-        Note that the path and/or genome may not exist.
-
-        :param str genome: genome name
-        :return str: ASDs path
-        """
-        return os.path.join(self[CFG_FOLDER_KEY], genome, genome + "__ASDs.json")
 
     def remove_asset_from_relatives(self, genome, asset, tag):
         """
@@ -1330,42 +1233,6 @@ class RefGenConf(yacman.YacAttMap):
         raise MissingConfigDataError("Digest does not exist for: {}/{}:{}".
                                      format(genome, asset, tag))
 
-    def compare(self, genome1, genome2, explain=False):
-        """
-        Check genomes compatibility level.
-
-        Compares Annotated Sequence Digests (ASDs) -- digested sequences and metadata
-
-        :param str genome1: name of the first genome to compare
-        :param str genome2: name of the first genome to compare
-        :param bool explain: whether the returned code explanation should
-            be displayed
-        :return int: compatibility code
-        """
-        def _get_asds_for_genome(rgc, genome):
-            """
-            Read JSON file containing ASDs for a specified genome
-
-            :param refgenconf.RefGenConf rgc: object to find the genome for
-            :param str genome: genome to find the file for
-            :return list[dict]: list of ASDs, ready to compare
-            """
-            rgc.seek(genome, "fasta", strict_exists=True)
-            json_file = rgc.get_asds_path(genome)
-            if not os.path.exists(json_file):
-                raise OSError(
-                    "File containing Annotated Sequence Digests (ASDs) not "
-                    "found for genome: {g}. Pull or build '{g}/fasta' again to "
-                    "check the compatibility.".format(g=genome))
-            with open(json_file, "r") as jfp:
-                return json.load(jfp)
-
-        return RefGetHenge({}).compare_asds(
-            _get_asds_for_genome(self, genome1),
-            _get_asds_for_genome(self, genome2),
-            explain=explain
-        )
-
     def run_plugins(self, hook):
         """
         Runs all installed plugins for the specified hook.
@@ -1748,6 +1615,7 @@ def map_paths_by_id(json_dict):
             or "paths" not in json_dict or not isinstance(json_dict["paths"], dict):
         raise ValueError("The provided mapping is not a valid representation of a JSON openAPI description")
     return {values["get"]["operationId"]: endpoint for endpoint, values in json_dict["paths"].items()}
+
 
 def _remove(path):
     """

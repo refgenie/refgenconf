@@ -123,17 +123,3 @@ def test_pull_asset_works_with_nonwritable_and_writable_rgc(cfg_file, gname, ana
     with mock.patch("refgenconf.refgenconf.query_yes_no", return_value=True):
         print("\nPulling; genome: {}, asset: {}, tag: {}\n".format(gname, aname, tname))
         rgc.pull(gname, aname, tname)
-
-
-@pytest.mark.parametrize("gname", ["rCRSd", "mouse_chrM2x", "human_repeats"])
-def test_pull_initializes_genomes(cfg_file, gname):
-    """
-    Test for existence of a JSON files containing ASDs and genome digests in the
-    cfg after a fasta asset has been pulled for a genome
-    """
-    rgc = RefGenConf(filepath=cfg_file, writable=False)
-    assert os.path.exists(rgc.get_asds_path(gname))
-    assert CFG_CHECKSUM_KEY in rgc.get_genome_attributes(gname)
-    assert isinstance(rgc.get_genome_attributes(gname)[CFG_CHECKSUM_KEY], str)
-
-

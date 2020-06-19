@@ -58,7 +58,7 @@ def _handle_sigint(filepath):
 class RefGenConf(yacman.YacAttMap):
     """ A sort of oracle of available reference genome assembly assets """
 
-    def __init__(self, filepath=None, entries=None, writable=False, wait_max=10):
+    def __init__(self, filepath=None, entries=None, writable=False, wait_max=60):
         """
         Create the config instance by with a filepath or key-value pairs.
 

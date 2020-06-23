@@ -2,10 +2,13 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format. 
 
-## [0.7.1] - unreleased
+## [0.7.1] - 2020-06-23
 
 ### Added
 - plugins functionality
+
+### Removed
+- preciously deprecated `get_asset` method. Use `seek` instead
 
 ## [0.7.0] - 2020-03-17
 

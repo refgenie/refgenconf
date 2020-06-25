@@ -1,4 +1,50 @@
 config_version: 0.3
 genome_folder: /tmp
 genome_servers: ['http://refgenomes.databio.org']
-genomes: null
+genomes:
+  human_repeats:
+    assets:
+      fasta:
+        tags:
+          default:
+            seek_keys:
+              fasta: human_repeats.fa
+              fai: human_repeats.fa.fai
+              chrom_sizes: human_repeats.chrom.sizes
+            asset_parents: []
+            asset_path: fasta
+            asset_digest: 4a749d4e74b057d0efa0c8398ebcb871
+        default_tag: default
+  mouse_chrM2x:
+    assets:
+      bwa_index:
+        tags:
+          default:
+            seek_keys:
+              bwa_index: mouse_chrM2x.fa
+            asset_parents: []
+            asset_path: bwa_index
+            asset_digest: 914dec83dcfab73e056717d33ecfd465
+        default_tag: default
+  rCRSd:
+    assets:
+      bowtie2_index:
+        tags:
+          default:
+            seek_keys:
+              bowtie2_index: rCRSd
+            asset_parents: []
+            asset_path: bowtie2_index
+            asset_digest: 1262e30d4a87db9365d501de8559b3b4
+        default_tag: default
+      fasta:
+        tags:
+          default:
+            seek_keys:
+              fasta: rCRSd.fa
+              fai: rCRSd.fa.fai
+              chrom_sizes: rCRSd.chrom.sizes
+            asset_parents: []
+            asset_path: fasta
+            asset_digest: 4eb430296bc02ed7e4006624f1d5ac53
+        default_tag: default

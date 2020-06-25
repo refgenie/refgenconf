@@ -16,7 +16,7 @@ from refgenconf import RefGenConf
 
 from .conftest import remove_asset_and_file
 
-__author__ = "Vince Reuter"
+__author__ = "Vince Reuter, Michal Stolarczyk"
 __email__ = "vreuter@virginia.edu"
 
 

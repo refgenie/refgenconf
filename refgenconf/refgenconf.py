@@ -1,21 +1,6 @@
 #!/usr/bin/env python
 
-from collections import Iterable, Mapping, OrderedDict
-from functools import partial
-
-# Some short-term hacks to get at least 1 working version on python 2.7
 import sys
-if sys.version_info >= (3, ):
-    from inspect import getfullargspec as finspect
-    from urllib.error import HTTPError, ContentTooShortError
-else:
-    from future.standard_library import install_aliases
-    install_aliases()
-    from inspect import getargspec as finspect
-    from urllib2 import HTTPError
-    from urllib.error import ContentTooShortError
-    ConnectionRefusedError = Exception
-
 import urllib.request
 import itertools
 import logging
@@ -25,19 +10,25 @@ import warnings
 import shutil
 import json
 
-from attmap import PathExAttMap as PXAM
-from ubiquerg import checksum, is_url, query_yes_no, parse_registry_path as prp, untar, is_writable
+import yacman
+
+from collections import Iterable, Mapping, OrderedDict
+from functools import partial
+from inspect import getfullargspec as finspect
+from urllib.error import HTTPError, ContentTooShortError
 from tqdm import tqdm
 from pkg_resources import iter_entry_points
+from tempfile import TemporaryDirectory
 
-import yacman
+from attmap import PathExAttMap as PXAM
+from ubiquerg import checksum, is_url, query_yes_no, \
+    parse_registry_path as prp, untar, is_writable
 
 from .const import *
 from .helpers import unbound_env_vars, asciify_json_dict, select_genome_config
 from .exceptions import *
 
 _LOGGER = logging.getLogger(__name__)
-
 
 __all__ = ["RefGenConf"]
 
@@ -730,17 +721,15 @@ class RefGenConf(yacman.YacAttMap):
                 return _null_return()
             else:
                 _LOGGER.debug("Matched checksum: '{}'".format(old_checksum))
-            from tempfile import mkdtemp
             # successfully downloaded and moved tarball; untar it
             if unpack and filepath.endswith(".tgz"):
                 _LOGGER.info("Extracting asset tarball and saving to: {}".format(tag_dir))
-                tmpdir = mkdtemp(dir=genome_dir_path)  # TODO: use context manager here when we drop support for py2
-                untar(filepath, tmpdir)
-                # here we suspect the unarchived asset to be an asset-named directory
-                # the asset data inside
-                # and we transfer it to the tag-named subdirectory
-                shutil.move(os.path.join(tmpdir, asset), tag_dir)
-                shutil.rmtree(tmpdir)
+                with TemporaryDirectory(dir=genome_dir_path) as tmpdir:
+                    # here we suspect the unarchived asset to be an asset-named
+                    # directory with the asset data inside and we transfer it
+                    # to the tag-named subdirectory
+                    untar(filepath, tmpdir)
+                    shutil.move(os.path.join(tmpdir, asset), tag_dir)
                 if os.path.isfile(filepath):
                     os.remove(filepath)
             if self.file_path:

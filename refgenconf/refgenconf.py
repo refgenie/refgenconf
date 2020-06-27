@@ -655,7 +655,7 @@ class RefGenConf(yacman.YacAttMap):
             # check if the genome/asset:tag exists and get request user decision
             if os.path.exists(tag_dir):
                 def preserve():
-                    _LOGGER.debug("Preserving existing: {}".format(tag_dir))
+                    _LOGGER.info("Preserving existing: {}".format(tag_dir))
                     return _null_return()
 
                 def msg_overwrite():

@@ -667,6 +667,8 @@ class RefGenConf(yacman.YacAttMap):
                 def msg_overwrite():
                     _LOGGER.debug("Overwriting: {}".format(tag_dir))
                     shutil.rmtree(tag_dir)
+                    with self as rgc:
+                        rgc.cfg_remove_assets(*gat)
                 if force is False:
                     return preserve()
                 elif force is None:

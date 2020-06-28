@@ -49,7 +49,8 @@ def _handle_sigint(filepath):
 class RefGenConf(yacman.YacAttMap):
     """ A sort of oracle of available reference genome assembly assets """
 
-    def __init__(self, filepath=None, entries=None, writable=False, wait_max=60):
+    def __init__(self, filepath=None, entries=None, writable=False, wait_max=60,
+                 skip_read_lock=False):
         """
         Create the config instance by with a filepath or key-value pairs.
 
@@ -57,7 +58,10 @@ class RefGenConf(yacman.YacAttMap):
         :param Iterable[(str, object)] | Mapping[str, object] entries:
             config filepath or collection of key-value pairs
         :param bool writable: whether to create the object with write capabilities
-        :param int wait_max: how long to wait for creating an object when the file that data will be read from is locked
+        :param int wait_max: how long to wait for creating an object when the
+            file that data will be read from is locked
+        :param bool skip_read_lock: whether the file should not be locked for
+            reading when object is created in read only mode
         :raise refgenconf.MissingConfigDataError: if a required configuration
             item is missing
         :raise ValueError: if entries is given as a string and is not a file
@@ -66,7 +70,9 @@ class RefGenConf(yacman.YacAttMap):
         def _missing_key_msg(key, value):
             _LOGGER.debug("Config lacks '{}' key. Setting to: {}".format(key, value))
 
-        super(RefGenConf, self).__init__(filepath=filepath, entries=entries, writable=writable, wait_max=wait_max)
+        super(RefGenConf, self).__init__(filepath=filepath, entries=entries,
+                                         writable=writable, wait_max=wait_max,
+                                         skip_read_lock=skip_read_lock)
         genomes = self.setdefault(CFG_GENOMES_KEY, PXAM())
         if not isinstance(genomes, PXAM):
             if genomes:

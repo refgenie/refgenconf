@@ -13,7 +13,7 @@ def test_list_remote(rgc, tmpdir):
     new_rgc = RefGenConf(entries={CFG_FOLDER_KEY: tmpdir.strpath,
                           CFG_SERVERS_KEY: DEFAULT_SERVER,
                           CFG_GENOMES_KEY: rgc[CFG_GENOMES_KEY]})
-    new_rgc[CFG_SERVERS_KEY] = "http://staging.refgenomes.databio.org"
+    new_rgc[CFG_SERVERS_KEY] = "https://refgenomes.databio.org/"
     print("NEW RGC KEYS: {}".format(list(new_rgc.keys())))
     with mock.patch("refgenconf.refgenconf._read_remote_data",
                     return_value=rgc.genomes):

@@ -120,6 +120,8 @@ def test_pull_asset_updates_genome_config(cfg_file, gname, aname, tname):
 def test_pull_asset_works_with_nonwritable_and_writable_rgc(cfg_file, gname, aname, tname, state):
     rgc = RefGenConf(filepath=cfg_file, writable=state)
     remove_asset_and_file(rgc, gname, aname, tname)
+    print("\nPulling; genome: {}, asset: {}, tag: {}\n".format(gname, aname, tname))
     with mock.patch("refgenconf.refgenconf.query_yes_no", return_value=True):
-        print("\nPulling; genome: {}, asset: {}, tag: {}\n".format(gname, aname, tname))
         rgc.pull(gname, aname, tname)
+    if state:
+        rgc.make_readonly()

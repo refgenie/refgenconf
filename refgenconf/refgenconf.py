@@ -663,21 +663,15 @@ class RefGenConf(yacman.YacAttMap):
                 def preserve():
                     _LOGGER.info("Preserving existing: {}".format(tag_dir))
                     return _null_return()
-
-                def msg_overwrite():
-                    _LOGGER.debug("Overwriting: {}".format(tag_dir))
-                    shutil.rmtree(tag_dir)
-                    with self as rgc:
-                        rgc.cfg_remove_assets(*gat)
                 if force is False:
                     return preserve()
                 elif force is None:
                     if not query_yes_no("Replace existing ({})?".format(tag_dir), "no"):
                         return preserve()
                     else:
-                        msg_overwrite()
+                        _LOGGER.debug("Overwriting: {}".format(tag_dir))
                 else:
-                    msg_overwrite()
+                    _LOGGER.debug("Overwriting: {}".format(tag_dir))
 
             # check asset digests local-server match for each parent
             [self._chk_digest_if_avail(genome, x, server_url)
@@ -738,6 +732,9 @@ class RefGenConf(yacman.YacAttMap):
                     # directory with the asset data inside and we transfer it
                     # to the tag-named subdirectory
                     untar(filepath, tmpdir)
+                    if os.path.isdir(tag_dir):
+                        shutil.rmtree(tag_dir)
+                        _LOGGER.info("Removed existing directory: {}".format(tag_dir))
                     shutil.move(os.path.join(tmpdir, asset), tag_dir)
                 if os.path.isfile(filepath):
                     os.remove(filepath)

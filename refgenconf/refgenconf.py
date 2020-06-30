@@ -645,7 +645,7 @@ class RefGenConf(yacman.YacAttMap):
                 no_asset_json.append(server_url)
                 if num_servers == len(self[CFG_SERVERS_KEY]):
                     _LOGGER.error("Asset '{}/{}:{}' not available on any of the following servers: {}".
-                                  format(genome, asset, determined_tag, ", ".join(no_asset_json)))
+                                  format(genome, asset, determined_tag, ", ".join(self[CFG_SERVERS_KEY])))
                     return _null_return()
                 continue
 
@@ -725,7 +725,8 @@ class RefGenConf(yacman.YacAttMap):
             new_checksum = checksum(filepath)
             old_checksum = archive_data and archive_data.get(CFG_ARCHIVE_CHECKSUM_KEY)
             if old_checksum and new_checksum != old_checksum:
-                _LOGGER.error("Checksum mismatch: ({}, {})".format(new_checksum, old_checksum))
+                _LOGGER.error("Downloaded archive ('{}') checksum mismatch: ({}, {})".
+                              format(filepath, new_checksum, old_checksum))
                 return _null_return()
             else:
                 _LOGGER.debug("Matched checksum: '{}'".format(old_checksum))

@@ -1,5 +1,2 @@
-pytest>=3.0.7
-pytest-remotedata
-pyyaml>=5
-ubiquerg>=0.3
-veracitools
+git+git://github.com/databio/yacman@dev#yacman
+git+git://github.com/pepkit/ubiquerg@dev#ubiquerg

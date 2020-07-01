@@ -1,2 +1,0 @@
-git+git://github.com/databio/yacman@dev#yacman
-git+git://github.com/pepkit/ubiquerg@dev#ubiquerg

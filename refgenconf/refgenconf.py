@@ -49,7 +49,8 @@ def _handle_sigint(filepath):
 class RefGenConf(yacman.YacAttMap):
     """ A sort of oracle of available reference genome assembly assets """
 
-    def __init__(self, filepath=None, entries=None, writable=False, wait_max=60):
+    def __init__(self, filepath=None, entries=None, writable=False, wait_max=60,
+                 skip_read_lock=False):
         """
         Create the config instance by with a filepath or key-value pairs.
 
@@ -57,7 +58,10 @@ class RefGenConf(yacman.YacAttMap):
         :param Iterable[(str, object)] | Mapping[str, object] entries:
             config filepath or collection of key-value pairs
         :param bool writable: whether to create the object with write capabilities
-        :param int wait_max: how long to wait for creating an object when the file that data will be read from is locked
+        :param int wait_max: how long to wait for creating an object when the
+            file that data will be read from is locked
+        :param bool skip_read_lock: whether the file should not be locked for
+            reading when object is created in read only mode
         :raise refgenconf.MissingConfigDataError: if a required configuration
             item is missing
         :raise ValueError: if entries is given as a string and is not a file
@@ -66,7 +70,9 @@ class RefGenConf(yacman.YacAttMap):
         def _missing_key_msg(key, value):
             _LOGGER.debug("Config lacks '{}' key. Setting to: {}".format(key, value))
 
-        super(RefGenConf, self).__init__(filepath=filepath, entries=entries, writable=writable, wait_max=wait_max)
+        super(RefGenConf, self).__init__(filepath=filepath, entries=entries,
+                                         writable=writable, wait_max=wait_max,
+                                         skip_read_lock=skip_read_lock)
         genomes = self.setdefault(CFG_GENOMES_KEY, PXAM())
         if not isinstance(genomes, PXAM):
             if genomes:
@@ -639,7 +645,7 @@ class RefGenConf(yacman.YacAttMap):
                 no_asset_json.append(server_url)
                 if num_servers == len(self[CFG_SERVERS_KEY]):
                     _LOGGER.error("Asset '{}/{}:{}' not available on any of the following servers: {}".
-                                  format(genome, asset, determined_tag, ", ".join(no_asset_json)))
+                                  format(genome, asset, determined_tag, ", ".join(self[CFG_SERVERS_KEY])))
                     return _null_return()
                 continue
 
@@ -655,21 +661,17 @@ class RefGenConf(yacman.YacAttMap):
             # check if the genome/asset:tag exists and get request user decision
             if os.path.exists(tag_dir):
                 def preserve():
-                    _LOGGER.debug("Preserving existing: {}".format(tag_dir))
+                    _LOGGER.info("Preserving existing: {}".format(tag_dir))
                     return _null_return()
-
-                def msg_overwrite():
-                    _LOGGER.debug("Overwriting: {}".format(tag_dir))
-                    shutil.rmtree(tag_dir)
                 if force is False:
                     return preserve()
                 elif force is None:
                     if not query_yes_no("Replace existing ({})?".format(tag_dir), "no"):
                         return preserve()
                     else:
-                        msg_overwrite()
+                        _LOGGER.debug("Overwriting: {}".format(tag_dir))
                 else:
-                    msg_overwrite()
+                    _LOGGER.debug("Overwriting: {}".format(tag_dir))
 
             # check asset digests local-server match for each parent
             [self._chk_digest_if_avail(genome, x, server_url)
@@ -717,7 +719,8 @@ class RefGenConf(yacman.YacAttMap):
             new_checksum = checksum(filepath)
             old_checksum = archive_data and archive_data.get(CFG_ARCHIVE_CHECKSUM_KEY)
             if old_checksum and new_checksum != old_checksum:
-                _LOGGER.error("Checksum mismatch: ({}, {})".format(new_checksum, old_checksum))
+                _LOGGER.error("Downloaded archive ('{}') checksum mismatch: ({}, {})".
+                              format(filepath, new_checksum, old_checksum))
                 return _null_return()
             else:
                 _LOGGER.debug("Matched checksum: '{}'".format(old_checksum))
@@ -729,6 +732,9 @@ class RefGenConf(yacman.YacAttMap):
                     # directory with the asset data inside and we transfer it
                     # to the tag-named subdirectory
                     untar(filepath, tmpdir)
+                    if os.path.isdir(tag_dir):
+                        shutil.rmtree(tag_dir)
+                        _LOGGER.info("Removed existing directory: {}".format(tag_dir))
                     shutil.move(os.path.join(tmpdir, asset), tag_dir)
                 if os.path.isfile(filepath):
                     os.remove(filepath)

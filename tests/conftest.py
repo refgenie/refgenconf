@@ -127,7 +127,7 @@ def made_genome_config_file(temp_genome_config_file):
     """ Make the test session's genome config file. """
     genome_folder = os.path.dirname(temp_genome_config_file)
     extra_kv_lines = ["{}: {}".format(CFG_FOLDER_KEY, genome_folder),
-                      "{}: {}".format(CFG_SERVERS_KEY, "https://refgenomes.databio.org/"),
+                      "{}: {}".format(CFG_SERVERS_KEY, "http://rg.databio.org:82/"),
                       "{}: {}".format(CFG_VERSION_KEY, package_version),
                       "{}:".format(CFG_GENOMES_KEY)]
     gen_data_lines = PathExAttMap(CONF_DATA).get_yaml_lines()

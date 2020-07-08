@@ -48,3 +48,4 @@ genomes:
             asset_path: fasta
             asset_digest: 4a749d4e74b057d0efa0c8398ebcb871
         default_tag: default
+genome_aliases: null

@@ -50,7 +50,7 @@ class RefGenConf(yacman.YacAttMap):
     """ A sort of oracle of available reference genome assembly assets """
 
     def __init__(self, filepath=None, entries=None, writable=False, wait_max=60,
-                 skip_read_lock=False):
+                 skip_read_lock=False, genome_exact=False):
         """
         Create the config instance by with a filepath or key-value pairs.
 
@@ -73,14 +73,33 @@ class RefGenConf(yacman.YacAttMap):
         super(RefGenConf, self).__init__(filepath=filepath, entries=entries,
                                          writable=writable, wait_max=wait_max,
                                          skip_read_lock=skip_read_lock)
-        genomes = self.setdefault(CFG_GENOMES_KEY, PXAM())
-        if not isinstance(genomes, PXAM):
-            if genomes:
-                _LOGGER.warning("'{k}' value is a {t_old}, not a {t_new}; setting to empty {t_new}".
-                                format(k=CFG_GENOMES_KEY, t_old=type(genomes).__name__, t_new=PXAM.__name__))
+        if CFG_ALIASES_KEY in self:
+            if not isinstance(self[CFG_ALIASES_KEY], PXAM):
+                if self[CFG_ALIASES_KEY]:
+                    _LOGGER.warning("'{k}' value is a {t_old}, not a {t_new}; setting to empty {t_new}".
+                                    format(k=CFG_ALIASES_KEY, t_old=type(self[CFG_ALIASES_KEY]).__name__, t_new=PXAM.__name__))
+                self[CFG_ALIASES_KEY] = PXAM()
+        else:
+            self[CFG_ALIASES_KEY] = PXAM()
+
+        if CFG_GENOMES_KEY in self:
+            if not isinstance(self[CFG_GENOMES_KEY], PXAM):
+                if self[CFG_GENOMES_KEY]:
+                    _LOGGER.warning("'{k}' value is a {t_old}, not a {t_new}; setting to empty {t_new}".
+                                    format(k=CFG_GENOMES_KEY, t_old=type(self[CFG_GENOMES_KEY]).__name__, t_new=PXAM.__name__))
+                self[CFG_GENOMES_KEY] = PXAM()
+        else:
             self[CFG_GENOMES_KEY] = PXAM()
+
+        self[CFG_GENOMES_KEY] = \
+            yacman.AliasedYacAttMap(
+                entries=self[CFG_GENOMES_KEY],
+                aliases=lambda: self.__getitem__(CFG_ALIASES_KEY, expand=False),
+                exact=genome_exact
+            )
         if CFG_FOLDER_KEY not in self:
-            self[CFG_FOLDER_KEY] = os.path.dirname(entries) if isinstance(entries, str) else os.getcwd()
+            self[CFG_FOLDER_KEY] = os.path.dirname(filepath) \
+                if filepath else os.getcwd()
             _missing_key_msg(CFG_FOLDER_KEY, self[CFG_FOLDER_KEY])
         try:
             version = self[CFG_VERSION_KEY]
@@ -263,11 +282,11 @@ class RefGenConf(yacman.YacAttMap):
                                                   tag_name))
         if not callable(check_exist) or len(finspect(check_exist).args) != 1:
             raise TypeError("Asset existence check must be a one-arg function.")
-        path = _genome_asset_path(self[CFG_GENOMES_KEY], genome_name, asset_name,
-                                  tag_name, seek_key, enclosing_dir)
+        path = self._genome_asset_path(genome_name, asset_name, tag_name, seek_key, enclosing_dir)
         if os.path.isabs(path) and check_exist(path):
             return path
         _LOGGER.debug("Relative or nonexistent path: {}".format(path))
+        genome_name = self._get_genome_id(genome_name)
         fullpath = os.path.join(self[CFG_FOLDER_KEY], genome_name, path)
         _LOGGER.debug("Trying path relative to genome folder: {}".format(fullpath))
         if check_exist(fullpath):
@@ -1255,6 +1274,106 @@ class RefGenConf(yacman.YacAttMap):
         path = super(RefGenConf, self).write(filepath=filepath)
         self.run_plugins(POST_UPDATE_HOOK)
         return path
+
+    def _genome_asset_path(self, gname, aname, tname, seek_key, enclosing_dir):
+        """
+        Retrieve the raw path value for a particular asset for a particular genome.
+
+        :param Mapping[str, Mapping[str, Mapping[str, object]]] genomes: nested
+            collection of key-value pairs, keyed at top level on genome ID, then by
+            asset name, then by asset attribute
+        :param str gname: top level key to query -- genome ID, e.g. mm10
+        :param str aname: second-level key to query -- asset name, e.g. fasta
+        :param str tname: third-level key to query -- tag name, e.g. default
+        :param str seek_key: fourth-level key to query -- tag name, e.g. chrom_sizes
+        :param bool enclosing_dir: whether a path to the entire enclosing directory should be returned, e.g.
+            for a fasta asset that has 3 seek_keys pointing to 3 files in an asset dir, that asset dir is returned
+        :return str: raw path value for a particular asset for a particular genome
+        :raise MissingGenomeError: if the given key-value pair collection does not
+            contain as a top-level key the given genome ID
+        :raise MissingAssetError: if the given key-value pair colelction does
+            contain the given genome ID, but that key's mapping doesn't contain
+            the given asset name as a key
+        :raise GenomeConfigFormatError: if it's discovered during the query that
+            the structure of the given genomes mapping suggests that it was
+            parsed from an improperly formatted/structured genome config file.
+        """
+        self._assert_gat_exists(gname, aname, tname)
+        asset_tag_data = self[CFG_GENOMES_KEY][gname][CFG_ASSETS_KEY][aname][CFG_ASSET_TAGS_KEY][tname]
+        if enclosing_dir:
+            return os.path.join(asset_tag_data[CFG_ASSET_PATH_KEY], tname)
+        if seek_key is None:
+            if aname in asset_tag_data[CFG_SEEK_KEYS_KEY]:
+                seek_key = aname
+            else:
+                return os.path.join(asset_tag_data[CFG_ASSET_PATH_KEY], tname)
+        try:
+            seek_key_value = asset_tag_data[CFG_SEEK_KEYS_KEY][seek_key]
+            appendix = "" if seek_key_value == "." else seek_key_value
+            return os.path.join(asset_tag_data[CFG_ASSET_PATH_KEY], tname, appendix)
+        except KeyError:
+            raise MissingSeekKeyError("genome/asset:tag bundle '{}/{}:{}' exists, but seek_key '{}' is missing".
+                                      format(gname, aname, tname, seek_key))
+
+    def _get_genome_id(self, gname):
+        """
+        Get the actual genome name used in the object regardless of whether
+        the query name is an actual name of an alias
+
+        :param str gname: genome query name, can be the actual key or its alias
+        :return str: genome id
+        """
+        self._assert_gat_exists(gname)
+        if gname in self[CFG_GENOMES_KEY].keys():
+            return gname
+        return self[CFG_GENOMES_KEY].get_key(alias=gname)
+
+    def _assert_gat_exists(self, gname, aname=None, tname=None, allow_incomplete=False):
+        """
+        Make sure the genome/asset:tag combination exists in the provided mapping and has any seek keys defined.
+        Seek keys are required for the asset completeness.
+
+        :param Mapping[str, Mapping[str, Mapping[str, object]]] genomes: nested
+            collection of key-value pairs, keyed at top level on genome ID, then by
+            asset name, then by asset attribute
+        :param str gname: top level key to query -- genome ID, e.g. mm10
+        :param str aname: second-level key to query -- asset name, e.g. fasta
+        :param str tname: third-level key to query -- tag name, e.g. default
+        :raise MissingGenomeError: if the given key-value pair collection does not
+            contain as a top-level key the given genome ID
+        :raise MissingAssetError: if the given key-value pair collection does
+            contain the given genome ID, but that key's mapping doesn't contain
+            the given asset name as a key
+        :raise GenomeConfigFormatError: if it's discovered during the query that
+            the structure of the given genomes mapping suggests that it was
+            parsed from an improperly formatted/structured genome config file.
+        """
+        _LOGGER.debug("checking existence of: {}/{}:{}".format(gname, aname, tname))
+        try:
+            genome = self[CFG_GENOMES_KEY][gname]
+        except KeyError:
+            raise MissingGenomeError("Your genomes do not include '{}'".format(gname))
+        if aname is not None:
+            try:
+                asset_data = genome[CFG_ASSETS_KEY][aname]
+            except KeyError:
+                raise MissingAssetError("Genome '{}' exists, but asset '{}' is missing".format(gname, aname))
+            except TypeError:
+                _raise_not_mapping(asset_data, "Asset section ")
+            if tname is not None:
+                try:
+                    tag_data = asset_data[CFG_ASSET_TAGS_KEY][tname]
+                except KeyError:
+                    raise MissingTagError(
+                        "genome/asset bundle '{}/{}' exists, but tag '{}' is missing".format(gname, aname, tname))
+                except TypeError:
+                    _raise_not_mapping(asset_data, "Asset section ")
+                try:
+                    tag_data[CFG_SEEK_KEYS_KEY]
+                except KeyError:
+                    if not allow_incomplete:
+                        raise MissingSeekKeyError("Asset incomplete. No seek keys are defined for '{}/{}:{}'. "
+                                                  "Build or pull the asset again.".format(gname, aname, tname))
 
 
 class DownloadProgressBar(tqdm):

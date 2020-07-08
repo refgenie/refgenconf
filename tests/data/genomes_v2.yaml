@@ -1,6 +1,6 @@
 config_version: 0.2
 genome_folder: /tmp
-genome_server: https://refgenomes.databio.org/
+genome_server: http://rg.databio.org:82/
 genomes:
   rCRSd:
     assets:

@@ -189,7 +189,8 @@ class RefGenConf(yacman.YacAttMap):
             collection of available asset names.
         """
         self.run_plugins(PRE_LIST_HOOK)
-        refgens = _select_genomes(sorted(self[CFG_GENOMES_KEY].keys(), key=order), genome)
+        ori_refgens = _select_genomes(sorted(self[CFG_GENOMES_KEY].keys(), key=order), genome)
+        refgens = [self.get_genome_alias(x, fallback=True) for x in ori_refgens]
         if include_tags:
             self.run_plugins(POST_LIST_HOOK)
             return OrderedDict(
@@ -199,7 +200,8 @@ class RefGenConf(yacman.YacAttMap):
         return OrderedDict([(g, sorted(list(self[CFG_GENOMES_KEY][g][CFG_ASSETS_KEY].keys()), key=order))
                             for g in refgens])
 
-    def assets_str(self, offset_text="  ", asset_sep=", ", genome_assets_delim="/ ", genome=None, order=None):
+    def assets_str(self, offset_text="  ", asset_sep=", ",
+                   genome_assets_delim="/ ", genome=None, order=None):
         """
         Create a block of text representing genome-to-asset mapping.
 
@@ -214,10 +216,15 @@ class RefGenConf(yacman.YacAttMap):
             names for sort
         :return str: text representing genome-to-asset mapping
         """
-        refgens = _select_genomes(sorted(self[CFG_GENOMES_KEY].keys(), key=order), genome)
-        make_line = partial(_make_genome_assets_line, offset_text=offset_text, genome_assets_delim=genome_assets_delim,
-                            asset_sep=asset_sep, order=order)
-        return "\n".join([make_line(g, self[CFG_GENOMES_KEY][g][CFG_ASSETS_KEY]) for g in refgens])
+        ori_refgens = _select_genomes(
+            sorted(self[CFG_GENOMES_KEY].keys(), key=order), genome)
+        refgens = [self.get_genome_alias(x, fallback=True) for x in ori_refgens]
+        make_line = partial(_make_genome_assets_line, offset_text=offset_text,
+                            genome_assets_delim=genome_assets_delim,
+                            asset_sep=asset_sep, order=order,
+                            rjust=max(map(len, refgens)) + 2)
+        return "\n".join([make_line(g, self[CFG_GENOMES_KEY][g][CFG_ASSETS_KEY])
+                          for g in refgens])
 
     def filepath(self, genome, asset, tag, ext=".tgz", dir=False):
         """
@@ -240,7 +247,8 @@ class RefGenConf(yacman.YacAttMap):
         :return Iterable[str]: list of this configuration's reference genome
             assembly IDs
         """
-        return sorted(list(self[CFG_GENOMES_KEY].keys()), key=order)
+        return sorted([self.get_genome_alias(x, fallback=True)
+                       for x in self[CFG_GENOMES_KEY].keys()], key=order)
 
     def genomes_str(self, order=None):
         """
@@ -324,7 +332,7 @@ class RefGenConf(yacman.YacAttMap):
         :return str: name of the tag to use as the default one
         """
         try:
-            _assert_gat_exists(self[CFG_GENOMES_KEY], genome, asset)
+            self._assert_gat_exists(genome, asset)
         except RefgenconfError:
             _LOGGER.info("Using '{}' as the default tag for '{}/{}'".format(DEFAULT_TAG, genome, asset))
             return DEFAULT_TAG
@@ -356,7 +364,7 @@ class RefGenConf(yacman.YacAttMap):
         :param str tag: name of the particular asset tag to point to by default
         :param bool force: whether the default tag change should be forced (even if it exists)
         """
-        _assert_gat_exists(self[CFG_GENOMES_KEY], genome, asset, tag)
+        self._assert_gat_exists(genome, asset, tag)
         if CFG_ASSET_DEFAULT_TAG_KEY not in self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset] or \
                 len(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_DEFAULT_TAG_KEY]) == 0 or force:
             self.update_assets(genome, asset, {CFG_ASSET_DEFAULT_TAG_KEY: tag})
@@ -411,7 +419,7 @@ class RefGenConf(yacman.YacAttMap):
                 genome = [genome]
             for g in genome:
                 try:
-                    _assert_gat_exists(self[CFG_GENOMES_KEY], g)
+                    self._assert_gat_exists(g)
                 except MissingGenomeError as e:
                     exceptions.append(e)
             if exceptions:
@@ -522,7 +530,7 @@ class RefGenConf(yacman.YacAttMap):
         :raise ValueError: when the original tag is not specified
         :return bool: a logical indicating whether the tagging was successful
         """
-        _assert_gat_exists(self[CFG_GENOMES_KEY], genome, asset, tag)
+        self._assert_gat_exists(genome, asset, tag)
         asset_mapping = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]
         if tag is None:
             raise ValueError("You must explicitly specify the tag of the asset "
@@ -772,6 +780,85 @@ class RefGenConf(yacman.YacAttMap):
                 self.set_default_pointer(*gat)
             self.run_plugins(POST_PULL_HOOK)
             return gat, archive_data, server_url
+
+    def get_genome_alias(self, digest, fallback=False):
+        """
+        Get the human readable alias for a genome digest
+
+        :param str digest: digest to find human-readable alias for
+        :param bool fallback: whether to return the query digest in case
+            of failure
+        :return str: human-readable alias
+        :raise GenomeConfigFormatError: if "genome_digests" section does
+            not exist in the config
+        :raise UndefinedAliasError: if a no alias has been defined for the
+            requested digest
+        """
+        try:
+            return self[CFG_GENOMES_KEY].get_alias(key=digest)
+        except yacman.UndefinedAliasError:
+            if not fallback:
+                raise
+            return digest
+
+    def set_genome_alias(self, genome, digest=None):
+        """
+        Assign a human-readable alias to a genome identifier.
+
+        Genomes are identified by a unique identifier which is derived from the
+        FASTA file (part of fasta asset). This way we can ensure genome
+        provenance and compatibility with the server. This function maps a
+        human-readable identifier to make referring to the genomes easier.
+
+        :param str genome: name of the genome to assign to an identifier
+        :param str digest: identifier to use
+        :return bool: whether the alias has been established
+        """
+        if not digest:
+            # TODO: implement digest lookup feature once a corresponding API
+            #  enpoint in refgeniserver is implemented
+            raise NotImplementedError(
+                "Digest lookup from server is not implemented yet")
+        with self as r:
+            r.setdefault(CFG_ALIASES_KEY, {})
+            if genome in r[CFG_ALIASES_KEY]:
+                _LOGGER.warning("'{}' already in aliases ({})".
+                                format(genome, r[CFG_ALIASES_KEY][genome]))
+                return False
+            r[CFG_ALIASES_KEY][digest] = genome
+            _LOGGER.info("Added new alias ({}: {})".format(digest, genome))
+            return True
+
+    def initialize_genome(self, gat):
+        """
+        Initialize a genome
+
+        Create a JSON file with Annotated Sequence Digests (ASDs)
+        for the FASTA file in the genome directory.
+
+        :param list[str] gat: list of genome, asset and tag names
+        :return str, list[dict[str]]: a pair of genome digest and list of
+            annotated sequence digests
+        """
+        g = gat[0]
+        _LOGGER.info("Initializing genome: {}".format(g))
+        d, c = SeqColClient({}).load_fasta(self.seek(*gat, strict_exists=True))
+        pth = self.get_asds_path(g)
+        with open(pth, "w") as jfp:
+            json.dump(c, jfp)
+        _LOGGER.debug("Saved ASDs to JSON: {}".format(pth))
+        self.set_genome_alias(genome=g, digest=d)
+        return d, c
+
+    def get_asds_path(self, genome):
+        """
+        Get path to the Annotated Sequence Digests JSON file for a given genome.
+        Note that the path and/or genome may not exist.
+
+        :param str genome: genome name
+        :return str: ASDs path
+        """
+        return os.path.join(self[CFG_FOLDER_KEY], genome, genome + "__ASDs.json")
 
     def remove_asset_from_relatives(self, genome, asset, tag):
         """
@@ -1216,8 +1303,8 @@ class RefGenConf(yacman.YacAttMap):
         try:
             # we need to allow for missing seek_keys section so that the digest is respected even from the previously
             # populated 'incomplete asset' from the server
-            _assert_gat_exists(self[CFG_GENOMES_KEY], genome, asset, tag,
-                               allow_incomplete=not self.is_asset_complete(genome, asset, tag))
+            self._assert_gat_exists(genome, asset, tag,
+                                    allow_incomplete=not self.is_asset_complete(genome, asset, tag))
         except (KeyError, MissingAssetError, MissingGenomeError, MissingSeekKeyError):
             self.update_tags(genome, asset, tag, {CFG_ASSET_CHECKSUM_KEY: remote_digest})
             _LOGGER.info("Could not find '{}/{}:{}' digest. Populating with server data".format(genome, asset, tag))
@@ -1239,7 +1326,7 @@ class RefGenConf(yacman.YacAttMap):
         :param str tag: tag identifier
         :return str: asset digest for the tag
         """
-        _assert_gat_exists(self[CFG_GENOMES_KEY], genome, asset, tag)
+        self._assert_gat_exists(genome, asset, tag)
         tag = tag or self.get_default_tag(genome, asset)
         a = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]
         if CFG_ASSET_CHECKSUM_KEY in a[CFG_ASSET_TAGS_KEY][tag]:
@@ -1425,95 +1512,6 @@ def _download_url_progress(url, output_path, name, params=None):
         urllib.request.urlretrieve(url, filename=output_path, reporthook=dpb.update_to)
 
 
-def _genome_asset_path(genomes, gname, aname, tname, seek_key, enclosing_dir):
-    """
-    Retrieve the raw path value for a particular asset for a particular genome.
-
-    :param Mapping[str, Mapping[str, Mapping[str, object]]] genomes: nested
-        collection of key-value pairs, keyed at top level on genome ID, then by
-        asset name, then by asset attribute
-    :param str gname: top level key to query -- genome ID, e.g. mm10
-    :param str aname: second-level key to query -- asset name, e.g. fasta
-    :param str tname: third-level key to query -- tag name, e.g. default
-    :param str seek_key: fourth-level key to query -- tag name, e.g. chrom_sizes
-    :param bool enclosing_dir: whether a path to the entire enclosing directory should be returned, e.g.
-        for a fasta asset that has 3 seek_keys pointing to 3 files in an asset dir, that asset dir is returned
-    :return str: raw path value for a particular asset for a particular genome
-    :raise MissingGenomeError: if the given key-value pair collection does not
-        contain as a top-level key the given genome ID
-    :raise MissingAssetError: if the given key-value pair colelction does
-        contain the given genome ID, but that key's mapping doesn't contain
-        the given asset name as a key
-    :raise GenomeConfigFormatError: if it's discovered during the query that
-        the structure of the given genomes mapping suggests that it was
-        parsed from an improperly formatted/structured genome config file.
-    """
-    _assert_gat_exists(genomes, gname, aname, tname)
-    asset_tag_data = genomes[gname][CFG_ASSETS_KEY][aname][CFG_ASSET_TAGS_KEY][tname]
-    if enclosing_dir:
-        return os.path.join(asset_tag_data[CFG_ASSET_PATH_KEY], tname)
-    if seek_key is None:
-        if aname in asset_tag_data[CFG_SEEK_KEYS_KEY]:
-            seek_key = aname
-        else:
-            return os.path.join(asset_tag_data[CFG_ASSET_PATH_KEY], tname)
-    try:
-        seek_key_value = asset_tag_data[CFG_SEEK_KEYS_KEY][seek_key]
-        appendix = "" if seek_key_value == "." else seek_key_value
-        return os.path.join(asset_tag_data[CFG_ASSET_PATH_KEY], tname, appendix)
-    except KeyError:
-        raise MissingSeekKeyError("genome/asset:tag bundle '{}/{}:{}' exists, but seek_key '{}' is missing".
-                                  format(gname, aname, tname, seek_key))
-
-
-def _assert_gat_exists(genomes, gname, aname=None, tname=None, allow_incomplete=False):
-    """
-    Make sure the genome/asset:tag combination exists in the provided mapping and has any seek keys defined.
-    Seek keys are required for the asset completeness.
-
-    :param Mapping[str, Mapping[str, Mapping[str, object]]] genomes: nested
-        collection of key-value pairs, keyed at top level on genome ID, then by
-        asset name, then by asset attribute
-    :param str gname: top level key to query -- genome ID, e.g. mm10
-    :param str aname: second-level key to query -- asset name, e.g. fasta
-    :param str tname: third-level key to query -- tag name, e.g. default
-    :raise MissingGenomeError: if the given key-value pair collection does not
-        contain as a top-level key the given genome ID
-    :raise MissingAssetError: if the given key-value pair collection does
-        contain the given genome ID, but that key's mapping doesn't contain
-        the given asset name as a key
-    :raise GenomeConfigFormatError: if it's discovered during the query that
-        the structure of the given genomes mapping suggests that it was
-        parsed from an improperly formatted/structured genome config file.
-    """
-    _LOGGER.debug("checking existence of: {}/{}:{}".format(gname, aname, tname))
-    try:
-        genome = genomes[gname]
-    except KeyError:
-        raise MissingGenomeError("Your genomes do not include '{}'".format(gname))
-    if aname is not None:
-        try:
-            asset_data = genome[CFG_ASSETS_KEY][aname]
-        except KeyError:
-            raise MissingAssetError("Genome '{}' exists, but asset '{}' is missing".format(gname, aname))
-        except TypeError:
-            _raise_not_mapping(asset_data, "Asset section ")
-        if tname is not None:
-            try:
-                tag_data = asset_data[CFG_ASSET_TAGS_KEY][tname]
-            except KeyError:
-                raise MissingTagError(
-                    "genome/asset bundle '{}/{}' exists, but tag '{}' is missing".format(gname, aname, tname))
-            except TypeError:
-                _raise_not_mapping(asset_data, "Asset section ")
-            try:
-                tag_data[CFG_SEEK_KEYS_KEY]
-            except KeyError:
-                if not allow_incomplete:
-                    raise MissingSeekKeyError("Asset incomplete. No seek keys are defined for '{}/{}:{}'. "
-                                              "Build or pull the asset again.".format(gname, aname, tname))
-
-
 def _is_large_archive(size):
     """
     Determines if the file is large based on a string formatted as follows: 15.4GB
@@ -1534,6 +1532,7 @@ def _list_remote(url, genome, order=None, as_str=True):
         names for sort
     :return str, str: text reps of remotely available genomes and assets
     """
+    # TODO: make it a staticmethod?
     genomes_data = _read_remote_data(url)
     refgens = _select_genomes(sorted(genomes_data.keys(), key=order), genome,
                               strict=True)
@@ -1550,7 +1549,7 @@ def _list_remote(url, genome, order=None, as_str=True):
 
 
 def _make_genome_assets_line(gen, assets, offset_text="  ", genome_assets_delim="/ ", asset_sep=", ", order=None,
-                             asset_tag_delim=":"):
+                             asset_tag_delim=":", rjust=20):
     """
     Build a line of text for display of assets by genome
 
@@ -1564,7 +1563,7 @@ def _make_genome_assets_line(gen, assets, offset_text="  ", genome_assets_delim=
     :return str: text representation of a single assembly's name and assets
     """
     tagged_assets = asset_sep.join(sorted(_make_asset_tags_product(assets, asset_tag_delim), key=order))
-    return "{}{}{}{}".format(gen.rjust(20), genome_assets_delim, offset_text, tagged_assets)
+    return "{}{}{}{}".format(gen.rjust(rjust), genome_assets_delim, offset_text, tagged_assets)
 
 
 def _make_asset_tags_product(assets, asset_tag_delim=":", asset_sk_delim="."):
@@ -1655,10 +1654,10 @@ def _select_genomes(genomes, genome=None, strict=False):
     :raise TypeError: if genome argument type is not a list or str
     :return list: selected subset of genomes
     """
-    if genome:
-        genome = _make_list_of_str(genome)
-    else:
+    # TODO: account for aliases here
+    if not genome:
         return genomes
+    genome = _make_list_of_str(genome)
     if strict:
         missing = []
         filtered = []

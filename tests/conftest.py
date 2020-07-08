@@ -156,7 +156,12 @@ def ro_rgc(cfg_file):
 
 @pytest.fixture
 def all_genomes(ro_rgc):
-    return ro_rgc[CFG_GENOMES_KEY].keys()
+    gs = ro_rgc[CFG_GENOMES_KEY].keys()
+    # if "_aliases" in gs:
+    #     gs.remove("_aliases")
+    # if "_alias_key" in gs:
+    #     gs.remove("_alias_key")
+    return gs
 
 
 @pytest.fixture

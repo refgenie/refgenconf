@@ -402,6 +402,28 @@ class RefGenConf(yacman.YacAttMap):
                          for g, data in self[CFG_GENOMES_KEY].items()
                          if asset in data.get(CFG_ASSETS_KEY)], key=order)
 
+    def get_local_data_str(self, genome=None, order=None):
+        """
+        List locally available reference genome IDs and assets by ID.
+
+        :param list[str] | str genome: genomes that the assets should be found for
+        :param function(str) -> object order: how to key genome IDs and asset
+            names for sort
+        :return str, str: text reps of locally available genomes and assets
+        """
+        exceptions = []
+        if genome is not None:
+            genome = _make_list_of_str(genome)
+            for g in genome:
+                try:
+                    self._assert_gat_exists(gname=g)
+                except MissingGenomeError as e:
+                    exceptions.append(e)
+            if exceptions:
+                raise MissingGenomeError(", ".join(map(str, exceptions)))
+        return ", ".join(self._select_genomes(genome=genome, order=order)), \
+               self.assets_str(genome=genome, order=order)
+
     def get_remote_data_str(self, genome=None, order=None, get_url=lambda server, id: construct_request_url(server, id)):
         """
         List genomes and assets available remotely.
@@ -432,7 +454,7 @@ class RefGenConf(yacman.YacAttMap):
         data_by_server = {}
         for url in self[CFG_SERVERS_KEY]:
             url = get_url(url, API_ID_ASSETS)
-            data_by_server[url] = _list_remote(url, genome, order, False)
+            data_by_server[url] = self._list_remote(url, genome, order, False)
         return data_by_server
 
     def tag(self, genome, asset, tag, new_tag, files=True):
@@ -1446,9 +1468,8 @@ class RefGenConf(yacman.YacAttMap):
         :return str, str: text reps of remotely available genomes and assets
         """
         genomes_data = _read_remote_data(url)
-        # TODO: fix after moving _select_genomes to method
-        refgens = self._select_genomes(sorted(genomes_data.keys(), key=order), genome,
-                                  strict=True)
+        refgens = self._select_genomes(external_genomes=genomes_data.keys(),
+                                       genome=genome, order=order, strict=True)
         if not refgens:
             return None, None if as_str else dict()
         filtered_genomes_data = OrderedDict(
@@ -1460,22 +1481,27 @@ class RefGenConf(yacman.YacAttMap):
                        for g, a in filtered_genomes_data.items()]
         return ", ".join(refgens), "\n".join(asset_texts)
 
-    def _select_genomes(self, genome=None, strict=False, order=None):
+    def _select_genomes(self, genome=None, strict=False, order=None,
+                        external_genomes=None):
         """
         Safely select a subset of genomes
 
         :param list[str] | str genome: genomes that the assets should be found for
         :param bool strict: whether a non-existent genome should lead to a warning.
             Specific genome request is disregarded otherwise
+        :param function(str) -> object order: a way to order the genomes in the output
+        :param list external_genomes: a collection of genomes to use instead
+            of the one defined in the object
         :raise TypeError: if genome argument type is not a list or str
         :return list: selected subset of genomes
         """
         genomes = [self.get_genome_alias(x, fallback=True)
-                   for x in sorted(self[CFG_GENOMES_KEY].keys(), key=order)]
-        genome = self.get_genome_alias(digest=genome, fallback=True)
+                   for x in sorted(external_genomes or
+                                   self[CFG_GENOMES_KEY].keys(), key=order)]
         if not genome:
             return genomes
-        genome = _make_list_of_str(genome)
+        genome = [self.get_genome_alias(digest=x, fallback=True)
+                  for x in _make_list_of_str(genome)]
         if strict:
             missing = []
             filtered = []

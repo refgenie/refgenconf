@@ -127,7 +127,7 @@ def made_genome_config_file(temp_genome_config_file):
     """ Make the test session's genome config file. """
     genome_folder = os.path.dirname(temp_genome_config_file)
     extra_kv_lines = ["{}: {}".format(CFG_FOLDER_KEY, genome_folder),
-                      "{}: {}".format(CFG_SERVERS_KEY, "http://rg.databio.org:82/"),
+                      "{}: {}".format(CFG_SERVERS_KEY, "http://rg.databio.org"),
                       "{}: {}".format(CFG_VERSION_KEY, package_version),
                       "{}:".format(CFG_GENOMES_KEY)]
     gen_data_lines = PathExAttMap(CONF_DATA).get_yaml_lines()
@@ -157,10 +157,6 @@ def ro_rgc(cfg_file):
 @pytest.fixture
 def all_genomes(ro_rgc):
     gs = ro_rgc[CFG_GENOMES_KEY].keys()
-    # if "_aliases" in gs:
-    #     gs.remove("_aliases")
-    # if "_alias_key" in gs:
-    #     gs.remove("_alias_key")
     return gs
 
 

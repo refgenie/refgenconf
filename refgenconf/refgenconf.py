@@ -777,6 +777,26 @@ class RefGenConf(yacman.YacAttMap):
             self.run_plugins(POST_PULL_HOOK)
             return gat, archive_data, server_url
 
+    def get_genome_alias_digest(self, alias, fallback=False):
+        """
+        Get the human readable alias for a genome digest
+
+        :param str alias: alias to find digest for
+        :param bool fallback: whether to return the query alias in case
+            of failure
+        :return str: human-readable alias
+        :raise GenomeConfigFormatError: if "genome_digests" section does
+            not exist in the config
+        :raise UndefinedAliasError: if a no alias has been defined for the
+            requested digest
+        """
+        try:
+            return self[CFG_GENOMES_KEY].get_key(alias=alias)
+        except yacman.UndefinedAliasError:
+            if not fallback:
+                raise
+            return alias
+
     def get_genome_alias(self, digest, fallback=False):
         """
         Get the human readable alias for a genome digest
@@ -931,6 +951,7 @@ class RefGenConf(yacman.YacAttMap):
         :return RefGenConf: updated object
         """
         if _check_insert_data(genome, str, "genome"):
+            genome = self.get_genome_alias_digest(alias=genome)
             _safe_setdef(self[CFG_GENOMES_KEY], genome, PXAM())
             if _check_insert_data(asset, str, "asset"):
                 _safe_setdef(self[CFG_GENOMES_KEY][genome], CFG_ASSETS_KEY,
@@ -957,6 +978,7 @@ class RefGenConf(yacman.YacAttMap):
         :return RefGenConf: updated object
         """
         if _check_insert_data(genome, str, "genome"):
+            genome = self.get_genome_alias_digest(alias=genome)
             _safe_setdef(self[CFG_GENOMES_KEY], genome, PXAM())
             if _check_insert_data(asset, str, "asset"):
                 _safe_setdef(self[CFG_GENOMES_KEY][genome], CFG_ASSETS_KEY,
@@ -1116,6 +1138,7 @@ class RefGenConf(yacman.YacAttMap):
         :return RefGenConf: updated object
         """
         if _check_insert_data(genome, str, "genome"):
+            genome = self.get_genome_alias_digest(alias=genome)
             _safe_setdef(self[CFG_GENOMES_KEY], genome,
                          PXAM({CFG_ASSETS_KEY: PXAM()}))
             if _check_insert_data(data, Mapping, "data"):
@@ -1126,19 +1149,20 @@ class RefGenConf(yacman.YacAttMap):
         """
         Update the list of genome_servers.
 
-        Use reset argument to overwrite the current list. Otherwise the current one will be appended to.
+        Use reset argument to overwrite the current list. Otherwise the current
+        one will be appended to.
 
         :param list[str] | str url: url(s) to update the genome_servers list with
         :param bool reset: whether the current list should be overwritten
         """
-        urls = _make_list_of_str(url)
         if CFG_SERVERS_KEY in self:
-            if reset:
-                self[CFG_SERVERS_KEY] = _extend_unique([], urls)
-            else:
-                self[CFG_SERVERS_KEY] = _extend_unique(self[CFG_SERVERS_KEY], urls)
+            self[CFG_SERVERS_KEY] = \
+                _extend_unique([] if reset else self[CFG_SERVERS_KEY],
+                               _make_list_of_str(url))
         else:
-            raise GenomeConfigFormatError("The '{}' is missing. Can't update the server list".format(CFG_SERVERS_KEY))
+            raise GenomeConfigFormatError(
+                "The '{}' is missing. Can't update the server list".
+                    format(CFG_SERVERS_KEY))
 
     def subscribe(self, urls, reset=False):
         """

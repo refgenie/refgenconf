@@ -189,8 +189,7 @@ class RefGenConf(yacman.YacAttMap):
             collection of available asset names.
         """
         self.run_plugins(PRE_LIST_HOOK)
-        ori_refgens = _select_genomes(sorted(self[CFG_GENOMES_KEY].keys(), key=order), genome)
-        refgens = [self.get_genome_alias(x, fallback=True) for x in ori_refgens]
+        refgens = self._select_genomes(genome=genome, order=order)
         if include_tags:
             self.run_plugins(POST_LIST_HOOK)
             return OrderedDict(
@@ -216,9 +215,7 @@ class RefGenConf(yacman.YacAttMap):
             names for sort
         :return str: text representing genome-to-asset mapping
         """
-        ori_refgens = _select_genomes(
-            sorted(self[CFG_GENOMES_KEY].keys(), key=order), genome)
-        refgens = [self.get_genome_alias(x, fallback=True) for x in ori_refgens]
+        refgens = self._select_genomes(genome=genome, order=order)
         make_line = partial(_make_genome_assets_line, offset_text=offset_text,
                             genome_assets_delim=genome_assets_delim,
                             asset_sep=asset_sep, order=order,
@@ -400,33 +397,10 @@ class RefGenConf(yacman.YacAttMap):
             collection of assembly names for which the asset key is available
             will be returned.
         """
-        return self._invert_genomes(order) if not asset else \
-            sorted([g for g, data in self[CFG_GENOMES_KEY].items()
-                    if asset in data.get(CFG_ASSETS_KEY)], key=order)
-
-    def get_local_data_str(self, genome=None, order=None):
-        """
-        List locally available reference genome IDs and assets by ID.
-
-        :param list[str] | str genome: genomes that the assets should be found for
-        :param function(str) -> object order: how to key genome IDs and asset
-            names for sort
-        :return str, str: text reps of locally available genomes and assets
-        """
-        exceptions = []
-        if genome is not None:
-            if isinstance(genome, str):
-                genome = [genome]
-            for g in genome:
-                try:
-                    self._assert_gat_exists(g)
-                except MissingGenomeError as e:
-                    exceptions.append(e)
-            if exceptions:
-                raise MissingGenomeError(", ".join(map(str, exceptions)))
-        genomes_str = self.genomes_str(order=order) if genome is None \
-            else ", ".join(_select_genomes(sorted(self[CFG_GENOMES_KEY].keys(), key=order), genome))
-        return genomes_str, self.assets_str(genome=genome, order=order)
+        return self._invert_genomes(order) if not asset \
+            else sorted([self.get_genome_alias(g, fallback=True)
+                         for g, data in self[CFG_GENOMES_KEY].items()
+                         if asset in data.get(CFG_ASSETS_KEY)], key=order)
 
     def get_remote_data_str(self, genome=None, order=None, get_url=lambda server, id: construct_request_url(server, id)):
         """
@@ -441,7 +415,7 @@ class RefGenConf(yacman.YacAttMap):
         """
         url = get_url(self[CFG_SERVERS_KEY], API_ID_ASSETS)
         _LOGGER.info("Querying available assets: {}".format(url))
-        genomes, assets = _list_remote(url, genome, order)
+        genomes, assets = self._list_remote(url, genome, order)
         return genomes, assets
 
     def listr(self, genome=None, order=None, get_url=lambda server, id: construct_request_url(server, id)):
@@ -1462,6 +1436,59 @@ class RefGenConf(yacman.YacAttMap):
                         raise MissingSeekKeyError("Asset incomplete. No seek keys are defined for '{}/{}:{}'. "
                                                   "Build or pull the asset again.".format(gname, aname, tname))
 
+    def _list_remote(self, url, genome, order=None, as_str=True):
+        """
+        List genomes and assets available remotely.
+
+        :param url: location or ref genome config data
+        :param function(str) -> object order: how to key genome IDs and asset
+            names for sort
+        :return str, str: text reps of remotely available genomes and assets
+        """
+        genomes_data = _read_remote_data(url)
+        # TODO: fix after moving _select_genomes to method
+        refgens = self._select_genomes(sorted(genomes_data.keys(), key=order), genome,
+                                  strict=True)
+        if not refgens:
+            return None, None if as_str else dict()
+        filtered_genomes_data = OrderedDict(
+            [(rg, sorted(genomes_data[rg], key=order)) for rg in refgens]
+        )
+        if not as_str:
+            return filtered_genomes_data
+        asset_texts = ["{}/   {}".format(g.rjust(20), ", ".join(a))
+                       for g, a in filtered_genomes_data.items()]
+        return ", ".join(refgens), "\n".join(asset_texts)
+
+    def _select_genomes(self, genome=None, strict=False, order=None):
+        """
+        Safely select a subset of genomes
+
+        :param list[str] | str genome: genomes that the assets should be found for
+        :param bool strict: whether a non-existent genome should lead to a warning.
+            Specific genome request is disregarded otherwise
+        :raise TypeError: if genome argument type is not a list or str
+        :return list: selected subset of genomes
+        """
+        genomes = [self.get_genome_alias(x, fallback=True)
+                   for x in sorted(self[CFG_GENOMES_KEY].keys(), key=order)]
+        genome = self.get_genome_alias(digest=genome, fallback=True)
+        if not genome:
+            return genomes
+        genome = _make_list_of_str(genome)
+        if strict:
+            missing = []
+            filtered = []
+            for g in genome:
+                if g in genomes:
+                    filtered.append(g)
+                else:
+                    missing.append(g)
+            if missing:
+                _LOGGER.warning("Genomes do not include: {}".format(", ".join(missing)))
+            return None if not filtered else filtered
+        return genomes if not all(x in genomes for x in genome) else genome
+
 
 class DownloadProgressBar(tqdm):
     """
@@ -1523,29 +1550,29 @@ def _is_large_archive(size):
     return size.endswith("TB") or (size.endswith("GB") and float("".join(c for c in size if c in '0123456789.')) > 5)
 
 
-def _list_remote(url, genome, order=None, as_str=True):
-    """
-    List genomes and assets available remotely.
-
-    :param url: location or ref genome config data
-    :param function(str) -> object order: how to key genome IDs and asset
-        names for sort
-    :return str, str: text reps of remotely available genomes and assets
-    """
-    # TODO: make it a staticmethod?
-    genomes_data = _read_remote_data(url)
-    refgens = _select_genomes(sorted(genomes_data.keys(), key=order), genome,
-                              strict=True)
-    if not refgens:
-        return None, None if as_str else dict()
-    filtered_genomes_data = OrderedDict(
-        [(rg, sorted(genomes_data[rg], key=order)) for rg in refgens]
-    )
-    if not as_str:
-        return filtered_genomes_data
-    asset_texts = ["{}/   {}".format(g.rjust(20), ", ".join(a))
-                   for g, a in filtered_genomes_data.items()]
-    return ", ".join(refgens), "\n".join(asset_texts)
+# def _list_remote(url, genome, order=None, as_str=True):
+#     """
+#     List genomes and assets available remotely.
+#
+#     :param url: location or ref genome config data
+#     :param function(str) -> object order: how to key genome IDs and asset
+#         names for sort
+#     :return str, str: text reps of remotely available genomes and assets
+#     """
+#     # TODO: make it a staticmethod?
+#     genomes_data = _read_remote_data(url)
+#     refgens = _select_genomes(sorted(genomes_data.keys(), key=order), genome,
+#                               strict=True)
+#     if not refgens:
+#         return None, None if as_str else dict()
+#     filtered_genomes_data = OrderedDict(
+#         [(rg, sorted(genomes_data[rg], key=order)) for rg in refgens]
+#     )
+#     if not as_str:
+#         return filtered_genomes_data
+#     asset_texts = ["{}/   {}".format(g.rjust(20), ", ".join(a))
+#                    for g, a in filtered_genomes_data.items()]
+#     return ", ".join(refgens), "\n".join(asset_texts)
 
 
 def _make_genome_assets_line(gen, assets, offset_text="  ", genome_assets_delim="/ ", asset_sep=", ", order=None,
@@ -1642,34 +1669,6 @@ def _extend_unique(l1, l2):
     :return list: an extended list
     """
     return l1 + list(set(l2) - set(l1))
-
-
-def _select_genomes(genomes, genome=None, strict=False):
-    """
-    Safely select a subset of genomes
-
-    :param list[str] | str genome: genomes that the assets should be found for
-    :param bool strict: whether a non-existent genome should lead to a warning.
-        Specific genome request is disregarded otherwise
-    :raise TypeError: if genome argument type is not a list or str
-    :return list: selected subset of genomes
-    """
-    # TODO: account for aliases here
-    if not genome:
-        return genomes
-    genome = _make_list_of_str(genome)
-    if strict:
-        missing = []
-        filtered = []
-        for g in genome:
-            if g in genomes:
-                filtered.append(g)
-            else:
-                missing.append(g)
-        if missing:
-            _LOGGER.warning("Genomes do not include: {}".format(", ".join(missing)))
-        return None if not filtered else filtered
-    return genomes if not all(x in genomes for x in genome) else genome
 
 
 def get_asset_tags(asset):

@@ -20,6 +20,7 @@ from tqdm import tqdm
 from pkg_resources import iter_entry_points
 from tempfile import TemporaryDirectory
 
+from seqcol import SeqColClient
 from attmap import PathExAttMap as PXAM
 from ubiquerg import checksum, is_url, query_yes_no, \
     parse_registry_path as prp, untar, is_writable
@@ -845,25 +846,28 @@ class RefGenConf(yacman.YacAttMap):
             _LOGGER.info("Added new alias ({}: {})".format(digest, genome))
             return True
 
-    def initialize_genome(self, gat):
+    def initialize_genome(self, fasta_path, alias):
         """
         Initialize a genome
 
         Create a JSON file with Annotated Sequence Digests (ASDs)
         for the FASTA file in the genome directory.
 
-        :param list[str] gat: list of genome, asset and tag names
-        :return str, list[dict[str]]: a pair of genome digest and list of
-            annotated sequence digests
+        :param str fasta_path: path to a FASTA file to initialize genome with
+        :return str: human-readable name for the genome
         """
-        g = gat[0]
-        _LOGGER.info("Initializing genome: {}".format(g))
-        d, c = SeqColClient({}).load_fasta(self.seek(*gat, strict_exists=True))
-        pth = self.get_asds_path(g)
+        _LOGGER.info("Initializing genome: {}".format(alias))
+        if not os.path.isfile(fasta_path):
+            raise FileNotFoundError("Can't initialize genome; FASTA file does "
+                                    "not exist: {}".format(fasta_path))
+        d, c = SeqColClient({}).load_fasta(fasta_path)
+        pth = self.get_asds_path(d)
+        if not os.path.isdir(os.path.dirname(pth)):
+            os.makedirs(os.path.dirname(pth))
         with open(pth, "w") as jfp:
             json.dump(c, jfp)
         _LOGGER.debug("Saved ASDs to JSON: {}".format(pth))
-        self.set_genome_alias(genome=g, digest=d)
+        self.set_genome_alias(genome=alias, digest=d)
         return d, c
 
     def get_asds_path(self, genome):
@@ -951,7 +955,7 @@ class RefGenConf(yacman.YacAttMap):
         :return RefGenConf: updated object
         """
         if _check_insert_data(genome, str, "genome"):
-            genome = self.get_genome_alias_digest(alias=genome)
+            genome = self.get_genome_alias_digest(alias=genome, fallback=True)
             _safe_setdef(self[CFG_GENOMES_KEY], genome, PXAM())
             if _check_insert_data(asset, str, "asset"):
                 _safe_setdef(self[CFG_GENOMES_KEY][genome], CFG_ASSETS_KEY,
@@ -978,7 +982,7 @@ class RefGenConf(yacman.YacAttMap):
         :return RefGenConf: updated object
         """
         if _check_insert_data(genome, str, "genome"):
-            genome = self.get_genome_alias_digest(alias=genome)
+            genome = self.get_genome_alias_digest(alias=genome, fallback=True)
             _safe_setdef(self[CFG_GENOMES_KEY], genome, PXAM())
             if _check_insert_data(asset, str, "asset"):
                 _safe_setdef(self[CFG_GENOMES_KEY][genome], CFG_ASSETS_KEY,
@@ -1138,7 +1142,7 @@ class RefGenConf(yacman.YacAttMap):
         :return RefGenConf: updated object
         """
         if _check_insert_data(genome, str, "genome"):
-            genome = self.get_genome_alias_digest(alias=genome)
+            genome = self.get_genome_alias_digest(alias=genome, fallback=True)
             _safe_setdef(self[CFG_GENOMES_KEY], genome,
                          PXAM({CFG_ASSETS_KEY: PXAM()}))
             if _check_insert_data(data, Mapping, "data"):

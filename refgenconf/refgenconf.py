@@ -642,6 +642,8 @@ class RefGenConf(yacman.YacAttMap):
         num_servers = 0
         bad_servers = []
         no_asset_json = []
+        alias = genome
+        genome = self.get_genome_alias_digest(alias=alias)
         if CFG_SERVERS_KEY not in self or self[CFG_SERVERS_KEY] is None:
             _LOGGER.error("You are not subscribed to any asset servers")
             return _null_return()
@@ -669,7 +671,7 @@ class RefGenConf(yacman.YacAttMap):
                 no_asset_json.append(server_url)
                 if num_servers == len(self[CFG_SERVERS_KEY]):
                     _LOGGER.error("Asset '{}/{}:{}' not available on any of the following servers: {}".
-                                  format(genome, asset, determined_tag, ", ".join(self[CFG_SERVERS_KEY])))
+                                  format(alias, asset, determined_tag, ", ".join(self[CFG_SERVERS_KEY])))
                     return _null_return()
                 continue
 

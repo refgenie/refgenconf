@@ -1759,7 +1759,7 @@ def construct_request_url(server_url, operation_id):
     :return str: a complete URL for the request
     """
     try:
-        return server_url + _get_server_endpoints_mapping(server_url)[operation_id]
+        return server_url + _get_server_endpoints_mapping(server_url)[API_VERSION + operation_id]
     except KeyError as e:
         _LOGGER.error("'{}' is not a compatible refgenieserver instance. "
                       "Could not determine API endpoint defined by ID: {}".format(server_url, e))

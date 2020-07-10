@@ -26,17 +26,17 @@ FILE_DIR_NAMES = ["TEMPLATE_RECIPE_JSON", "TEMPLATE_TARGET", "TEMPLATE_LOG",
 # way of communication between the server and the client so that changes of
 # endpoint function names OR endpoints themselves do not influence the connection
 CUSTOM_PFX = "custom_Id"
-API_ID_ALIAS_ALIAS = API_VERSION + CUSTOM_PFX + "_alias_alias"
-API_ID_ALIAS_DIGEST = API_VERSION + CUSTOM_PFX + "_alias_digest"
-API_ID_ASSETS = API_VERSION + CUSTOM_PFX + "_assets"
-API_ID_ARCHIVE = API_VERSION + CUSTOM_PFX + "_archive"
-API_ID_DEFAULT_TAG = API_VERSION + CUSTOM_PFX + "_default_tag"
-API_ID_ASSET_ATTRS = API_VERSION + CUSTOM_PFX + "_asset_attrs"
-API_ID_DIGEST = API_VERSION + CUSTOM_PFX + "_asset_digest"
-API_ID_RECIPE = API_VERSION + CUSTOM_PFX + "_asset_recipe"
-API_ID_LOG = API_VERSION + CUSTOM_PFX + "_asset_log"
-API_ID_ARCHIVE_DIGEST = API_VERSION + CUSTOM_PFX + "_asset_archive_digest"
-API_ID_SPLASH = API_VERSION + CUSTOM_PFX + "_asset_splash"
+API_ID_ALIAS_ALIAS = CUSTOM_PFX + "_alias_alias"
+API_ID_ALIAS_DIGEST = CUSTOM_PFX + "_alias_digest"
+API_ID_ASSETS = CUSTOM_PFX + "_assets"
+API_ID_ARCHIVE = CUSTOM_PFX + "_archive"
+API_ID_DEFAULT_TAG = CUSTOM_PFX + "_default_tag"
+API_ID_ASSET_ATTRS = CUSTOM_PFX + "_asset_attrs"
+API_ID_DIGEST = CUSTOM_PFX + "_asset_digest"
+API_ID_RECIPE = CUSTOM_PFX + "_asset_recipe"
+API_ID_LOG = CUSTOM_PFX + "_asset_log"
+API_ID_ARCHIVE_DIGEST = CUSTOM_PFX + "_asset_archive_digest"
+API_ID_SPLASH = CUSTOM_PFX + "_asset_splash"
 
 # this dictionary groups the operationIds so that they can be accessed as modules
 # for systematic links generation in the splash pages

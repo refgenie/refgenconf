@@ -643,11 +643,17 @@ class RefGenConf(yacman.YacAttMap):
         bad_servers = []
         no_asset_json = []
         alias = genome
-        genome = self.get_genome_alias_digest(alias=alias)
         if CFG_SERVERS_KEY not in self or self[CFG_SERVERS_KEY] is None:
             _LOGGER.error("You are not subscribed to any asset servers")
             return _null_return()
         for server_url in self[CFG_SERVERS_KEY]:
+            try:
+                genome = self.get_genome_alias_digest(alias=alias)
+            except yacman.UndefinedAliasError:
+                _LOGGER.info("No local digest for genome alias: {}".format(genome))
+                if not self.set_genome_alias(genome=alias, servers=[server_url]):
+                    return _null_return()
+                genome = self.get_genome_alias_digest(alias=alias)
             num_servers += 1
             try:
                 determined_tag = _download_json(get_json_url(server_url, API_ID_DEFAULT_TAG).format(genome=genome, asset=asset)) \
@@ -820,7 +826,8 @@ class RefGenConf(yacman.YacAttMap):
                 raise
             return digest
 
-    def set_genome_alias(self, genome, digest=None):
+    def set_genome_alias(self, genome, digest=None, servers=None,
+                         get_json_url=lambda server: construct_request_url(server, API_ID_ALIAS_DIGEST)):
         """
         Assign a human-readable alias to a genome identifier.
 
@@ -834,10 +841,23 @@ class RefGenConf(yacman.YacAttMap):
         :return bool: whether the alias has been established
         """
         if not digest:
-            # TODO: implement digest lookup feature once a corresponding API
-            #  enpoint in refgeniserver is implemented
-            raise NotImplementedError(
-                "Digest lookup from server is not implemented yet")
+            cnt = 0
+            if servers is None:
+                servers = self[CFG_SERVERS_KEY]
+            for server in servers:
+                cnt += 1
+                url_alias = get_json_url(server=server).format(alias=genome)
+                _LOGGER.info("Trying: {}".format(url_alias))
+                try:
+                    digest = _download_json(url_alias)
+                except DownloadJsonError:
+                    if cnt == len(servers):
+                        _LOGGER.error("Not available on any of the following "
+                                      "servers: {}".format(", ".join(servers)))
+                        return False
+                    continue
+                _LOGGER.info("Determined server digest for local genome alias ({}): {}".format(genome, digest))
+                break
         with self as r:
             r.setdefault(CFG_ALIASES_KEY, {})
             if genome in r[CFG_ALIASES_KEY]:

@@ -45,6 +45,14 @@ OPERATION_IDS = {
         API_ID_ARCHIVE: "archive", API_ID_ASSET_ATTRS: "attributes",
         API_ID_DIGEST: "asset digest", API_ID_ARCHIVE_DIGEST: "archive digest",
         API_ID_RECIPE: "build recipe", API_ID_LOG: "build log"
+    },
+    "v3_asset": {
+        API_VERSION + API_ID_ARCHIVE: "archive",
+        API_VERSION + API_ID_ASSET_ATTRS: "attributes",
+        API_VERSION + API_ID_DIGEST: "asset digest",
+        API_VERSION + API_ID_ARCHIVE_DIGEST: "archive digest",
+        API_VERSION + API_ID_RECIPE: "build recipe",
+        API_VERSION + API_ID_LOG: "build log"
     }
 }
 

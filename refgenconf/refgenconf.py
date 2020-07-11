@@ -1380,6 +1380,38 @@ class RefGenConf(yacman.YacAttMap):
         raise MissingConfigDataError("Digest does not exist for: {}/{}:{}".
                                      format(genome, asset, tag))
 
+    def compare(self, genome1, genome2, explain=False):
+        """
+        Check genomes compatibility level.
+        Compares Annotated Sequence Digests (ASDs) -- digested sequences and
+        metadata
+        :param str genome1: name of the first genome to compare
+        :param str genome2: name of the first genome to compare
+        :param bool explain: whether the returned code explanation should
+            be displayed
+        :return int: compatibility code
+        """
+
+        def _get_asds_for_genome(rgc, genome):
+            """
+            Read JSON file containing ASDs for a specified genome
+            :param refgenconf.RefGenConf rgc: object to find the genome for
+            :param str genome: genome to find the file for
+            :return list[dict]: list of ASDs, ready to compare
+            """
+            rgc.seek(genome, "fasta", strict_exists=True)
+            json_file = rgc.get_asds_path(genome)
+            if not os.path.exists(json_file):
+                raise OSError(
+                    "File containing Annotated Sequence Digests (ASDs) not "
+                    "found for genome: {g}. Pull or build '{g}/fasta' again to "
+                    "check the compatibility.".format(g=genome))
+            with open(json_file, "r") as jfp:
+                return json.load(jfp)
+
+        return SeqColClient({}).compare_asds(_get_asds_for_genome(self, genome1),
+            _get_asds_for_genome(self, genome2), explain=explain)
+
     def run_plugins(self, hook):
         """
         Runs all installed plugins for the specified hook.

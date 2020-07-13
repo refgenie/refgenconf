@@ -653,6 +653,7 @@ class RefGenConf(yacman.YacAttMap):
         bad_servers = []
         no_asset_json = []
         alias = genome
+        gat = [genome, asset, tag]
         if CFG_SERVERS_KEY not in self or self[CFG_SERVERS_KEY] is None:
             _LOGGER.error("You are not subscribed to any asset servers")
             return _null_return()
@@ -793,6 +794,8 @@ class RefGenConf(yacman.YacAttMap):
                 self.update_tags(*gat, data={attr: archive_data[attr]
                                              for attr in ATTRS_COPY_PULL if attr in archive_data})
                 self.set_default_pointer(*gat)
+            if asset == "fasta":
+                self.initialize_genome(fasta_path=self.seek(*gat), alias=alias)
             self.run_plugins(POST_PULL_HOOK)
             return gat, archive_data, server_url
 
@@ -836,7 +839,7 @@ class RefGenConf(yacman.YacAttMap):
                 raise
             return digest
 
-    def set_genome_alias(self, genome, digest=None, servers=None,
+    def set_genome_alias(self, genome, digest=None, servers=None, force=False,
                          get_json_url=lambda server: construct_request_url(server, API_ID_ALIAS_DIGEST)):
         """
         Assign a human-readable alias to a genome identifier.
@@ -857,7 +860,8 @@ class RefGenConf(yacman.YacAttMap):
             for server in servers:
                 cnt += 1
                 url_alias = get_json_url(server=server).format(alias=genome)
-                _LOGGER.info("Trying: {}".format(url_alias))
+                _LOGGER.info("Setting '{}' identity with server: {}".
+                             format(genome, url_alias))
                 try:
                     digest = _download_json(url_alias)
                 except DownloadJsonError:
@@ -868,15 +872,16 @@ class RefGenConf(yacman.YacAttMap):
                     continue
                 _LOGGER.info("Determined server digest for local genome alias ({}): {}".format(genome, digest))
                 break
-        with self as r:
-            r.setdefault(CFG_ALIASES_KEY, {})
-            if genome in r[CFG_ALIASES_KEY]:
-                _LOGGER.warning("'{}' already in aliases ({})".
-                                format(genome, r[CFG_ALIASES_KEY][genome]))
-                return False
-            r[CFG_ALIASES_KEY][digest] = genome
-            _LOGGER.info("Added new alias ({}: {})".format(digest, genome))
-            return True
+        if not self.genomes.set_alias(alias=genome, key=digest, force=force):
+            return False
+        _LOGGER.info("Setting genome alias ({}: {})".format(digest, genome))
+        if self.file_path:
+            with self as r:
+                r.setdefault(CFG_ALIASES_KEY, {})
+                if genome not in r[CFG_ALIASES_KEY]:
+                    r[CFG_ALIASES_KEY][digest] = genome
+                    return True
+        return True
 
     def initialize_genome(self, fasta_path, alias):
         """
@@ -899,7 +904,11 @@ class RefGenConf(yacman.YacAttMap):
         with open(pth, "w") as jfp:
             json.dump(c, jfp)
         _LOGGER.debug("Saved ASDs to JSON: {}".format(pth))
-        self.set_genome_alias(genome=alias, digest=d)
+        if self.file_path:
+            with self as rgc:
+                rgc.set_genome_alias(genome=alias, digest=d, force=True)
+        else:
+            self.set_genome_alias(genome=alias, digest=d, force=True)
         return d, c
 
     def get_asds_path(self, genome):

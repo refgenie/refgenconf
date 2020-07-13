@@ -153,6 +153,16 @@ class RefGenConf(yacman.YacAttMap):
         """
         return {h: {ep.name: ep.load() for ep in iter_entry_points('refgenie.hooks.' + h)} for h in HOOKS}
 
+    @property
+    def genome_aliases(self):
+        """
+        Mapping of genome identifiers to human-readable genome identifiers
+
+        :return yacman.YacAttMap: mapping of genome identifiers to
+            human-readable genome identifiers
+        """
+        return self.genomes.alias_dict
+
     def initialize_config_file(self, filepath=None):
         """
         Initialize genome configuration file on disk
@@ -852,8 +862,8 @@ class RefGenConf(yacman.YacAttMap):
                     digest = _download_json(url_alias)
                 except DownloadJsonError:
                     if cnt == len(servers):
-                        _LOGGER.error("Not available on any of the following "
-                                      "servers: {}".format(", ".join(servers)))
+                        _LOGGER.error("Genome '{}' not available on any of the following "
+                                      "servers: {}".format(genome, ", ".join(servers)))
                         return False
                     continue
                 _LOGGER.info("Determined server digest for local genome alias ({}): {}".format(genome, digest))
@@ -1038,15 +1048,16 @@ class RefGenConf(yacman.YacAttMap):
         """
         tag = tag or self.get_default_tag(genome, asset, use_existing=False)
         if files:
-            req_dict = {"genome": genome, "asset": asset, "tag": tag}
+            req_dict = {"genome": self.get_genome_alias_digest(genome),
+                        "asset": asset, "tag": tag}
             _LOGGER.debug("Attempting removal: {}".format(req_dict))
-            if not force and \
-                    not query_yes_no("Remove '{genome}/{asset}:{tag}'?".
-                                             format(**req_dict)):
+            if not force and not query_yes_no(
+                    "Remove '{}/{}:{}'?".format(genome, asset, tag)):
                 _LOGGER.info("Action aborted by the user")
                 return
             removed = []
-            asset_path = self.seek(genome, asset, tag, enclosing_dir=True, strict_exists=False)
+            asset_path = self.seek(genome, asset, tag, enclosing_dir=True,
+                                   strict_exists=False)
             if os.path.exists(asset_path):
                 removed.append(_remove(asset_path))
                 if self.file_path:

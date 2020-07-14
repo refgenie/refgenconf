@@ -1136,7 +1136,8 @@ class RefGenConf(yacman.YacAttMap):
             else:
                 self.cfg_remove_assets(genome, asset, tag, relationships)
 
-    def cfg_remove_assets(self, genome, asset, tag=None, relationships=True):
+    def cfg_remove_assets(self, genome, asset, tag=None, relationships=True,
+                          aliases=False):
         """
         Remove data associated with a specified genome:asset:tag combination.
         If no tags are specified, the entire asset is removed from the genome.
@@ -1151,6 +1152,8 @@ class RefGenConf(yacman.YacAttMap):
         :param str tag: tag to be removed
         :param bool relationships: whether the asset being removed should
             be removed from its relatives as well
+        :param bool aliases: whether the genome being removed should be removed 
+            from the aliases
         :raise TypeError: if genome argument type is not a list or str
         :return RefGenConf: updated object
         """
@@ -1192,6 +1195,9 @@ class RefGenConf(yacman.YacAttMap):
                             del self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_DEFAULT_TAG_KEY]
                     if len(self[CFG_GENOMES_KEY]) == 0:
                         self[CFG_GENOMES_KEY] = None
+        if aliases and (self[CFG_GENOMES_KEY] is None
+                        or genome not in self[CFG_GENOMES_KEY]):
+            self.remove_genome_alias(self.get_genome_alias_digest(genome))
         return self
 
     def update_genomes(self, genome, data=None):

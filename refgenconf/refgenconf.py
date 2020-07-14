@@ -839,6 +839,25 @@ class RefGenConf(yacman.YacAttMap):
                 raise
             return digest
 
+    def remove_genome_alias(self, digest):
+        """
+        Remove alias for a specified genome digest. This method will remove the
+        digest both from the genomes object and from the aliases mapping
+        in tbe config
+
+        :param str digest: genome digest to remove an alias for
+        """
+        if not self.genomes.remove_alias(key=digest):
+            return False
+        _LOGGER.info("Removing genome alias:{}".format(digest))
+        if self.file_path:
+            with self as r:
+                try:
+                    del r[CFG_ALIASES_KEY][digest]
+                    return True
+                except KeyError:
+                    return False
+
     def set_genome_alias(self, genome, digest=None, servers=None, force=False,
                          get_json_url=lambda server: construct_request_url(server, API_ID_ALIAS_DIGEST)):
         """
@@ -1560,7 +1579,8 @@ class RefGenConf(yacman.YacAttMap):
                         raise MissingSeekKeyError("Asset incomplete. No seek keys are defined for '{}/{}:{}'. "
                                                   "Build or pull the asset again.".format(gname, aname, tname))
 
-    def _list_remote(self, url, genome, order=None, as_str=True):
+    def _list_remote(self, url, genome, order=None, as_str=True,
+                     offset_text="  ", genome_assets_delim="/ ", asset_sep=", "):
         """
         List genomes and assets available remotely.
 
@@ -1579,7 +1599,8 @@ class RefGenConf(yacman.YacAttMap):
         )
         if not as_str:
             return filtered_genomes_data
-        asset_texts = ["{}/   {}".format(g.rjust(20), ", ".join(a))
+        rj = max(map(len, list(filtered_genomes_data.keys()))) + 2
+        asset_texts = ["{}{}{}{}".format(g.rjust(rj), genome_assets_delim, offset_text, asset_sep.join(a))
                        for g, a in filtered_genomes_data.items()]
         return ", ".join(refgens), "\n".join(asset_texts)
 
@@ -1676,31 +1697,6 @@ def _is_large_archive(size):
     """
     _LOGGER.debug("Checking archive size: '{}'".format(size))
     return size.endswith("TB") or (size.endswith("GB") and float("".join(c for c in size if c in '0123456789.')) > 5)
-
-
-# def _list_remote(url, genome, order=None, as_str=True):
-#     """
-#     List genomes and assets available remotely.
-#
-#     :param url: location or ref genome config data
-#     :param function(str) -> object order: how to key genome IDs and asset
-#         names for sort
-#     :return str, str: text reps of remotely available genomes and assets
-#     """
-#     # TODO: make it a staticmethod?
-#     genomes_data = _read_remote_data(url)
-#     refgens = _select_genomes(sorted(genomes_data.keys(), key=order), genome,
-#                               strict=True)
-#     if not refgens:
-#         return None, None if as_str else dict()
-#     filtered_genomes_data = OrderedDict(
-#         [(rg, sorted(genomes_data[rg], key=order)) for rg in refgens]
-#     )
-#     if not as_str:
-#         return filtered_genomes_data
-#     asset_texts = ["{}/   {}".format(g.rjust(20), ", ".join(a))
-#                    for g, a in filtered_genomes_data.items()]
-#     return ", ".join(refgens), "\n".join(asset_texts)
 
 
 def _make_genome_assets_line(gen, assets, offset_text="  ", genome_assets_delim="/ ", asset_sep=", ", order=None,

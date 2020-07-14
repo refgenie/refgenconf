@@ -230,7 +230,7 @@ class RefGenConf(yacman.YacAttMap):
         make_line = partial(_make_genome_assets_line, offset_text=offset_text,
                             genome_assets_delim=genome_assets_delim,
                             asset_sep=asset_sep, order=order,
-                            rjust=max(map(len, refgens)) + 2)
+                            rjust=max(map(len, refgens) or [0]) + 2)
         return "\n".join([make_line(g, self[CFG_GENOMES_KEY][g][CFG_ASSETS_KEY])
                           for g in refgens])
 
@@ -1607,7 +1607,7 @@ class RefGenConf(yacman.YacAttMap):
         )
         if not as_str:
             return filtered_genomes_data
-        rj = max(map(len, list(filtered_genomes_data.keys()))) + 2
+        rj = max(map(len, list(filtered_genomes_data.keys()) or [0])) + 2
         asset_texts = ["{}{}{}{}".format(g.rjust(rj), genome_assets_delim, offset_text, asset_sep.join(a))
                        for g, a in filtered_genomes_data.items()]
         return ", ".join(refgens), "\n".join(asset_texts)

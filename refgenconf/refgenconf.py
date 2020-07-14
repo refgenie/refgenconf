@@ -849,7 +849,7 @@ class RefGenConf(yacman.YacAttMap):
         """
         if not self.genomes.remove_alias(key=digest):
             return False
-        _LOGGER.info("Removing genome alias:{}".format(digest))
+        _LOGGER.info("Removing genome alias: {}".format(digest))
         if self.file_path:
             with self as r:
                 try:
@@ -1055,7 +1055,8 @@ class RefGenConf(yacman.YacAttMap):
                         update(data)
         return self
 
-    def remove(self, genome, asset, tag=None, relationships=True, files=True, force=False):
+    def remove(self, genome, asset, tag=None, relationships=True, files=True,
+               force=False, aliases=False):
         """
         Remove data associated with a specified genome:asset:tag combination.
         If no tags are specified, the entire asset is removed from the genome.
@@ -1091,19 +1092,19 @@ class RefGenConf(yacman.YacAttMap):
                 removed.append(_remove(asset_path))
                 if self.file_path:
                     with self as r:
-                        r.cfg_remove_assets(genome, asset, tag, relationships)
+                        r.cfg_remove_assets(genome, asset, tag, relationships, aliases)
                 else:
-                    self.cfg_remove_assets(genome, asset, tag, relationships)
+                    self.cfg_remove_assets(genome, asset, tag, relationships, aliases)
             else:
                 _LOGGER.warning("Selected asset does not exist on disk ({}). "
                                 "Removing from genome config.".
                                 format(asset_path))
                 if self.file_path:
                     with self as r:
-                        r.cfg_remove_assets(genome, asset, tag, relationships)
+                        r.cfg_remove_assets(genome, asset, tag, relationships, aliases)
                         return
                 else:
-                    self.cfg_remove_assets(genome, asset, tag, relationships)
+                    self.cfg_remove_assets(genome, asset, tag, relationships, aliases)
                     return
             try:
                 self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]
@@ -1132,9 +1133,9 @@ class RefGenConf(yacman.YacAttMap):
         else:
             if self.file_path:
                 with self as r:
-                    r.cfg_remove_assets(genome, asset, tag, relationships)
+                    r.cfg_remove_assets(genome, asset, tag, relationships, aliases)
             else:
-                self.cfg_remove_assets(genome, asset, tag, relationships)
+                self.cfg_remove_assets(genome, asset, tag, relationships, aliases)
 
     def cfg_remove_assets(self, genome, asset, tag=None, relationships=True,
                           aliases=False):

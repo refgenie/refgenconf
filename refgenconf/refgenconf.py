@@ -814,7 +814,7 @@ class RefGenConf(yacman.YacAttMap):
         """
         try:
             return self[CFG_GENOMES_KEY].get_key(alias=alias)
-        except yacman.UndefinedAliasError:
+        except (yacman.UndefinedAliasError, AttributeError):
             if not fallback:
                 raise
             return alias
@@ -834,7 +834,7 @@ class RefGenConf(yacman.YacAttMap):
         """
         try:
             return self[CFG_GENOMES_KEY].get_alias(key=digest)
-        except yacman.UndefinedAliasError:
+        except (yacman.UndefinedAliasError, AttributeError):
             if not fallback:
                 raise
             return digest
@@ -847,8 +847,9 @@ class RefGenConf(yacman.YacAttMap):
 
         :param str digest: genome digest to remove an alias for
         """
-        if not self.genomes.remove_alias(key=digest):
-            return False
+        if self[CFG_GENOMES_KEY]:
+            if not self[CFG_GENOMES_KEY].remove_alias(key=digest):
+                return False
         _LOGGER.info("Removing genome alias: {}".format(digest))
         if self.file_path:
             with self as r:
@@ -1198,7 +1199,13 @@ class RefGenConf(yacman.YacAttMap):
                         self[CFG_GENOMES_KEY] = None
         if aliases and (self[CFG_GENOMES_KEY] is None
                         or genome not in self[CFG_GENOMES_KEY]):
-            self.remove_genome_alias(self.get_genome_alias_digest(genome))
+            try:
+                self.remove_genome_alias(self.get_genome_alias_digest(genome))
+            except AttributeError:
+                # if no genomes, (genomes are None) we need to manuallyremove
+                # all the keys from the aliases mapping in the config
+                digests = self[CFG_ALIASES_KEY].keys()
+                [self[CFG_ALIASES_KEY].__delitem__(k) for k in digests]
         return self
 
     def update_genomes(self, genome, data=None):

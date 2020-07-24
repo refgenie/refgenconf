@@ -576,7 +576,7 @@ class RefGenConf(yacman.YacAttMap):
             self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][r_data["item"]][CFG_ASSET_TAGS_KEY][r_data["tag"]]\
                 [relative_key] = updated_relatives
 
-    def pull(self, genome, asset, tag, unpack=True, force=None,
+    def pull(self, genome, asset, tag, unpack=True, force=None, force_large=None,
              get_json_url=lambda server, operation_id: construct_request_url(server, operation_id),
              build_signal_handler=_handle_sigint):
         """
@@ -590,6 +590,10 @@ class RefGenConf(yacman.YacAttMap):
             already exists; null for prompt (on a per-asset basis), False to
             effectively auto-reply No to the prompt to replace existing file,
             and True to auto-replay Yes for existing asset replacement.
+        :param bool | NoneType force_large: how to handle case in large (> 5GB)
+            asset is to be pulled; null for prompt (on a per-asset basis), False
+            to effectively auto-reply No to the prompt,
+            and True to auto-replay Yes
         :param function(str, str) -> str get_json_url: how to build URL from
             genome server URL base, genome, and asset
         :param function(str) -> function build_signal_handler: how to create
@@ -680,9 +684,17 @@ class RefGenConf(yacman.YacAttMap):
             bundle_name = '{}/{}:{}'.format(*gat)
             archsize = archive_data[CFG_ARCHIVE_SIZE_KEY]
             _LOGGER.debug("'{}' archive size: {}".format(bundle_name, archsize))
-            if _is_large_archive(archsize) and not query_yes_no("Are you sure you want to download this large archive?"):
-                _LOGGER.info("pull action aborted by user")
-                return _null_return()
+
+            if not force_large and _is_large_archive(archsize):
+                if force_large is False:
+                    _LOGGER.info("Skipping pull of {}/{}:{}; size: {}".
+                                 format(*gat, archsize))
+                    return _null_return()
+                if not query_yes_no("Are you sure you want to download this "
+                                    "large archive ({})?".format(archsize)):
+                    _LOGGER.info("Skipping pull of {}/{}:{}; size: {}".
+                                 format(*gat, archsize))
+                    return _null_return()
 
             if not os.path.exists(genome_dir_path):
                 _LOGGER.debug("Creating directory: {}".format(genome_dir_path))

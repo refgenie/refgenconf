@@ -576,7 +576,7 @@ class RefGenConf(yacman.YacAttMap):
             self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][r_data["item"]][CFG_ASSET_TAGS_KEY][r_data["tag"]]\
                 [relative_key] = updated_relatives
 
-    def pull(self, genome, asset, tag, unpack=True, force=None, force_large=None,
+    def pull(self, genome, asset, tag, unpack=True, force=None, force_large=None, size_cutoff=10,
              get_json_url=lambda server, operation_id: construct_request_url(server, operation_id),
              build_signal_handler=_handle_sigint):
         """
@@ -594,6 +594,8 @@ class RefGenConf(yacman.YacAttMap):
             asset is to be pulled; null for prompt (on a per-asset basis), False
             to effectively auto-reply No to the prompt,
             and True to auto-replay Yes
+        :param float size_cutoff: maximum archive file size to download with
+            no prompt
         :param function(str, str) -> str get_json_url: how to build URL from
             genome server URL base, genome, and asset
         :param function(str) -> function build_signal_handler: how to create
@@ -685,13 +687,13 @@ class RefGenConf(yacman.YacAttMap):
             archsize = archive_data[CFG_ARCHIVE_SIZE_KEY]
             _LOGGER.debug("'{}' archive size: {}".format(bundle_name, archsize))
 
-            if not force_large and _is_large_archive(archsize):
+            if not force_large and _is_large_archive(archsize, size_cutoff):
                 if force_large is False:
                     _LOGGER.info("Skipping pull of {}/{}:{}; size: {}".
                                  format(*gat, archsize))
                     return _null_return()
-                if not query_yes_no("Are you sure you want to download this "
-                                    "large archive ({})?".format(archsize)):
+                if not query_yes_no("This archive exceeds the size cutoff ({} > {}GB). "
+                                    "Do you want to proceed?".format(archsize, size_cutoff)):
                     _LOGGER.info("Skipping pull of {}/{}:{}; size: {}".
                                  format(*gat, archsize))
                     return _null_return()
@@ -1407,15 +1409,27 @@ def _assert_gat_exists(genomes, gname, aname=None, tname=None, allow_incomplete=
                                               "Build or pull the asset again.".format(gname, aname, tname))
 
 
-def _is_large_archive(size):
+def _is_large_archive(size, cutoff=10):
     """
     Determines if the file is large based on a string formatted as follows: 15.4GB
 
     :param str size:  size string
     :return bool: the decision
     """
-    _LOGGER.debug("Checking archive size: '{}'".format(size))
-    return size.endswith("TB") or (size.endswith("GB") and float("".join(c for c in size if c in '0123456789.')) > 5)
+    def _str2float(x):
+        """
+        Remove any letters from the file size string and cast the remainder to float
+        """
+        return float("".join(c for c in x if c in '0123456789.'))
+
+    # _LOGGER.debug("Checking archive size: '{}'".format(size))
+    if size.endswith("MB"):
+        # convert to gigs
+        size = str(_str2float(size) / 1000) + "GB"
+    if size.endswith("KB"):
+        # convert to gigs
+        size = str(_str2float(size) / 1000**2) + "GB"
+    return size.endswith("TB") or (size.endswith("GB") and _str2float(size) > cutoff)
 
 
 def _list_remote(url, genome, order=None, as_str=True):

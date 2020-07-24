@@ -692,7 +692,7 @@ class RefGenConf(yacman.YacAttMap):
                     _LOGGER.info("Skipping pull of {}/{}:{}; size: {}".
                                  format(*gat, archsize))
                     return _null_return()
-                if not query_yes_no("This archive exceeds the size cutoff ({} > {}GB). "
+                if not query_yes_no("This archive exceeds the size cutoff ({} > {:.1f}GB) "
                                     "Do you want to proceed?".format(archsize, size_cutoff)):
                     _LOGGER.info("Skipping pull of {}/{}:{}; size: {}".
                                  format(*gat, archsize))
@@ -1422,13 +1422,13 @@ def _is_large_archive(size, cutoff=10):
         """
         return float("".join(c for c in x if c in '0123456789.'))
 
-    # _LOGGER.debug("Checking archive size: '{}'".format(size))
+    _LOGGER.debug("Checking archive size: '{}'".format(size))
     if size.endswith("MB"):
         # convert to gigs
-        size = str(_str2float(size) / 1000) + "GB"
+        size = '{0:f}GB'.format(_str2float(size) / 1000)
     if size.endswith("KB"):
         # convert to gigs
-        size = str(_str2float(size) / 1000**2) + "GB"
+        size = '{0:f}GB'.format(_str2float(size) / 1000**2)
     return size.endswith("TB") or (size.endswith("GB") and _str2float(size) > cutoff)
 
 

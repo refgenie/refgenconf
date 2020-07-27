@@ -418,7 +418,7 @@ class RefGenConf(yacman.YacAttMap):
         )
         return self.listr(genome, order, get_url)
 
-    def listr(self, genome=None, order=None, get_url=lambda server, id: construct_request_url(server, id)):
+    def listr(self, genome=None, order=None, get_url=lambda server, id: construct_request_url(server, id), as_str=False):
         """
         List genomes and assets available remotely on all servers the object
         subscribes to
@@ -434,7 +434,7 @@ class RefGenConf(yacman.YacAttMap):
         data_by_server = {}
         for url in self[CFG_SERVERS_KEY]:
             url = get_url(url, API_ID_ASSETS)
-            data_by_server[url] = _list_remote(url, genome, order, False)
+            data_by_server[url] = _list_remote(url, genome, order, as_str=as_str)
         return data_by_server
 
     def tag(self, genome, asset, tag, new_tag, files=True):

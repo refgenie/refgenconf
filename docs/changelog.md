@@ -7,6 +7,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Added
 - `force_large` argument in the `pull` method, which can be used to handle large archive downloads
 
+### Deprecated
+- `get_remote_data_str` method. Use `listr` instead
+
 ## [0.9.0] - 2020-07-01
 
 ### Changed

@@ -412,21 +412,24 @@ class RefGenConf(yacman.YacAttMap):
             names for sort
         :return str, str: text reps of remotely available genomes and assets
         """
-        url = get_url(self[CFG_SERVERS_KEY], API_ID_ASSETS)
-        _LOGGER.info("Querying available assets: {}".format(url))
-        genomes, assets = _list_remote(url, genome, order)
-        return genomes, assets
+        warnings.warn(
+            "Please use listr method instead; get_remote_data_str will be "
+            "removed in the next release.", category=DeprecationWarning
+        )
+        return self.listr(genome, order, get_url)
 
     def listr(self, genome=None, order=None, get_url=lambda server, id: construct_request_url(server, id)):
         """
-        List genomes and assets available remotely.
+        List genomes and assets available remotely on all servers the object
+        subscribes to
 
         :param function(refgenconf.RefGenConf) -> str get_url: how to determine
             URL request, given RefGenConf instance
         :param list[str] | str genome: genomes that the assets should be found for
         :param function(str) -> object order: how to key genome IDs and asset
             names for sort
-        :return str, str: text reps of remotely available genomes and assets
+        :return dict[OrderedDict[list]]: remotely available genomes and assets
+            keyed by genome keyed by source server endpoint
         """
         data_by_server = {}
         for url in self[CFG_SERVERS_KEY]:
@@ -1336,7 +1339,7 @@ def _genome_asset_path(genomes, gname, aname, tname, seek_key, enclosing_dir):
     :return str: raw path value for a particular asset for a particular genome
     :raise MissingGenomeError: if the given key-value pair collection does not
         contain as a top-level key the given genome ID
-    :raise MissingAssetError: if the given key-value pair colelction does
+    :raise MissingAssetError: if the given key-value pair collection does
         contain the given genome ID, but that key's mapping doesn't contain
         the given asset name as a key
     :raise GenomeConfigFormatError: if it's discovered during the query that

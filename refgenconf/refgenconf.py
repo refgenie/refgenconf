@@ -19,13 +19,15 @@ from urllib.error import HTTPError, ContentTooShortError
 from tqdm import tqdm
 from pkg_resources import iter_entry_points
 from tempfile import TemporaryDirectory
+from re import sub
 
 from attmap import PathExAttMap as PXAM
 from ubiquerg import checksum, is_url, query_yes_no, \
-    parse_registry_path as prp, untar, is_writable
+    parse_registry_path as prp, untar, is_writable, is_command_callable
 
 from .const import *
-from .helpers import unbound_env_vars, asciify_json_dict, select_genome_config
+from .helpers import unbound_env_vars, asciify_json_dict, select_genome_config,\
+    get_dir_digest
 from .exceptions import *
 
 _LOGGER = logging.getLogger(__name__)
@@ -199,6 +201,54 @@ class RefGenConf(yacman.YacAttMap):
         make_line = partial(_make_genome_assets_line, offset_text=offset_text, genome_assets_delim=genome_assets_delim,
                             asset_sep=asset_sep, order=order)
         return "\n".join([make_line(g, self[CFG_GENOMES_KEY][g][CFG_ASSETS_KEY]) for g in refgens])
+
+    def add(self, path, genome, asset, tag=None, seek_keys=None, force=False):
+        """
+        Add an external asset to the config
+
+        :param str path: a path to the asset to add; must exist and be relative
+            to the genome_folder
+        :param str genome: genome name
+        :param str asset: asset name
+        :param str tag: tag name
+        :param dict seek_keys: seek keys to add
+        :param bool force: whether to force existing asset overwrite
+        """
+        tag = tag or self.get_default_tag(genome, asset)
+        abspath = os.path.join(self[CFG_FOLDER_KEY], path)
+        remove = False
+        if not os.path.exists(abspath) or not os.path.isabs(abspath):
+            raise OSError("Provided path must exist and be relative to the"
+                          " genome_folder: {}".format(self[CFG_FOLDER_KEY]))
+        try:
+            _assert_gat_exists(self[CFG_GENOMES_KEY], genome, asset, tag)
+        except Exception:
+            pass
+        else:
+            if not force and not \
+                    query_yes_no("'{}/{}:{}' exists. Do you want to overwrite?".
+                                         format(genome, asset, tag)):
+                return False
+            remove = True
+            _LOGGER.info("Will remove existing to overwrite")
+        tag_data = {
+            CFG_ASSET_PATH_KEY: path,
+            CFG_ASSET_CHECKSUM_KEY: get_dir_digest(path) or ""
+        }
+        if not self.file_path:
+            if remove:
+                self.cfg_remove_assets(genome, asset, tag)
+            self.update_tags(genome, asset, tag, tag_data)
+            self.update_seek_keys(genome, asset, tag, seek_keys or {asset: "."})
+            self.set_default_pointer(genome, asset, tag)
+            return True
+        with self as rgc:
+            if remove:
+                rgc.cfg_remove_assets(genome, asset, tag)
+            rgc.update_tags(genome, asset, tag, tag_data)
+            rgc.update_seek_keys(genome, asset, tag, seek_keys or {asset: "."})
+            rgc.set_default_pointer(genome, asset, tag)
+            return True
 
     def filepath(self, genome, asset, tag, ext=".tgz", dir=False):
         """

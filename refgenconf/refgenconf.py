@@ -263,28 +263,46 @@ class RefGenConf(yacman.YacAttMap):
                                                   tag_name))
         if not callable(check_exist) or len(finspect(check_exist).args) != 1:
             raise TypeError("Asset existence check must be a one-arg function.")
-        path = _genome_asset_path(self[CFG_GENOMES_KEY], genome_name, asset_name,
-                                  tag_name, seek_key, enclosing_dir)
+        # 3 'path' key options supported
+        # option1: absolute path
+        # get just the saute path value from the config
+        path_val = _genome_asset_path(
+            self[CFG_GENOMES_KEY], genome_name, asset_name, tag_name,
+            enclosing_dir=True, no_tag=True, seek_key=None
+        )
+        _LOGGER.debug("Trying absolute path: {}".format(path_val))
+        if seek_key:
+            path = os.path.join(path_val, seek_key)
+        else:
+            path = path_val
         if os.path.isabs(path) and check_exist(path):
             return path
-        _LOGGER.debug("Relative or nonexistent path: {}".format(path))
+        # option2: relative to genome_folder/{genome} (default, canonical)
+        path = _genome_asset_path(self[CFG_GENOMES_KEY], genome_name, asset_name,
+                                  tag_name, seek_key, enclosing_dir)
         fullpath = os.path.join(self[CFG_FOLDER_KEY], genome_name, path)
-        _LOGGER.debug("Trying path relative to genome folder: {}".format(fullpath))
+        _LOGGER.debug("Trying relative to genome_folder/genome ({}/{}): {}".
+                      format(self[CFG_FOLDER_KEY], genome_name, fullpath))
         if check_exist(fullpath):
             return fullpath
-        elif strict_exists is None:
+        # option3: relative to the genome_folder (if option2 does not exist)
+        gf_relpath = os.path.join(
+            self[CFG_FOLDER_KEY],
+            _genome_asset_path(self[CFG_GENOMES_KEY], genome_name, asset_name,
+                               tag_name, seek_key, enclosing_dir, no_tag=True)
+        )
+        _LOGGER.debug("Trying path relative to genome_folder ({}): {}".
+                      format(self[CFG_FOLDER_KEY], gf_relpath))
+        if check_exist(gf_relpath):
+            return gf_relpath
+
+        # return option2 if no existence not enforced
+        if strict_exists is None:
             return fullpath
-        msg = "For genome '{}' the asset '{}.{}:{}' doesn't exist; " \
-              "tried {} and {}".format(genome_name, asset_name, seek_key,
-                                       tag_name, path, fullpath)
-        extant = []
-        for base, ext in itertools.product([path, fullpath], [".tar.gz", ".tar"]):
-            # Attempt to enrich message with extra guidance.
-            p_prime = base + ext
-            if check_exist(p_prime):
-                extant.append(p_prime)
-        if extant:
-            msg += ". These paths exist: {}".format(extant)
+
+        msg = "For genome '{}' the asset '{}.{}:{}' doesn't exist; tried: {}".\
+            format(genome_name, asset_name, seek_key, tag_name,
+                   ",".join([path, gf_relpath, fullpath]))
         if strict_exists is True:
             raise OSError(msg)
         else:
@@ -1323,7 +1341,7 @@ def _download_url_progress(url, output_path, name, params=None):
         urllib.request.urlretrieve(url, filename=output_path, reporthook=dpb.update_to)
 
 
-def _genome_asset_path(genomes, gname, aname, tname, seek_key, enclosing_dir):
+def _genome_asset_path(genomes, gname, aname, tname, seek_key, enclosing_dir, no_tag=False):
     """
     Retrieve the raw path value for a particular asset for a particular genome.
 
@@ -1349,19 +1367,25 @@ def _genome_asset_path(genomes, gname, aname, tname, seek_key, enclosing_dir):
     _assert_gat_exists(genomes, gname, aname, tname)
     asset_tag_data = genomes[gname][CFG_ASSETS_KEY][aname][CFG_ASSET_TAGS_KEY][tname]
     if enclosing_dir:
+        if no_tag:
+            return asset_tag_data[CFG_ASSET_PATH_KEY]
         return os.path.join(asset_tag_data[CFG_ASSET_PATH_KEY], tname)
     if seek_key is None:
         if aname in asset_tag_data[CFG_SEEK_KEYS_KEY]:
             seek_key = aname
         else:
+            if no_tag:
+                return asset_tag_data[CFG_ASSET_PATH_KEY]
             return os.path.join(asset_tag_data[CFG_ASSET_PATH_KEY], tname)
     try:
         seek_key_value = asset_tag_data[CFG_SEEK_KEYS_KEY][seek_key]
-        appendix = "" if seek_key_value == "." else seek_key_value
-        return os.path.join(asset_tag_data[CFG_ASSET_PATH_KEY], tname, appendix)
     except KeyError:
         raise MissingSeekKeyError("genome/asset:tag bundle '{}/{}:{}' exists, but seek_key '{}' is missing".
                                   format(gname, aname, tname, seek_key))
+    else:
+        if no_tag:
+            return os.path.join(asset_tag_data[CFG_ASSET_PATH_KEY], seek_key_value)
+        return os.path.join(asset_tag_data[CFG_ASSET_PATH_KEY], tname, seek_key_value)
 
 
 def _assert_gat_exists(genomes, gname, aname=None, tname=None, allow_incomplete=False):

@@ -4,3 +4,4 @@ requests
 tqdm>=4.38.0
 yacman>=0.6.9
 future
+pyfaidx

@@ -226,6 +226,7 @@ class RefGenConf(YacAttMap):
             if not force and not \
                     query_yes_no("'{}/{}:{}' exists. Do you want to overwrite?".
                                          format(genome, asset, tag)):
+                _LOGGER.info("Aborted by a user, asset no added")
                 return False
             remove = True
             _LOGGER.info("Will remove existing to overwrite")
@@ -233,12 +234,16 @@ class RefGenConf(YacAttMap):
             CFG_ASSET_PATH_KEY: path,
             CFG_ASSET_CHECKSUM_KEY: get_dir_digest(path) or ""
         }
+        msg = "Added asset: {}/{}:{} {}".format(
+            genome, asset, tag, "" if not seek_keys else "with seek keys: {}".
+                format(seek_keys))
         if not self.file_path:
             if remove:
                 self.cfg_remove_assets(genome, asset, tag)
             self.update_tags(genome, asset, tag, tag_data)
             self.update_seek_keys(genome, asset, tag, seek_keys or {asset: "."})
             self.set_default_pointer(genome, asset, tag)
+            _LOGGER.info(msg)
             return True
         with self as rgc:
             if remove:
@@ -246,6 +251,7 @@ class RefGenConf(YacAttMap):
             rgc.update_tags(genome, asset, tag, tag_data)
             rgc.update_seek_keys(genome, asset, tag, seek_keys or {asset: "."})
             rgc.set_default_pointer(genome, asset, tag)
+            _LOGGER.info(msg)
             return True
 
     def filepath(self, genome, asset, tag, ext=".tgz", dir=False):

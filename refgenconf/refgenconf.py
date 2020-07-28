@@ -10,8 +10,6 @@ import warnings
 import shutil
 import json
 
-import yacman
-
 from collections import Iterable, Mapping, OrderedDict
 from functools import partial
 from inspect import getfullargspec as finspect
@@ -19,11 +17,11 @@ from urllib.error import HTTPError, ContentTooShortError
 from tqdm import tqdm
 from pkg_resources import iter_entry_points
 from tempfile import TemporaryDirectory
-from re import sub
 
+from yacman import YacAttMap
 from attmap import PathExAttMap as PXAM
-from ubiquerg import checksum, is_url, query_yes_no, \
-    parse_registry_path as prp, untar, is_writable, is_command_callable
+from ubiquerg import checksum, is_url, query_yes_no, untar, is_writable, \
+    parse_registry_path as prp
 
 from .const import *
 from .helpers import unbound_env_vars, asciify_json_dict, select_genome_config,\
@@ -48,7 +46,7 @@ def _handle_sigint(filepath):
     return handle
 
 
-class RefGenConf(yacman.YacAttMap):
+class RefGenConf(YacAttMap):
     """ A sort of oracle of available reference genome assembly assets """
 
     def __init__(self, filepath=None, entries=None, writable=False, wait_max=60,

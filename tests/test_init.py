@@ -26,3 +26,9 @@ class TestAdd:
         rgc.initialize_config_file(filepath=cfg_file_path)
         assert os.path.exists(cfg_file_path)
         shutil.rmtree(dirpath)
+
+    @pytest.mark.parametrize("pth", [None, 1, {"a": "b"}])
+    def test_invalid_path(self, pth):
+        rgc = RefGenConf()
+        with pytest.raises(TypeError):
+            rgc.initialize_config_file(filepath=pth)

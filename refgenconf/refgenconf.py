@@ -1166,29 +1166,33 @@ class RefGenConf(YacAttMap):
         if unsub_list:
             _LOGGER.info("Unsubscribed from: {}".format(", ".join(unsub_list)))
 
-    def getseq(self, genome, locus):
+    def getseq(self, genome, locus, as_str=False):
         """
         Return the sequence found in a selected range and chromosome.
         Something like the refget protocol.
 
         :param str genome: name of the sequence identifier
         :param str locus: coordinates of desired sequence, e.g. 'chr1:1-10'
+        :param bool as_str: whether to convert the resurned object to string
+            and return just the sequence
+        :return str | pyfaidx.FastaRecord | pyfaidx.Sequence: selected sequence
         """
         import pyfaidx
         fa = pyfaidx.Fasta(self.seek(genome, "fasta", strict_exists=True))
         locus_split = locus.split(":")
-
-        if len(locus_split) > 1:
-            start, end = locus_split[1].split("-")
-            _LOGGER.debug("chr: '{}', start: '{}', end: '{}'".
-                          format(locus_split[0], start, end))
-            print(fa[locus_split[0]][int(start):int(end)])
-        else:
-            print(fa[locus_split[0]])
+        chr = fa[locus_split[0]]
+        if len(locus_split) == 1:
+            return str(chr) if as_str else chr
+        start, end = locus_split[1].split("-")
+        _LOGGER.debug("chr: '{}', start: '{}', end: '{}'".
+                      format(locus_split[0], start, end))
+        return str(chr[int(start):int(end)]) \
+            if as_str else chr[int(start):int(end)]
 
     def get_genome_attributes(self, genome):
         """
-        Get the dictionary attributes, like checksum, contents, description. Does not return the assets.
+        Get the dictionary attributes, like checksum, contents, description.
+        Does not return the assets.
 
         :param str genome: genome to get the attributes dict for
         :return Mapping[str, str]: available genome attributes

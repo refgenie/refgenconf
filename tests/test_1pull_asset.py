@@ -99,7 +99,8 @@ def test_pull_asset_updates_genome_config(cfg_file, gname, aname, tname):
 
 
 @pytest.mark.parametrize(["gname", "aname", "tname", "state"],
-                         [("human_repeats", "fasta", "default", True),
+                         [("rCRSd", "fasta", "default", True),
+                          ("human_repeats", "fasta", "default", True),
                           ("mouse_chrM2x", "fasta", "default", False)])
 def test_pull_asset_works_with_nonwritable_and_writable_rgc(cfg_file, gname, aname, tname, state):
     rgc = RefGenConf(filepath=cfg_file, writable=state)

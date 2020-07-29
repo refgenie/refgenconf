@@ -10,6 +10,8 @@ import warnings
 import shutil
 import json
 
+import yacman
+
 from collections import Iterable, Mapping, OrderedDict
 from functools import partial
 from inspect import getfullargspec as finspect
@@ -18,7 +20,7 @@ from tqdm import tqdm
 from pkg_resources import iter_entry_points
 from tempfile import TemporaryDirectory
 
-from yacman import YacAttMap
+from seqcol import SeqColClient
 from attmap import PathExAttMap as PXAM
 from ubiquerg import checksum, is_url, query_yes_no, untar, is_writable, \
     parse_registry_path as prp
@@ -46,7 +48,7 @@ def _handle_sigint(filepath):
     return handle
 
 
-class RefGenConf(YacAttMap):
+class RefGenConf(yacman.YacAttMap):
     """ A sort of oracle of available reference genome assembly assets """
 
     def __init__(self, filepath=None, entries=None, writable=False, wait_max=60,
@@ -365,6 +367,7 @@ class RefGenConf(YacAttMap):
             path = path_val
         if os.path.isabs(path) and check_exist(path):
             return path
+        genome_name = self._get_genome_id(genome_name)
         # option2: relative to genome_folder/{genome} (default, canonical)
         path = _genome_asset_path(self[CFG_GENOMES_KEY], genome_name, asset_name,
                                   tag_name, seek_key, enclosing_dir)

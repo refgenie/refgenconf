@@ -128,7 +128,7 @@ def made_genome_config_file(temp_genome_config_file):
     genome_folder = os.path.dirname(temp_genome_config_file)
     extra_kv_lines = ["{}: {}".format(CFG_FOLDER_KEY, genome_folder),
                       "{}: {}".format(CFG_SERVERS_KEY, "http://rg.databio.org"),
-                      "{}: {}".format(CFG_VERSION_KEY, package_version),
+                      "{}: {}".format(CFG_VERSION_KEY, REQ_CFG_VERSION),
                       "{}:".format(CFG_GENOMES_KEY)]
     gen_data_lines = PathExAttMap(CONF_DATA).get_yaml_lines()
     fp = temp_genome_config_file

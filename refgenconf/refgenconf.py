@@ -1557,8 +1557,11 @@ class RefGenConf(yacman.YacAttMap):
             with open(json_file, "r") as jfp:
                 return json.load(jfp)
 
-        return SeqColClient({}).compare_asds(_get_asds_for_genome(self, genome1),
-            _get_asds_for_genome(self, genome2), explain=explain)
+        return SeqColClient({}).compare_asds(
+            _get_asds_for_genome(self, self.get_genome_alias_digest(genome1, True)),
+            _get_asds_for_genome(self, self.get_genome_alias_digest(genome2, True)),
+            explain=explain
+        )
 
     def run_plugins(self, hook):
         """

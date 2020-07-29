@@ -2,6 +2,18 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format. 
 
+## [0.9.1] - 2020-07-29
+
+### Added
+- `force_large` argument in the `pull` method, which can be used to handle large archive downloads
+- `add` method
+
+### Changed
+- `getseq` method returns the sequence string instead of printing it to the screen
+
+### Deprecated
+- `get_remote_data_str` method. Use `listr` instead
+
 ## [0.9.0] - 2020-07-01
 
 ### Changed

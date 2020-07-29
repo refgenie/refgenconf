@@ -10,8 +10,6 @@ import warnings
 import shutil
 import json
 
-import yacman
-
 from collections import Iterable, Mapping, OrderedDict
 from functools import partial
 from inspect import getfullargspec as finspect
@@ -20,12 +18,14 @@ from tqdm import tqdm
 from pkg_resources import iter_entry_points
 from tempfile import TemporaryDirectory
 
+from yacman import YacAttMap
 from attmap import PathExAttMap as PXAM
-from ubiquerg import checksum, is_url, query_yes_no, \
-    parse_registry_path as prp, untar, is_writable
+from ubiquerg import checksum, is_url, query_yes_no, untar, is_writable, \
+    parse_registry_path as prp
 
 from .const import *
-from .helpers import unbound_env_vars, asciify_json_dict, select_genome_config
+from .helpers import unbound_env_vars, asciify_json_dict, select_genome_config,\
+    get_dir_digest
 from .exceptions import *
 
 _LOGGER = logging.getLogger(__name__)
@@ -46,7 +46,7 @@ def _handle_sigint(filepath):
     return handle
 
 
-class RefGenConf(yacman.YacAttMap):
+class RefGenConf(YacAttMap):
     """ A sort of oracle of available reference genome assembly assets """
 
     def __init__(self, filepath=None, entries=None, writable=False, wait_max=60,
@@ -200,6 +200,60 @@ class RefGenConf(yacman.YacAttMap):
                             asset_sep=asset_sep, order=order)
         return "\n".join([make_line(g, self[CFG_GENOMES_KEY][g][CFG_ASSETS_KEY]) for g in refgens])
 
+    def add(self, path, genome, asset, tag=None, seek_keys=None, force=False):
+        """
+        Add an external asset to the config
+
+        :param str path: a path to the asset to add; must exist and be relative
+            to the genome_folder
+        :param str genome: genome name
+        :param str asset: asset name
+        :param str tag: tag name
+        :param dict seek_keys: seek keys to add
+        :param bool force: whether to force existing asset overwrite
+        """
+        tag = tag or self.get_default_tag(genome, asset)
+        abspath = os.path.join(self[CFG_FOLDER_KEY], path)
+        remove = False
+        if not os.path.exists(abspath) or not os.path.isabs(abspath):
+            raise OSError("Provided path must exist and be relative to the"
+                          " genome_folder: {}".format(self[CFG_FOLDER_KEY]))
+        try:
+            _assert_gat_exists(self[CFG_GENOMES_KEY], genome, asset, tag)
+        except Exception:
+            pass
+        else:
+            if not force and not \
+                    query_yes_no("'{}/{}:{}' exists. Do you want to overwrite?".
+                                         format(genome, asset, tag)):
+                _LOGGER.info("Aborted by a user, asset no added")
+                return False
+            remove = True
+            _LOGGER.info("Will remove existing to overwrite")
+        tag_data = {
+            CFG_ASSET_PATH_KEY: path,
+            CFG_ASSET_CHECKSUM_KEY: get_dir_digest(path) or ""
+        }
+        msg = "Added asset: {}/{}:{} {}".format(
+            genome, asset, tag, "" if not seek_keys else "with seek keys: {}".
+                format(seek_keys))
+        if not self.file_path:
+            if remove:
+                self.cfg_remove_assets(genome, asset, tag)
+            self.update_tags(genome, asset, tag, tag_data)
+            self.update_seek_keys(genome, asset, tag, seek_keys or {asset: "."})
+            self.set_default_pointer(genome, asset, tag)
+            _LOGGER.info(msg)
+            return True
+        with self as rgc:
+            if remove:
+                rgc.cfg_remove_assets(genome, asset, tag)
+            rgc.update_tags(genome, asset, tag, tag_data)
+            rgc.update_seek_keys(genome, asset, tag, seek_keys or {asset: "."})
+            rgc.set_default_pointer(genome, asset, tag)
+            _LOGGER.info(msg)
+            return True
+
     def filepath(self, genome, asset, tag, ext=".tgz", dir=False):
         """
         Determine path to a particular asset for a particular genome.
@@ -263,33 +317,50 @@ class RefGenConf(yacman.YacAttMap):
                                                   tag_name))
         if not callable(check_exist) or len(finspect(check_exist).args) != 1:
             raise TypeError("Asset existence check must be a one-arg function.")
-        path = _genome_asset_path(self[CFG_GENOMES_KEY], genome_name, asset_name,
-                                  tag_name, seek_key, enclosing_dir)
+        # 3 'path' key options supported
+        # option1: absolute path
+        # get just the saute path value from the config
+        path_val = _genome_asset_path(
+            self[CFG_GENOMES_KEY], genome_name, asset_name, tag_name,
+            enclosing_dir=True, no_tag=True, seek_key=None
+        )
+        _LOGGER.debug("Trying absolute path: {}".format(path_val))
+        if seek_key:
+            path = os.path.join(path_val, seek_key)
+        else:
+            path = path_val
         if os.path.isabs(path) and check_exist(path):
             return path
-        _LOGGER.debug("Relative or nonexistent path: {}".format(path))
+        # option2: relative to genome_folder/{genome} (default, canonical)
+        path = _genome_asset_path(self[CFG_GENOMES_KEY], genome_name, asset_name,
+                                  tag_name, seek_key, enclosing_dir)
         fullpath = os.path.join(self[CFG_FOLDER_KEY], genome_name, path)
-        _LOGGER.debug("Trying path relative to genome folder: {}".format(fullpath))
+        _LOGGER.debug("Trying relative to genome_folder/genome ({}/{}): {}".
+                      format(self[CFG_FOLDER_KEY], genome_name, fullpath))
         if check_exist(fullpath):
             return fullpath
-        elif strict_exists is None:
-            return fullpath
-        msg = "For genome '{}' the asset '{}.{}:{}' doesn't exist; " \
-              "tried {} and {}".format(genome_name, asset_name, seek_key,
-                                       tag_name, path, fullpath)
-        extant = []
-        for base, ext in itertools.product([path, fullpath], [".tar.gz", ".tar"]):
-            # Attempt to enrich message with extra guidance.
-            p_prime = base + ext
-            if check_exist(p_prime):
-                extant.append(p_prime)
-        if extant:
-            msg += ". These paths exist: {}".format(extant)
+        # option3: relative to the genome_folder (if option2 does not exist)
+        gf_relpath = os.path.join(
+            self[CFG_FOLDER_KEY],
+            _genome_asset_path(self[CFG_GENOMES_KEY], genome_name, asset_name,
+                               tag_name, seek_key, enclosing_dir, no_tag=True)
+        )
+        _LOGGER.debug("Trying path relative to genome_folder ({}): {}".
+                      format(self[CFG_FOLDER_KEY], gf_relpath))
+        if check_exist(gf_relpath):
+            return gf_relpath
+
+        msg = "For genome '{}' the asset '{}.{}:{}' doesn't exist; tried: {}".\
+            format(genome_name, asset_name, seek_key, tag_name,
+                   ",".join([path, gf_relpath, fullpath]))
+        # return option2 if existence not enforced
+        if strict_exists is None:
+            _LOGGER.debug(msg)
         if strict_exists is True:
             raise OSError(msg)
         else:
             warnings.warn(msg, RuntimeWarning)
-        return path
+        return fullpath
 
     def get_default_tag(self, genome, asset, use_existing=True):
         """
@@ -412,26 +483,29 @@ class RefGenConf(yacman.YacAttMap):
             names for sort
         :return str, str: text reps of remotely available genomes and assets
         """
-        url = get_url(self[CFG_SERVERS_KEY], API_ID_ASSETS)
-        _LOGGER.info("Querying available assets: {}".format(url))
-        genomes, assets = _list_remote(url, genome, order)
-        return genomes, assets
+        warnings.warn(
+            "Please use listr method instead; get_remote_data_str will be "
+            "removed in the next release.", category=DeprecationWarning
+        )
+        return self.listr(genome, order, get_url)
 
-    def listr(self, genome=None, order=None, get_url=lambda server, id: construct_request_url(server, id)):
+    def listr(self, genome=None, order=None, get_url=lambda server, id: construct_request_url(server, id), as_str=False):
         """
-        List genomes and assets available remotely.
+        List genomes and assets available remotely on all servers the object
+        subscribes to
 
         :param function(refgenconf.RefGenConf) -> str get_url: how to determine
             URL request, given RefGenConf instance
         :param list[str] | str genome: genomes that the assets should be found for
         :param function(str) -> object order: how to key genome IDs and asset
             names for sort
-        :return str, str: text reps of remotely available genomes and assets
+        :return dict[OrderedDict[list]]: remotely available genomes and assets
+            keyed by genome keyed by source server endpoint
         """
         data_by_server = {}
         for url in self[CFG_SERVERS_KEY]:
             url = get_url(url, API_ID_ASSETS)
-            data_by_server[url] = _list_remote(url, genome, order, False)
+            data_by_server[url] = _list_remote(url, genome, order, as_str=as_str)
         return data_by_server
 
     def tag(self, genome, asset, tag, new_tag, files=True):
@@ -576,7 +650,7 @@ class RefGenConf(yacman.YacAttMap):
             self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][r_data["item"]][CFG_ASSET_TAGS_KEY][r_data["tag"]]\
                 [relative_key] = updated_relatives
 
-    def pull(self, genome, asset, tag, unpack=True, force=None,
+    def pull(self, genome, asset, tag, unpack=True, force=None, force_large=None, size_cutoff=10,
              get_json_url=lambda server, operation_id: construct_request_url(server, operation_id),
              build_signal_handler=_handle_sigint):
         """
@@ -590,6 +664,12 @@ class RefGenConf(yacman.YacAttMap):
             already exists; null for prompt (on a per-asset basis), False to
             effectively auto-reply No to the prompt to replace existing file,
             and True to auto-replay Yes for existing asset replacement.
+        :param bool | NoneType force_large: how to handle case in large (> 5GB)
+            asset is to be pulled; null for prompt (on a per-asset basis), False
+            to effectively auto-reply No to the prompt,
+            and True to auto-replay Yes
+        :param float size_cutoff: maximum archive file size to download with
+            no prompt
         :param function(str, str) -> str get_json_url: how to build URL from
             genome server URL base, genome, and asset
         :param function(str) -> function build_signal_handler: how to create
@@ -680,9 +760,17 @@ class RefGenConf(yacman.YacAttMap):
             bundle_name = '{}/{}:{}'.format(*gat)
             archsize = archive_data[CFG_ARCHIVE_SIZE_KEY]
             _LOGGER.debug("'{}' archive size: {}".format(bundle_name, archsize))
-            if _is_large_archive(archsize) and not query_yes_no("Are you sure you want to download this large archive?"):
-                _LOGGER.info("pull action aborted by user")
-                return _null_return()
+
+            if not force_large and _is_large_archive(archsize, size_cutoff):
+                if force_large is False:
+                    _LOGGER.info("Skipping pull of {}/{}:{}; size: {}".
+                                 format(*gat, archsize))
+                    return _null_return()
+                if not query_yes_no("This archive exceeds the size cutoff ({} > {:.1f}GB) "
+                                    "Do you want to proceed?".format(archsize, size_cutoff)):
+                    _LOGGER.info("Skipping pull of {}/{}:{}; size: {}".
+                                 format(*gat, archsize))
+                    return _null_return()
 
             if not os.path.exists(genome_dir_path):
                 _LOGGER.debug("Creating directory: {}".format(genome_dir_path))
@@ -1077,29 +1165,33 @@ class RefGenConf(yacman.YacAttMap):
         if unsub_list:
             _LOGGER.info("Unsubscribed from: {}".format(", ".join(unsub_list)))
 
-    def getseq(self, genome, locus):
+    def getseq(self, genome, locus, as_str=False):
         """
         Return the sequence found in a selected range and chromosome.
         Something like the refget protocol.
 
         :param str genome: name of the sequence identifier
         :param str locus: coordinates of desired sequence, e.g. 'chr1:1-10'
+        :param bool as_str: whether to convert the resurned object to string
+            and return just the sequence
+        :return str | pyfaidx.FastaRecord | pyfaidx.Sequence: selected sequence
         """
         import pyfaidx
         fa = pyfaidx.Fasta(self.seek(genome, "fasta", strict_exists=True))
         locus_split = locus.split(":")
-
-        if len(locus_split) > 1:
-            start, end = locus_split[1].split("-")
-            _LOGGER.debug("chr: '{}', start: '{}', end: '{}'".
-                          format(locus_split[0], start, end))
-            print(fa[locus_split[0]][int(start):int(end)])
-        else:
-            print(fa[locus_split[0]])
+        chr = fa[locus_split[0]]
+        if len(locus_split) == 1:
+            return str(chr) if as_str else chr
+        start, end = locus_split[1].split("-")
+        _LOGGER.debug("chr: '{}', start: '{}', end: '{}'".
+                      format(locus_split[0], start, end))
+        return str(chr[int(start):int(end)]) \
+            if as_str else chr[int(start):int(end)]
 
     def get_genome_attributes(self, genome):
         """
-        Get the dictionary attributes, like checksum, contents, description. Does not return the assets.
+        Get the dictionary attributes, like checksum, contents, description.
+        Does not return the assets.
 
         :param str genome: genome to get the attributes dict for
         :return Mapping[str, str]: available genome attributes
@@ -1306,7 +1398,7 @@ def _download_url_progress(url, output_path, name, params=None):
         urllib.request.urlretrieve(url, filename=output_path, reporthook=dpb.update_to)
 
 
-def _genome_asset_path(genomes, gname, aname, tname, seek_key, enclosing_dir):
+def _genome_asset_path(genomes, gname, aname, tname, seek_key, enclosing_dir, no_tag=False):
     """
     Retrieve the raw path value for a particular asset for a particular genome.
 
@@ -1322,7 +1414,7 @@ def _genome_asset_path(genomes, gname, aname, tname, seek_key, enclosing_dir):
     :return str: raw path value for a particular asset for a particular genome
     :raise MissingGenomeError: if the given key-value pair collection does not
         contain as a top-level key the given genome ID
-    :raise MissingAssetError: if the given key-value pair colelction does
+    :raise MissingAssetError: if the given key-value pair collection does
         contain the given genome ID, but that key's mapping doesn't contain
         the given asset name as a key
     :raise GenomeConfigFormatError: if it's discovered during the query that
@@ -1332,19 +1424,25 @@ def _genome_asset_path(genomes, gname, aname, tname, seek_key, enclosing_dir):
     _assert_gat_exists(genomes, gname, aname, tname)
     asset_tag_data = genomes[gname][CFG_ASSETS_KEY][aname][CFG_ASSET_TAGS_KEY][tname]
     if enclosing_dir:
+        if no_tag:
+            return asset_tag_data[CFG_ASSET_PATH_KEY]
         return os.path.join(asset_tag_data[CFG_ASSET_PATH_KEY], tname)
     if seek_key is None:
         if aname in asset_tag_data[CFG_SEEK_KEYS_KEY]:
             seek_key = aname
         else:
+            if no_tag:
+                return asset_tag_data[CFG_ASSET_PATH_KEY]
             return os.path.join(asset_tag_data[CFG_ASSET_PATH_KEY], tname)
     try:
         seek_key_value = asset_tag_data[CFG_SEEK_KEYS_KEY][seek_key]
-        appendix = "" if seek_key_value == "." else seek_key_value
-        return os.path.join(asset_tag_data[CFG_ASSET_PATH_KEY], tname, appendix)
     except KeyError:
         raise MissingSeekKeyError("genome/asset:tag bundle '{}/{}:{}' exists, but seek_key '{}' is missing".
                                   format(gname, aname, tname, seek_key))
+    else:
+        if no_tag:
+            return os.path.join(asset_tag_data[CFG_ASSET_PATH_KEY], seek_key_value)
+        return os.path.join(asset_tag_data[CFG_ASSET_PATH_KEY], tname, seek_key_value)
 
 
 def _assert_gat_exists(genomes, gname, aname=None, tname=None, allow_incomplete=False):
@@ -1395,15 +1493,27 @@ def _assert_gat_exists(genomes, gname, aname=None, tname=None, allow_incomplete=
                                               "Build or pull the asset again.".format(gname, aname, tname))
 
 
-def _is_large_archive(size):
+def _is_large_archive(size, cutoff=10):
     """
     Determines if the file is large based on a string formatted as follows: 15.4GB
 
     :param str size:  size string
     :return bool: the decision
     """
+    def _str2float(x):
+        """
+        Remove any letters from the file size string and cast the remainder to float
+        """
+        return float("".join(c for c in x if c in '0123456789.'))
+
     _LOGGER.debug("Checking archive size: '{}'".format(size))
-    return size.endswith("TB") or (size.endswith("GB") and float("".join(c for c in size if c in '0123456789.')) > 5)
+    if size.endswith("MB"):
+        # convert to gigs
+        size = '{0:f}GB'.format(_str2float(size) / 1000)
+    if size.endswith("KB"):
+        # convert to gigs
+        size = '{0:f}GB'.format(_str2float(size) / 1000**2)
+    return size.endswith("TB") or (size.endswith("GB") and _str2float(size) > cutoff)
 
 
 def _list_remote(url, genome, order=None, as_str=True):

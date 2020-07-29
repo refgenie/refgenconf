@@ -350,18 +350,17 @@ class RefGenConf(YacAttMap):
         if check_exist(gf_relpath):
             return gf_relpath
 
-        # return option2 if no existence not enforced
-        if strict_exists is None:
-            return fullpath
-
         msg = "For genome '{}' the asset '{}.{}:{}' doesn't exist; tried: {}".\
             format(genome_name, asset_name, seek_key, tag_name,
                    ",".join([path, gf_relpath, fullpath]))
+        # return option2 if existence not enforced
+        if strict_exists is None:
+            _LOGGER.debug(msg)
         if strict_exists is True:
             raise OSError(msg)
         else:
             warnings.warn(msg, RuntimeWarning)
-        return path
+        return fullpath
 
     def get_default_tag(self, genome, asset, use_existing=True):
         """

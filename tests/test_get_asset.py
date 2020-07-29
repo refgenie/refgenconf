@@ -47,4 +47,3 @@ class TestGetAsset:
         seek_key_value = tag_data[CFG_SEEK_KEYS_KEY][seek_key]
         pth = os.path.join(ro_rgc[CFG_FOLDER_KEY], gname, aname, tname, seek_key_value)
         assert pth == ro_rgc.seek(gname, aname, tname, seek_key)
-        rmtree(os.path.join("/tmp", gname))

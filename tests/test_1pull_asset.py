@@ -22,28 +22,12 @@ __email__ = "vreuter@virginia.edu"
 
 DOWNLOAD_FUNCTION = "refgenconf.refgenconf.{}".format(_download_url_progress.__name__)
 
-@pytest.mark.parametrize(
-    ["genome", "asset", "tag"], [("rCRSd", "fasta", "default"), ("rCRSd", "fasta", "default")])
-def test_no_unpack(rgc, genome, asset, tag):
-    """ Tarballs must be unpacked. """
-    with pytest.raises(NotImplementedError):
-        rgc.pull(genome, asset, tag, unpack=False)
-
 
 @pytest.mark.parametrize(["gname", "aname"], [("human_repeats", 1), ("mouse_chrM2x", None)])
 def test_pull_asset_illegal_asset_name(rgc, gname, aname):
     """ TypeError occurs if asset argument is not iterable. """
     with pytest.raises(TypeError):
         rgc.pull(gname, aname)
-
-@pytest.mark.parametrize(["gname", "aname", "tname"],
-                         [("human_repeats", "bowtie2_index", "default"), ("mouse_chrM2x", "bwa_index", "default")])
-def test_negative_response_to_large_download_prompt(rgc, gname, aname, tname):
-    """ Test responsiveness to user abortion of pull request. """
-    with mock.patch("refgenconf.refgenconf._is_large_archive", return_value=True), \
-         mock.patch("refgenconf.refgenconf.query_yes_no", return_value=False):
-        gat, archive_dict, server_url = rgc.pull(gname, aname, tname)
-    assert gat == [gname, aname, tname]
 
 
 @pytest.mark.parametrize(["gname", "aname", "tname"],
@@ -115,7 +99,8 @@ def test_pull_asset_updates_genome_config(cfg_file, gname, aname, tname):
 
 
 @pytest.mark.parametrize(["gname", "aname", "tname", "state"],
-                         [("human_repeats", "fasta", "default", True),
+                         [("rCRSd", "fasta", "default", True),
+                          ("human_repeats", "fasta", "default", True),
                           ("mouse_chrM2x", "fasta", "default", False)])
 def test_pull_asset_works_with_nonwritable_and_writable_rgc(cfg_file, gname, aname, tname, state):
     rgc = RefGenConf(filepath=cfg_file, writable=state)

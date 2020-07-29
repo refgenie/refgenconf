@@ -30,3 +30,16 @@ class TestUpdateServers:
     def test_reset(self, my_rgc, urls):
         my_rgc.subscribe(urls=urls, reset=True)
         assert len(my_rgc[CFG_SERVERS_KEY]) == 1
+
+    @pytest.mark.parametrize("urls", [["http://refgenomes.databio.org"]])
+    def test_unsubscribe(self, my_rgc, urls):
+        my_rgc.subscribe(urls=urls)
+        my_rgc.unsubscribe(urls=urls)
+        assert len(my_rgc[CFG_SERVERS_KEY]) == 0
+
+    @pytest.mark.parametrize("urls", [["http://refge"], ["what"]])
+    def test_unsubscribe_invalid(self, my_rgc, urls):
+        my_rgc.subscribe(urls=["http://refgenomes.databio.org"])
+        servers = my_rgc[CFG_SERVERS_KEY]
+        my_rgc.unsubscribe(urls=urls)
+        assert my_rgc[CFG_SERVERS_KEY] == servers

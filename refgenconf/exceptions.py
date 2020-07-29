@@ -5,7 +5,7 @@ import abc
 __all__ = ["DownloadJsonError", "GenomeConfigFormatError", "MissingAssetError", "MissingRecipeError",
            "MissingConfigDataError", "MissingGenomeError", "MissingSeekKeyError", "MissingTagError",
            "RefgenconfError", "UnboundEnvironmentVariablesError", "ConfigNotCompliantError",
-           "RemoteDigestMismatchError", "UndefinedAliasError"]
+           "RemoteDigestMismatchError"]
 
 DOC_URL = "http://refgenie.databio.org/en/latest/genome_config/"
 
@@ -80,8 +80,3 @@ class RemoteDigestMismatchError(RefgenconfError):
               "because the remote version was not built from the same parent asset you have locally." \
             .format(asset, local_digest, remote_digest)
         super(RemoteDigestMismatchError, self).__init__(msg)
-
-
-class UndefinedAliasError(RefgenconfError):
-    """ Alias is is not defined. """
-    pass

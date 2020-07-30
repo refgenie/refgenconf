@@ -907,7 +907,9 @@ class RefGenConf(yacman.YacAttMap):
         except (yacman.UndefinedAliasError, AttributeError):
             if not fallback:
                 raise
-            return alias
+            if alias in self[CFG_GENOMES_KEY].alias_dict.keys():
+                return alias
+            raise
 
     def get_genome_alias(self, digest, fallback=False):
         """
@@ -1039,8 +1041,9 @@ class RefGenConf(yacman.YacAttMap):
         :param str asset: asset to be removed from its relatives' relatives list
         :param str tag: tag to be removed from its relatives' relatives list
         """
-        to_remove = "{}/{}:{}".format(
-            self.get_genome_alias_digest(alias=genome), asset, tag)
+        to_remove = "{}/{}:{}".\
+            format(self.get_genome_alias_digest(alias=genome, fallback=True),
+                   asset, tag)
         for rel_type in CFG_ASSET_RELATIVES_KEYS:
             tmp = CFG_ASSET_RELATIVES_KEYS[len(CFG_ASSET_RELATIVES_KEYS) - 1 - CFG_ASSET_RELATIVES_KEYS.index(rel_type)]
             tag_data = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag]

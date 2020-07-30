@@ -32,6 +32,7 @@ API_ID_ASSETS = CUSTOM_PFX + "_assets"
 API_ID_ARCHIVE = CUSTOM_PFX + "_archive"
 API_ID_DEFAULT_TAG = CUSTOM_PFX + "_default_tag"
 API_ID_ASSET_ATTRS = CUSTOM_PFX + "_asset_attrs"
+API_ID_GENOME_ATTRS = CUSTOM_PFX + "_genome_attrs"
 API_ID_DIGEST = CUSTOM_PFX + "_asset_digest"
 API_ID_RECIPE = CUSTOM_PFX + "_asset_recipe"
 API_ID_LOG = CUSTOM_PFX + "_asset_log"
@@ -49,6 +50,7 @@ OPERATION_IDS = {
     "v3_asset": {
         API_VERSION + API_ID_ARCHIVE: "archive",
         API_VERSION + API_ID_ASSET_ATTRS: "attributes",
+        API_VERSION + API_ID_GENOME_ATTRS: "genome attributes",
         API_VERSION + API_ID_DIGEST: "asset digest",
         API_VERSION + API_ID_ARCHIVE_DIGEST: "archive digest",
         API_VERSION + API_ID_RECIPE: "build recipe",
@@ -59,7 +61,8 @@ OPERATION_IDS = {
 API_IDS = [
     "API_ID_ASSETS", "API_ID_ARCHIVE", "API_ID_DEFAULT_TAG", "API_ID_LOG",
     "API_ID_DIGEST", "API_ID_RECIPE", "API_ID_ASSET_ATTRS", "API_ID_SPLASH",
-    "API_ID_ARCHIVE_DIGEST", "API_ID_ALIAS_ALIAS", "API_ID_ALIAS_DIGEST"
+    "API_ID_ARCHIVE_DIGEST", "API_ID_ALIAS_ALIAS", "API_ID_ALIAS_DIGEST",
+    "API_ID_GENOME_ATTRS"
 ]
 
 CFG_FOLDER_KEY = "genome_folder"

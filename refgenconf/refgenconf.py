@@ -913,7 +913,7 @@ class RefGenConf(yacman.YacAttMap):
         except (yacman.UndefinedAliasError, AttributeError):
             if not fallback:
                 raise
-            if alias in self[CFG_GENOMES_KEY].alias_dict.keys():
+            if alias in self[CFG_ALIASES_KEY].keys():
                 return alias
             raise
 
@@ -990,7 +990,7 @@ class RefGenConf(yacman.YacAttMap):
                     continue
                 _LOGGER.info("Determined server digest for local genome alias ({}): {}".format(genome, digest))
                 break
-        if not self.genomes.set_alias(alias=genome, key=digest, force=force):
+        if not self[CFG_GENOMES_KEY].set_alias(alias=genome, key=digest, force=force):
             return False
         _LOGGER.info("Setting genome alias ({}: {})".format(digest, genome))
         if self.file_path:
@@ -1015,19 +1015,22 @@ class RefGenConf(yacman.YacAttMap):
         if not os.path.isfile(fasta_path):
             raise FileNotFoundError("Can't initialize genome; FASTA file does "
                                     "not exist: {}".format(fasta_path))
-        d, c = SeqColClient({}).load_fasta(fasta_path)
+        ssc = SeqColClient({})
+        d, _ = ssc.load_fasta(fasta_path)
+        # retrieve annotated sequence digests list to save in a JSON file
+        asdl = ssc.retrieve(druid=d, reclimit=1)
         pth = self.get_asds_path(d)
         if not os.path.isdir(os.path.dirname(pth)):
             os.makedirs(os.path.dirname(pth))
         with open(pth, "w") as jfp:
-            json.dump(c, jfp)
+            json.dump(asdl, jfp)
         _LOGGER.debug("Saved ASDs to JSON: {}".format(pth))
         if self.file_path:
             with self as rgc:
                 rgc.set_genome_alias(genome=alias, digest=d, force=True)
         else:
             self.set_genome_alias(genome=alias, digest=d, force=True)
-        return d, c
+        return d, asdl
 
     def get_asds_path(self, genome):
         """

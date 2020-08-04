@@ -18,9 +18,11 @@ TEMPLATE_TARGET = "{}_{}__{}.flag"
 TEMPLATE_LOG = "build_log_{}__{}.md"
 ORI_LOG_NAME = "refgenie_log.md"
 BUILD_STATS_DIR = "_refgenie_build"
+ALIAS_DIR = "alias"
+DATA_DIR = "data"
 
 FILE_DIR_NAMES = ["TEMPLATE_RECIPE_JSON", "TEMPLATE_TARGET", "TEMPLATE_LOG",
-                  "ORI_LOG_NAME", "BUILD_STATS_DIR"]
+                  "ORI_LOG_NAME", "BUILD_STATS_DIR", "ALIAS_DIR", "DATA_DIR"]
 
 # project-wide definition of the endpoint IDs. They are used to establish the
 # way of communication between the server and the client so that changes of

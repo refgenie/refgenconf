@@ -20,14 +20,13 @@ from tqdm import tqdm
 from pkg_resources import iter_entry_points
 from tempfile import TemporaryDirectory
 
-from seqcol import SeqColClient
+from .seqcol import SeqColClient
 from attmap import PathExAttMap as PXAM
 from ubiquerg import checksum, is_url, query_yes_no, untar, is_writable, \
     parse_registry_path as prp
 
 from .const import *
-from .helpers import unbound_env_vars, asciify_json_dict, select_genome_config,\
-    get_dir_digest
+from .helpers import asciify_json_dict, select_genome_config, get_dir_digest
 from .exceptions import *
 
 _LOGGER = logging.getLogger(__name__)

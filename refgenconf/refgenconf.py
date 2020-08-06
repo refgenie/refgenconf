@@ -845,8 +845,6 @@ class RefGenConf(YacAttMap):
                                              for attr in ATTRS_COPY_PULL if attr in archive_data})
                 self.set_default_pointer(*gat)
                 self.update_genomes(genome=genome, data=genome_archive_data)
-            if asset == "fasta":
-                self.initialize_genome(fasta_path=self.seek(*gat), alias=alias)
             self.run_plugins(POST_PULL_HOOK)
             return gat, archive_data, server_url
 

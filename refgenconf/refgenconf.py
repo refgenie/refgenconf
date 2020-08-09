@@ -313,20 +313,23 @@ class RefGenConf(yacman.YacAttMap):
         self._symlink_alias(genome, asset, tag)
         return True
 
-    def get_symlink_path(self, genome, asset, tag=None):
+    def get_symlink_paths(self, genome, asset=None, tag=None, all=False):
         """
         Get path to the alias directory for the selected genome-asset-tag
 
         :param str genome: reference genome ID
         :param str asset: asset name
         :param str tag: tag name
-        :return str: path
+        :return dict:
         """
-        genome_id = self.get_genome_alias(genome, fallback=True)
-        tag = tag or self.get_default_tag(genome, asset)
-        return os.path.join(self.alias_dir, genome_id, asset, tag)
+        alias = _make_list_of_str(
+            self.get_genome_alias(genome, fallback=True, all=all))
+        if asset:
+            tag = tag or self.get_default_tag(genome, asset)
+        return {a: os.path.join(self.alias_dir, a, asset, tag)
+            if asset else os.path.join(self.alias_dir, a) for a in alias}
 
-    def _symlink_alias(self, genome, asset, tag=None, link_fun=lambda s, t: os.symlink(s, t)):
+    def _symlink_alias(self, genome, asset=None, tag=None, link_fun=lambda s, t: os.symlink(s, t)):
         """
         Go through the files in the asset directory and recreate the asset
         directory tree, but instead of copying files, create symbolic links
@@ -340,25 +343,35 @@ class RefGenConf(yacman.YacAttMap):
             """
             RePLace genome digest with human-readable genome ID, if exists
             """
-            return str.replace(genome_digest, genome_id)
+            return str.replace(genome_digest, alias)
 
         if not callable(link_fun) or len(finspect(link_fun).args) != 2:
             raise TypeError(
                 "Linking function must be a two-arg function (src, target)")
 
         genome_digest = self.get_genome_alias_digest(genome, fallback=True)
-        genome_id = self.get_genome_alias(genome, fallback=True)
-        tag = tag or self.get_default_tag(genome, asset)
-        target_path = self.get_symlink_path(genome, asset, tag)
-        os.makedirs(target_path, exist_ok=True)
-        src_path = self.seek_src(genome, asset, tag, enclosing_dir=True)
-        for root, dirs, files in os.walk(src_path):
-            curr_appendix = os.path.relpath(root, src_path)
-            for dir in dirs:
-                os.makedirs(os.path.join(target_path, curr_appendix, _rpl(dir)))
-            for file in files:
-                link_fun(os.path.join(root, file),
-                         os.path.join(target_path, curr_appendix, _rpl(file)))
+        if asset:
+            tag = tag or self.get_default_tag(genome, asset)
+            src_path = self.seek_src(genome, asset, tag, enclosing_dir=True)
+        else:
+            src_path = os.path.join(self.data_dir, genome_digest)
+        target_paths_mapping = \
+            self.get_symlink_paths(genome_digest, asset, tag, all=True)
+        for alias, path in target_paths_mapping.items():
+            os.makedirs(path, exist_ok=True)
+            for root, dirs, files in os.walk(src_path):
+                appendix = os.path.relpath(root, src_path)
+                for dir in dirs:
+                    try:
+                        os.makedirs(os.path.join(path, appendix, _rpl(dir)))
+                    except FileExistsError:
+                        continue
+                for file in files:
+                    try:
+                        link_fun(os.path.join(root, file),
+                                 os.path.join(path, appendix, _rpl(file)))
+                    except FileExistsError:
+                        continue
 
     def filepath(self, genome, asset, tag, ext=".tgz", dir=False):
         """
@@ -1047,13 +1060,15 @@ class RefGenConf(yacman.YacAttMap):
                 return alias
             raise
 
-    def get_genome_alias(self, digest, fallback=False):
+    def get_genome_alias(self, digest, fallback=False, all=False):
         """
         Get the human readable alias for a genome digest
 
         :param str digest: digest to find human-readable alias for
         :param bool fallback: whether to return the query digest in case
             of failure
+        :param bool all: whether to return all aliases instead of just the
+            first one
         :return str: human-readable alias
         :raise GenomeConfigFormatError: if "genome_digests" section does
             not exist in the config
@@ -1061,13 +1076,14 @@ class RefGenConf(yacman.YacAttMap):
             requested digest
         """
         try:
-            return self[CFG_GENOMES_KEY].get_alias(key=digest)
+            res = self[CFG_GENOMES_KEY].get_aliases(key=digest)
+            return res if all else res[0]
         except (yacman.UndefinedAliasError, AttributeError):
             if not fallback:
                 raise
             return digest
 
-    def remove_genome_alias(self, digest):
+    def remove_genome_aliases(self, digest, aliases=None):
         """
         Remove alias for a specified genome digest. This method will remove the
         digest both from the genomes object and from the aliases mapping
@@ -1075,19 +1091,31 @@ class RefGenConf(yacman.YacAttMap):
 
         :param str digest: genome digest to remove an alias for
         """
-        if self[CFG_GENOMES_KEY]:
-            if not self[CFG_GENOMES_KEY].remove_alias(key=digest):
-                return False
-        _LOGGER.info("Removing genome alias: {}".format(digest))
         if self.file_path:
             with self as r:
+                if r[CFG_GENOMES_KEY]:
+                    if not r[CFG_GENOMES_KEY].remove_aliases(key=digest,
+                                                                aliases=aliases):
+                        return False
+                    new_alias_dict = r[CFG_GENOMES_KEY].alias_dict
+                    try:
+                        r[CFG_ALIASES_KEY] = new_alias_dict
+                        return True
+                    except KeyError:
+                        return False
+        else:
+            if self[CFG_GENOMES_KEY]:
+                if not [CFG_GENOMES_KEY].remove_aliases(key=digest,
+                                                         aliases=aliases):
+                    return False
+                new_alias_dict = self[CFG_GENOMES_KEY].alias_dict
                 try:
-                    del r[CFG_ALIASES_KEY][digest]
+                    self[CFG_ALIASES_KEY] = new_alias_dict
                     return True
                 except KeyError:
                     return False
 
-    def set_genome_alias(self, genome, digest=None, servers=None, force=False,
+    def set_genome_alias(self, genome, digest=None, servers=None, overwrite=False,
                          get_json_url=lambda server: construct_request_url(server, API_ID_ALIAS_DIGEST)):
         """
         Assign a human-readable alias to a genome identifier.
@@ -1121,24 +1149,21 @@ class RefGenConf(yacman.YacAttMap):
                 _LOGGER.info("Determined server digest for local genome alias ({}): {}".format(genome, digest))
                 break
 
-        current_alias = None
-        try:
-            current_alias = self.get_genome_alias(digest=digest, fallback=True)
-        except yacman.UndefinedAliasError:
-            _LOGGER.debug("Setting a new alias")
-
-        if not self[CFG_GENOMES_KEY].set_alias(alias=genome, key=digest, force=force):
-            return False
-        _LOGGER.info("Setting genome alias ({}: {})".format(digest, genome))
         if self.file_path:
             with self as r:
-                r.setdefault(CFG_ALIASES_KEY, {})
-                if genome not in r[CFG_ALIASES_KEY]:
-                    r[CFG_ALIASES_KEY][digest] = genome
-        if current_alias and \
-                _swap_names_in_tree(os.path.join(self.alias_dir, current_alias),
-                                    genome, current_alias):
-            _LOGGER.info("Renamed files in: {}".format(self.alias_dir))
+                if not r[CFG_GENOMES_KEY].set_aliases(aliases=genome, key=digest, overwrite=overwrite):
+                    return False
+                new_alias_dict = r[CFG_GENOMES_KEY].alias_dict
+                r[CFG_ALIASES_KEY] = new_alias_dict
+                _LOGGER.info("Set genome alias ({}: {})".format(digest, genome))
+        else:
+            if not self[CFG_GENOMES_KEY].set_aliases(aliases=genome, key=digest, overwrite=overwrite):
+                return False
+            new_alias_dict = self[CFG_GENOMES_KEY].alias_dict
+            self[CFG_ALIASES_KEY] = new_alias_dict
+            _LOGGER.info("Set genome alias ({}: {})".format(digest, genome))
+        self._symlink_alias(genome=digest)
+        _LOGGER.info("Renamed files in: {}".format(self.alias_dir))
         return True
 
     def initialize_genome(self, fasta_path, alias):
@@ -1167,9 +1192,9 @@ class RefGenConf(yacman.YacAttMap):
         _LOGGER.debug("Saved ASDs to JSON: {}".format(pth))
         if self.file_path:
             with self as rgc:
-                rgc.set_genome_alias(genome=alias, digest=d, force=True)
+                rgc.set_genome_alias(genome=alias, digest=d, overwrite=True)
         else:
-            self.set_genome_alias(genome=alias, digest=d, force=True)
+            self.set_genome_alias(genome=alias, digest=d, overwrite=True)
         return d, asdl
 
     def get_asds_path(self, genome):
@@ -1933,7 +1958,7 @@ class DownloadProgressBar(tqdm):
 
 def _swap_names_in_tree(top, new_name, old_name):
     """
-    Rename all files and directories witin a directory tree and the
+    Rename all files and directories within a directory tree and the
     directory itself
 
     :param str top: path to the top of the tree to be renamed

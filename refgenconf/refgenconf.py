@@ -313,7 +313,7 @@ class RefGenConf(yacman.YacAttMap):
         self._symlink_alias(genome, asset, tag)
         return True
 
-    def get_symlink_paths(self, genome, asset=None, tag=None, all=False):
+    def get_symlink_paths(self, genome, asset=None, tag=None, all_aliases=False):
         """
         Get path to the alias directory for the selected genome-asset-tag
 
@@ -323,7 +323,7 @@ class RefGenConf(yacman.YacAttMap):
         :return dict:
         """
         alias = _make_list_of_str(
-            self.get_genome_alias(genome, fallback=True, all=all))
+            self.get_genome_alias(genome, fallback=True, all_aliases=all_aliases))
         if asset:
             tag = tag or self.get_default_tag(genome, asset)
         return {a: os.path.join(self.alias_dir, a, asset, tag)
@@ -356,7 +356,7 @@ class RefGenConf(yacman.YacAttMap):
         else:
             src_path = os.path.join(self.data_dir, genome_digest)
         target_paths_mapping = \
-            self.get_symlink_paths(genome_digest, asset, tag, all=True)
+            self.get_symlink_paths(genome_digest, asset, tag, all_aliases=True)
         for alias, path in target_paths_mapping.items():
             os.makedirs(path, exist_ok=True)
             for root, dirs, files in os.walk(src_path):
@@ -408,7 +408,7 @@ class RefGenConf(yacman.YacAttMap):
         return ", ".join(self.genomes_list(order))
 
     def seek(self, genome_name, asset_name, tag_name=None, seek_key=None,
-             strict_exists=None, enclosing_dir=False,
+             strict_exists=None, enclosing_dir=False, all_aliases=False,
              check_exist=lambda p: os.path.exists(p) or is_url(p)):
         """
         Seek path to a specified genome-asset-tag alias
@@ -435,8 +435,8 @@ class RefGenConf(yacman.YacAttMap):
             this configuration instance, but the requested asset is unknown
         """
         tag_name = tag_name or self.get_default_tag(genome_name, asset_name)
-        genome_id = self.get_genome_alias(genome_name, fallback=True)
         genome_digest = self.get_genome_alias_digest(genome_name, fallback=True)
+        genome_ids = _make_list_of_str(self.get_genome_alias(genome_digest, fallback=True, all_aliases=all_aliases))
         self._assert_gat_exists(genome_name, asset_name, tag_name)
         asset_tag_data = self[CFG_GENOMES_KEY][genome_name][CFG_ASSETS_KEY][asset_name][CFG_ASSET_TAGS_KEY][tag_name]
         if not seek_key:
@@ -448,19 +448,22 @@ class RefGenConf(yacman.YacAttMap):
             seek_val = asset_tag_data[CFG_SEEK_KEYS_KEY][seek_key]
         if enclosing_dir:
             seek_val = ""
-        fullpath = os.path.join(self.alias_dir, genome_name, asset_name, tag_name, seek_val)
-        fullpath = fullpath.replace(genome_digest, genome_id)
-        if check_exist(fullpath):
-            return fullpath
+        fullpath = os.path.join(self.alias_dir, genome_digest, asset_name, tag_name, seek_val)
+        fullpaths = [fullpath.replace(genome_digest, gid) for gid in genome_ids]
+        paths_existence = [check_exist(fp) for fp in fullpaths]
+        if all(paths_existence):
+            return fullpaths if all_aliases else fullpaths[0]
+        nonexistent_idx = [i for i, x in enumerate(paths_existence) if not x]
+        nonexistent_pths = [fullpaths[i] for i in nonexistent_idx]
         msg = "For genome '{}' alias to the asset '{}.{}:{}' doesn't exist: {}"\
-            .format(genome_name, asset_name, seek_key, tag_name, fullpath)
+            .format(genome_name, asset_name, seek_key, tag_name, ", ".join(nonexistent_pths))
         if strict_exists is None:
             _LOGGER.debug(msg)
         if strict_exists is True:
             raise OSError(msg)
         else:
             warnings.warn(msg, RuntimeWarning)
-        return fullpath
+        return fullpaths if all_aliases else fullpaths[0]
 
     def seek_src(self, genome_name, asset_name, tag_name=None, seek_key=None,
              strict_exists=None, enclosing_dir=False,
@@ -1060,15 +1063,15 @@ class RefGenConf(yacman.YacAttMap):
                 return alias
             raise
 
-    def get_genome_alias(self, digest, fallback=False, all=False):
+    def get_genome_alias(self, digest, fallback=False, all_aliases=False):
         """
         Get the human readable alias for a genome digest
 
         :param str digest: digest to find human-readable alias for
         :param bool fallback: whether to return the query digest in case
             of failure
-        :param bool all: whether to return all aliases instead of just the
-            first one
+        :param bool all_aliases: whether to return all aliases instead of just
+            the first one
         :return str: human-readable alias
         :raise GenomeConfigFormatError: if "genome_digests" section does
             not exist in the config
@@ -1077,7 +1080,7 @@ class RefGenConf(yacman.YacAttMap):
         """
         try:
             res = self[CFG_GENOMES_KEY].get_aliases(key=digest)
-            return res if all else res[0]
+            return res if all_aliases else res[0]
         except (yacman.UndefinedAliasError, AttributeError):
             if not fallback:
                 raise
@@ -1094,8 +1097,8 @@ class RefGenConf(yacman.YacAttMap):
         if self.file_path:
             with self as r:
                 if r[CFG_GENOMES_KEY]:
-                    if not r[CFG_GENOMES_KEY].remove_aliases(key=digest,
-                                                                aliases=aliases):
+                    if not r[CFG_GENOMES_KEY].remove_aliases(
+                            key=digest, aliases=aliases):
                         return False
                     new_alias_dict = r[CFG_GENOMES_KEY].alias_dict
                     try:
@@ -1105,8 +1108,8 @@ class RefGenConf(yacman.YacAttMap):
                         return False
         else:
             if self[CFG_GENOMES_KEY]:
-                if not [CFG_GENOMES_KEY].remove_aliases(key=digest,
-                                                         aliases=aliases):
+                if not [CFG_GENOMES_KEY].remove_aliases(
+                        key=digest, aliases=aliases):
                     return False
                 new_alias_dict = self[CFG_GENOMES_KEY].alias_dict
                 try:
@@ -1348,8 +1351,6 @@ class RefGenConf(yacman.YacAttMap):
         if files:
             req_dict = {"genome": self.get_genome_alias_digest(genome, fallback=True),
                         "asset": asset, "tag": tag}
-            alias_req_dict = {"genome": self.get_genome_alias(genome, fallback=True),
-                        "asset": asset, "tag": tag}
             _LOGGER.debug("Attempting removal: {}".format(req_dict))
             if not force and not query_yes_no(
                     "Remove '{}/{}:{}'?".format(genome, asset, tag)):
@@ -1357,12 +1358,12 @@ class RefGenConf(yacman.YacAttMap):
                 return
             removed = []
             asset_path = self.seek_src(genome, asset, tag, enclosing_dir=True,
-                                   strict_exists=False)
-            alias_asset_path = self.seek(genome, asset, tag, enclosing_dir=True,
-                                         strict_exists=False)
+                                       strict_exists=False)
+            alias_asset_paths = self.seek(genome, asset, tag, enclosing_dir=True,
+                                         strict_exists=False, all_aliases=True)
             if os.path.exists(asset_path):
-                removed.append(_remove(asset_path))
-                removed.append(_remove(alias_asset_path))
+                removed.extend(_remove(asset_path))
+                removed.extend([_remove(p) for p in alias_asset_paths])
                 if self.file_path:
                     with self as r:
                         r.cfg_remove_assets(genome, asset, tag, relationships, aliases)
@@ -1384,19 +1385,21 @@ class RefGenConf(yacman.YacAttMap):
             except (KeyError, TypeError):
                 asset_dir = os.path.abspath(
                     os.path.join(asset_path, os.path.pardir))
-                alias_asset_dir = os.path.abspath(
-                    os.path.join(alias_asset_path, os.path.pardir))
+                alias_asset_dirs = \
+                    [os.path.abspath(os.path.join(p, os.path.pardir))
+                     for p in alias_asset_paths]
                 _entity_dir_removal_log(asset_dir, "asset", req_dict, removed)
-                removed.append(_remove(alias_asset_dir))
+                removed.extend([_remove(p) for p in alias_asset_dirs])
                 try:
                     self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY]
                 except (KeyError, TypeError):
-                    genome_dir = \
-                        os.path.abspath(os.path.join(asset_dir, os.path.pardir))
-                    alias_genome_dir = \
-                        os.path.abspath(os.path.join(alias_asset_dir, os.path.pardir))
+                    genome_dir = os.path.abspath(
+                        os.path.join(asset_dir, os.path.pardir))
+                    alias_genome_dirs = \
+                        [os.path.abspath(os.path.join(p, os.path.pardir))
+                         for p in alias_asset_dirs]
                     _entity_dir_removal_log(genome_dir, "genome", req_dict, removed)
-                    removed.append(_remove(alias_genome_dir))
+                    removed.extend([_remove(p) for p in alias_genome_dirs])
                     try:
                         if self.file_path:
                             with self as r:
@@ -1478,12 +1481,12 @@ class RefGenConf(yacman.YacAttMap):
         if aliases and (self[CFG_GENOMES_KEY] is None
                         or genome not in self[CFG_GENOMES_KEY]):
             try:
-                self.remove_genome_alias(self.get_genome_alias_digest(genome))
+                self.remove_genome_aliases(self.get_genome_alias_digest(genome))
             except AttributeError:
-                # if no genomes, (genomes are None) we need to manuallyremove
+                # if no genomes, (genomes are None) we need to manually remove
                 # all the keys from the aliases mapping in the config
-                digests = self[CFG_ALIASES_KEY].keys()
-                [self[CFG_ALIASES_KEY].__delitem__(k) for k in digests]
+                for k in self[CFG_ALIASES_KEY].keys():
+                    self[CFG_ALIASES_KEY].__delitem__(k)
         return self
 
     def update_genomes(self, genome, data=None):

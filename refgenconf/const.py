@@ -76,7 +76,7 @@ CFG_ARCHIVE_CONFIG_KEY = "genome_archive_config"
 CFG_REMOTE_URL_BASE_KEY = "remote_url_base"
 CFG_VERSION_KEY = "config_version"
 CFG_GENOMES_KEY = "genomes"
-CFG_ALIASES_KEY = "genome_aliases"
+CFG_ALIASES_KEY = "aliases"
 
 CFG_CHECKSUM_KEY = "genome_digest"
 CFG_GENOME_DESC_KEY = "genome_description"

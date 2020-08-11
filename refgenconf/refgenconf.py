@@ -74,14 +74,6 @@ class RefGenConf(yacman.YacAttMap):
         super(RefGenConf, self).__init__(filepath=filepath, entries=entries,
                                          writable=writable, wait_max=wait_max,
                                          skip_read_lock=skip_read_lock)
-        if CFG_ALIASES_KEY in self:
-            if not isinstance(self[CFG_ALIASES_KEY], PXAM):
-                if self[CFG_ALIASES_KEY]:
-                    _LOGGER.warning("'{k}' value is a {t_old}, not a {t_new}; setting to empty {t_new}".
-                                    format(k=CFG_ALIASES_KEY, t_old=type(self[CFG_ALIASES_KEY]).__name__, t_new=PXAM.__name__))
-                self[CFG_ALIASES_KEY] = PXAM()
-        else:
-            self[CFG_ALIASES_KEY] = PXAM()
 
         if CFG_GENOMES_KEY in self:
             if not isinstance(self[CFG_GENOMES_KEY], PXAM):
@@ -95,7 +87,9 @@ class RefGenConf(yacman.YacAttMap):
         self[CFG_GENOMES_KEY] = \
             yacman.AliasedYacAttMap(
                 entries=self[CFG_GENOMES_KEY],
-                aliases=lambda: self.__getitem__(CFG_ALIASES_KEY, expand=False),
+                aliases=lambda x: {k: v.__getitem__(CFG_ALIASES_KEY)
+                                   for k, v in x.items()},
+                aliases_strict=True,
                 exact=genome_exact
             )
         if CFG_FOLDER_KEY not in self:
@@ -320,6 +314,8 @@ class RefGenConf(yacman.YacAttMap):
         :param str genome: reference genome ID
         :param str asset: asset name
         :param str tag: tag name
+        :param bool all_aliases: whether to return a collection of symbolic
+            links or just the first one from the alias list
         :return dict:
         """
         alias = _make_list_of_str(
@@ -427,6 +423,8 @@ class RefGenConf(yacman.YacAttMap):
             directory should be returned, e.g. for a fasta asset that has 3
             seek_keys pointing to 3 files in an asset dir, that asset dir
             is returned
+        :param bool all_aliases: whether to return paths to all asset aliases or
+            just the first one
         :return str: path to the asset
         :raise TypeError: if the existence check is not a one-arg function
         :raise refgenconf.MissingGenomeError: if the named assembly isn't known
@@ -453,8 +451,8 @@ class RefGenConf(yacman.YacAttMap):
         paths_existence = [check_exist(fp) for fp in fullpaths]
         if all(paths_existence):
             return fullpaths if all_aliases else fullpaths[0]
-        nonexistent_idx = [i for i, x in enumerate(paths_existence) if not x]
-        nonexistent_pths = [fullpaths[i] for i in nonexistent_idx]
+        nonexistent_pths = [fullpaths[p] for p in
+                            [i for i, x in enumerate(paths_existence) if not x]]
         msg = "For genome '{}' alias to the asset '{}.{}:{}' doesn't exist: {}"\
             .format(genome_name, asset_name, seek_key, tag_name, ", ".join(nonexistent_pths))
         if strict_exists is None:
@@ -1047,19 +1045,17 @@ class RefGenConf(yacman.YacAttMap):
 
         :param str alias: alias to find digest for
         :param bool fallback: whether to return the query alias in case
-            of failure
-        :return str: human-readable alias
-        :raise GenomeConfigFormatError: if "genome_digests" section does
-            not exist in the config
-        :raise UndefinedAliasError: if a no alias has been defined for the
-            requested digest
+            of failure and in case it is one of the digests
+        :return str: genome digest
+        :raise UndefinedAliasError: if the specified alias has been assigned to
+            any digests
         """
         try:
             return self[CFG_GENOMES_KEY].get_key(alias=alias)
         except (yacman.UndefinedAliasError, AttributeError):
             if not fallback:
                 raise
-            if alias in self[CFG_ALIASES_KEY].keys():
+            if alias in self.genome_aliases.values():
                 return alias
             raise
 
@@ -1072,7 +1068,7 @@ class RefGenConf(yacman.YacAttMap):
             of failure
         :param bool all_aliases: whether to return all aliases instead of just
             the first one
-        :return str: human-readable alias
+        :return str | list[str]: human-readable aliases
         :raise GenomeConfigFormatError: if "genome_digests" section does
             not exist in the config
         :raise UndefinedAliasError: if a no alias has been defined for the
@@ -1084,7 +1080,9 @@ class RefGenConf(yacman.YacAttMap):
         except (yacman.UndefinedAliasError, AttributeError):
             if not fallback:
                 raise
-            return digest
+            if digest in self.genome_aliases.keys():
+                return digest
+            raise
 
     def remove_genome_aliases(self, digest, aliases=None):
         """
@@ -1093,6 +1091,9 @@ class RefGenConf(yacman.YacAttMap):
         in tbe config
 
         :param str digest: genome digest to remove an alias for
+        :param list[str] aliases: a collection to aliases to remove for the
+            genome. If not provided, all aliases for the digest will be remove
+        :return bool: whether the removal has been performed
         """
         if self.file_path:
             with self as r:
@@ -1130,6 +1131,8 @@ class RefGenConf(yacman.YacAttMap):
 
         :param str genome: name of the genome to assign to an identifier
         :param str digest: identifier to use
+        :param bool overwrite: whether all the previously set aliases should be
+            removed and just the current one stored
         :return bool: whether the alias has been established
         """
         if not digest:
@@ -1177,7 +1180,8 @@ class RefGenConf(yacman.YacAttMap):
         for the FASTA file in the genome directory.
 
         :param str fasta_path: path to a FASTA file to initialize genome with
-        :return str: human-readable name for the genome
+        :param str alias: alias to set for the genome
+        :return str, list[dict[]]: human-readable name for the genome
         """
         _LOGGER.info("Initializing genome: {}".format(alias))
         if not os.path.isfile(fasta_path):

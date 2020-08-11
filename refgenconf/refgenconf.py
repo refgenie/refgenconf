@@ -1098,28 +1098,32 @@ class RefGenConf(yacman.YacAttMap):
         if self.file_path:
             with self as r:
                 if r[CFG_GENOMES_KEY]:
-                    if not r[CFG_GENOMES_KEY].remove_aliases(
-                            key=digest, aliases=aliases):
+                    if not r[CFG_GENOMES_KEY].remove_aliases(key=digest,
+                                                             aliases=aliases):
                         return False
-                    new_alias_dict = r[CFG_GENOMES_KEY].alias_dict
                     try:
-                        r[CFG_ALIASES_KEY] = new_alias_dict
-                        return True
+                        r[CFG_GENOMES_KEY][digest][CFG_ALIASES_KEY] = \
+                            r[CFG_GENOMES_KEY].get_aliases(digest)
                     except KeyError:
                         return False
+                    except yacman.UndefinedAliasError:
+                        r[CFG_GENOMES_KEY][digest][CFG_ALIASES_KEY] = []
+                    return True
         else:
             if self[CFG_GENOMES_KEY]:
-                if not [CFG_GENOMES_KEY].remove_aliases(
-                        key=digest, aliases=aliases):
+                if not self[CFG_GENOMES_KEY].remove_aliases(key=digest,
+                                                            aliases=aliases):
                     return False
-                new_alias_dict = self[CFG_GENOMES_KEY].alias_dict
                 try:
-                    self[CFG_ALIASES_KEY] = new_alias_dict
-                    return True
+                    self[CFG_GENOMES_KEY][digest][CFG_ALIASES_KEY] = \
+                        self[CFG_GENOMES_KEY].get_aliases(digest)
                 except KeyError:
                     return False
+                except yacman.UndefinedAliasError:
+                    self[CFG_GENOMES_KEY][digest][CFG_ALIASES_KEY] = []
+                return True
 
-    def set_genome_alias(self, genome, digest=None, servers=None, overwrite=False,
+    def set_genome_alias(self, genome, digest=None, servers=None, overwrite=False, reset_digest=False,
                          get_json_url=lambda server: construct_request_url(server, API_ID_ALIAS_DIGEST)):
         """
         Assign a human-readable alias to a genome identifier.
@@ -1148,26 +1152,41 @@ class RefGenConf(yacman.YacAttMap):
                     digest = _download_json(url_alias)
                 except DownloadJsonError:
                     if cnt == len(servers):
-                        _LOGGER.error("Genome '{}' not available on any of the following "
-                                      "servers: {}".format(genome, ", ".join(servers)))
+                        _LOGGER.error(
+                            "Genome '{}' not available on any of the following "
+                            "servers: {}".format(genome, ", ".join(servers)))
                         return False
                     continue
-                _LOGGER.info("Determined server digest for local genome alias ({}): {}".format(genome, digest))
+                _LOGGER.info(
+                    "Determined server digest for local genome alias ({}): {}".
+                        format(genome, digest))
                 break
+
+        def _check_and_set_alias(rgc, d, a):
+            """
+            Set genome alias only if the key alias can be set successfully and
+            genome exists
+            """
+            if d not in rgc[CFG_GENOMES_KEY] or not \
+                    r[CFG_GENOMES_KEY].set_aliases(
+                        aliases=a, key=d, overwrite=overwrite,
+                        reset_key=reset_digest):
+                return False
+            try:
+                rgc[CFG_GENOMES_KEY][d][CFG_ALIASES_KEY] = \
+                    rgc[CFG_GENOMES_KEY].get_aliases(d)
+            except KeyError:
+                return False
+            _LOGGER.info("Set genome alias ({}: {})".format(d, a))
+            return True
 
         if self.file_path:
             with self as r:
-                if not r[CFG_GENOMES_KEY].set_aliases(aliases=genome, key=digest, overwrite=overwrite):
+                if not _check_and_set_alias(rgc=r, d=digest, a=genome):
                     return False
-                new_alias_dict = r[CFG_GENOMES_KEY].alias_dict
-                r[CFG_ALIASES_KEY] = new_alias_dict
-                _LOGGER.info("Set genome alias ({}: {})".format(digest, genome))
         else:
-            if not self[CFG_GENOMES_KEY].set_aliases(aliases=genome, key=digest, overwrite=overwrite):
+            if not _check_and_set_alias(rgc=self, d=digest, a=genome):
                 return False
-            new_alias_dict = self[CFG_GENOMES_KEY].alias_dict
-            self[CFG_ALIASES_KEY] = new_alias_dict
-            _LOGGER.info("Set genome alias ({}: {})".format(digest, genome))
         self._symlink_alias(genome=digest)
         _LOGGER.info("Renamed files in: {}".format(self.alias_dir))
         return True

@@ -1095,6 +1095,7 @@ class RefGenConf(yacman.YacAttMap):
             genome. If not provided, all aliases for the digest will be remove
         :return bool: whether the removal has been performed
         """
+        # TODO: remove symlinked aliases on disk, wrap repeated logic in func
         if self.file_path:
             with self as r:
                 if r[CFG_GENOMES_KEY]:
@@ -1140,6 +1141,12 @@ class RefGenConf(yacman.YacAttMap):
         :return bool: whether the alias has been established
         """
         if not digest:
+            if isinstance(genome, list):
+                if len(genome) > 1:
+                    raise NotImplementedError(
+                        "Can look up just one digest at a time")
+                else:
+                    genome = genome[0]
             cnt = 0
             if servers is None:
                 servers = self[CFG_SERVERS_KEY]

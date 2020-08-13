@@ -318,14 +318,20 @@ class RefGenConf(yacman.YacAttMap):
             links or just the first one from the alias list
         :return dict:
         """
-        alias = _make_list_of_str(
-            self.get_genome_alias(genome, fallback=True, all_aliases=all_aliases))
+        try:
+            defined_aliases = \
+                self.get_genome_alias(
+                    genome, fallback=True, all_aliases=all_aliases)
+        except yacman.UndefinedAliasError:
+            return {}
+        alias = _make_list_of_str(defined_aliases)
         if asset:
             tag = tag or self.get_default_tag(genome, asset)
-        return {a: os.path.join(self.alias_dir, a, asset, tag)
-            if asset else os.path.join(self.alias_dir, a) for a in alias}
+        return {a: os.path.join(self.alias_dir, a, asset, tag) if asset else
+            os.path.join(self.alias_dir, a) for a in alias}
 
-    def _symlink_alias(self, genome, asset=None, tag=None, link_fun=lambda s, t: os.symlink(s, t)):
+    def _symlink_alias(self, genome, asset=None, tag=None,
+                       link_fun=lambda s, t: os.symlink(s, t)):
         """
         Go through the files in the asset directory and recreate the asset
         directory tree, but instead of copying files, create symbolic links
@@ -344,7 +350,7 @@ class RefGenConf(yacman.YacAttMap):
         if not callable(link_fun) or len(finspect(link_fun).args) != 2:
             raise TypeError(
                 "Linking function must be a two-arg function (src, target)")
-
+        created = []
         genome_digest = self.get_genome_alias_digest(genome, fallback=True)
         if asset:
             tag = tag or self.get_default_tag(genome, asset)
@@ -354,20 +360,23 @@ class RefGenConf(yacman.YacAttMap):
         target_paths_mapping = \
             self.get_symlink_paths(genome_digest, asset, tag, all_aliases=True)
         for alias, path in target_paths_mapping.items():
-            os.makedirs(path, exist_ok=True)
-            for root, dirs, files in os.walk(src_path):
-                appendix = os.path.relpath(root, src_path)
-                for dir in dirs:
-                    try:
-                        os.makedirs(os.path.join(path, appendix, _rpl(dir)))
-                    except FileExistsError:
-                        continue
-                for file in files:
-                    try:
-                        link_fun(os.path.join(root, file),
-                                 os.path.join(path, appendix, _rpl(file)))
-                    except FileExistsError:
-                        continue
+            if not os.path.exists(path):
+                os.makedirs(path, exist_ok=True)
+                for root, dirs, files in os.walk(src_path):
+                    appendix = os.path.relpath(root, src_path)
+                    for dir in dirs:
+                        try:
+                            os.makedirs(os.path.join(path, appendix, _rpl(dir)))
+                        except FileExistsError:
+                            continue
+                    for file in files:
+                        try:
+                            link_fun(os.path.join(root, file),
+                                     os.path.join(path, appendix, _rpl(file)))
+                        except FileExistsError:
+                            continue
+                created.append(path)
+        _LOGGER.info("Created directories: {}".format(", ".join(created)))
 
     def filepath(self, genome, asset, tag, ext=".tgz", dir=False):
         """
@@ -1142,6 +1151,22 @@ class RefGenConf(yacman.YacAttMap):
             removed and just the current one stored
         :return bool: whether the alias has been established
         """
+        def _check_and_set_alias(rgc, d, a):
+            """
+            Set genome alias only if the key alias can be set successfully and
+            genome exists
+            """
+            _assert_gat_exists(rgc[CFG_GENOMES_KEY], gname=digest)
+            sa, ra = rgc[CFG_GENOMES_KEY].set_aliases(
+                aliases=a, key=d, overwrite=overwrite, reset_key=reset_digest)
+            try:
+                rgc[CFG_GENOMES_KEY][d][CFG_ALIASES_KEY] = \
+                    rgc[CFG_GENOMES_KEY].get_aliases(d)
+            except KeyError:
+                return [], []
+            _LOGGER.info("Set genome alias ({}: {})".format(d, ", ".join(a)))
+            return sa, ra
+
         if not digest:
             if isinstance(genome, list):
                 if len(genome) > 1:
@@ -1170,34 +1195,23 @@ class RefGenConf(yacman.YacAttMap):
                     "Determined server digest for local genome alias ({}): {}".
                         format(genome, digest))
                 break
-
-        def _check_and_set_alias(rgc, d, a):
-            """
-            Set genome alias only if the key alias can be set successfully and
-            genome exists
-            """
-            if d not in rgc[CFG_GENOMES_KEY] or not \
-                    r[CFG_GENOMES_KEY].set_aliases(
-                        aliases=a, key=d, overwrite=overwrite,
-                        reset_key=reset_digest):
-                return False
-            try:
-                rgc[CFG_GENOMES_KEY][d][CFG_ALIASES_KEY] = \
-                    rgc[CFG_GENOMES_KEY].get_aliases(d)
-            except KeyError:
-                return False
-            _LOGGER.info("Set genome alias ({}: {})".format(d, a))
-            return True
-
+        symlink_mapping = self.get_symlink_paths(genome=digest, all_aliases=True)
         if self.file_path:
             with self as r:
-                if not _check_and_set_alias(rgc=r, d=digest, a=genome):
-                    return False
+                set_aliases, removed_aliases = \
+                    _check_and_set_alias(rgc=r, d=digest, a=genome)
         else:
-            if not _check_and_set_alias(rgc=self, d=digest, a=genome):
-                return False
+            set_aliases, removed_aliases = \
+                _check_and_set_alias(rgc=self, d=digest, a=genome)
+        if not set_aliases:
+            return False
+        dirs_to_remove = [symlink_mapping[k] for k in removed_aliases]
+        for d in dirs_to_remove:
+            shutil.rmtree(d)
+        if dirs_to_remove:
+            _LOGGER.info("Removed directories: {}".
+                         format(", ".join(dirs_to_remove)))
         self._symlink_alias(genome=digest)
-        _LOGGER.info("Renamed files in: {}".format(self.alias_dir))
         return True
 
     def initialize_genome(self, fasta_path, alias):

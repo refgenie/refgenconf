@@ -376,7 +376,27 @@ class RefGenConf(yacman.YacAttMap):
                         except FileExistsError:
                             continue
                 created.append(path)
-        _LOGGER.info("Created directories: {}".format(", ".join(created)))
+        if created:
+            _LOGGER.info("Created alias directories: \n - {}".
+                         format("\n - ".join(created)))
+
+    @staticmethod
+    def _remove_symlink_alias(symlink_dict, aliases_to_remove):
+        """
+        Remove the symlink directories
+
+        :param list[str] | str aliases_to_remove: collection of aliases to
+            remove the symlink directories for
+        :param dict symlink_dict: a dictionary mapping alias names to the
+            respective symlink directories
+        """
+        dirs_to_remove = [symlink_dict[k]
+                          for k in _make_list_of_str(aliases_to_remove)]
+        for d in dirs_to_remove:
+            shutil.rmtree(d)
+        if dirs_to_remove:
+            _LOGGER.info("Removed alias directories: \n - {}".
+                         format("\n - ".join(dirs_to_remove)))
 
     def filepath(self, genome, asset, tag, ext=".tgz", dir=False):
         """
@@ -1122,18 +1142,17 @@ class RefGenConf(yacman.YacAttMap):
                     rgc[CFG_GENOMES_KEY][d][CFG_ALIASES_KEY] = []
                 return rmd
 
+        # get the symlink mapping before the removal for _remove_symlink_alias
         symlink_mapping = self.get_symlink_paths(genome=digest, all_aliases=True)
         if self.file_path:
             with self as r:
-                removed = _check_and_remove_alias(r, digest, aliases)
+                removed_aliases = _check_and_remove_alias(r, digest, aliases)
         else:
-            removed = _check_and_remove_alias(self, digest, aliases)
-        if not removed:
+            removed_aliases = _check_and_remove_alias(self, digest, aliases)
+        if not removed_aliases:
             return [], []
-        dirs_to_remove = [symlink_mapping[k] for k in removed]
-        for d in dirs_to_remove:
-            shutil.rmtree(d)
-        return removed, dirs_to_remove
+        self._remove_symlink_alias(symlink_mapping, removed_aliases)
+        return removed_aliases, dirs_to_remove
 
     def set_genome_alias(self, genome, digest=None, servers=None, overwrite=False, reset_digest=False,
                          get_json_url=lambda server: construct_request_url(server, API_ID_ALIAS_DIGEST)):
@@ -1195,6 +1214,8 @@ class RefGenConf(yacman.YacAttMap):
                     "Determined server digest for local genome alias ({}): {}".
                         format(genome, digest))
                 break
+
+        # get the symlink mapping before the removal for _remove_symlink_alias
         symlink_mapping = self.get_symlink_paths(genome=digest, all_aliases=True)
         if self.file_path:
             with self as r:
@@ -1205,12 +1226,7 @@ class RefGenConf(yacman.YacAttMap):
                 _check_and_set_alias(rgc=self, d=digest, a=genome)
         if not set_aliases:
             return False
-        dirs_to_remove = [symlink_mapping[k] for k in removed_aliases]
-        for d in dirs_to_remove:
-            shutil.rmtree(d)
-        if dirs_to_remove:
-            _LOGGER.info("Removed directories: {}".
-                         format(", ".join(dirs_to_remove)))
+        self._remove_symlink_alias(symlink_mapping, removed_aliases)
         self._symlink_alias(genome=digest)
         return True
 

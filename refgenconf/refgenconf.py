@@ -1095,34 +1095,36 @@ class RefGenConf(yacman.YacAttMap):
             genome. If not provided, all aliases for the digest will be remove
         :return bool: whether the removal has been performed
         """
-        # TODO: remove symlinked aliases on disk, wrap repeated logic in func
+        def _check_and_remove_alias(rgc, d, a):
+            """
+            Remove genome alias only if the alias can be remove successfully and
+            genome exists
+            """
+            if rgc[CFG_GENOMES_KEY]:
+                rmd = rgc[CFG_GENOMES_KEY].remove_aliases(key=d, aliases=a)
+                if not rmd:
+                    return rmd
+                try:
+                    rgc[CFG_GENOMES_KEY][d][CFG_ALIASES_KEY] = \
+                        rgc[CFG_GENOMES_KEY].get_aliases(d)
+                except KeyError:
+                    return []
+                except yacman.UndefinedAliasError:
+                    rgc[CFG_GENOMES_KEY][d][CFG_ALIASES_KEY] = []
+                return rmd
+
+        symlink_mapping = self.get_symlink_paths(genome=digest, all_aliases=True)
         if self.file_path:
             with self as r:
-                if r[CFG_GENOMES_KEY]:
-                    if not r[CFG_GENOMES_KEY].remove_aliases(key=digest,
-                                                             aliases=aliases):
-                        return False
-                    try:
-                        r[CFG_GENOMES_KEY][digest][CFG_ALIASES_KEY] = \
-                            r[CFG_GENOMES_KEY].get_aliases(digest)
-                    except KeyError:
-                        return False
-                    except yacman.UndefinedAliasError:
-                        r[CFG_GENOMES_KEY][digest][CFG_ALIASES_KEY] = []
-                    return True
+                removed = _check_and_remove_alias(r, digest, aliases)
         else:
-            if self[CFG_GENOMES_KEY]:
-                if not self[CFG_GENOMES_KEY].remove_aliases(key=digest,
-                                                            aliases=aliases):
-                    return False
-                try:
-                    self[CFG_GENOMES_KEY][digest][CFG_ALIASES_KEY] = \
-                        self[CFG_GENOMES_KEY].get_aliases(digest)
-                except KeyError:
-                    return False
-                except yacman.UndefinedAliasError:
-                    self[CFG_GENOMES_KEY][digest][CFG_ALIASES_KEY] = []
-                return True
+            removed = _check_and_remove_alias(self, digest, aliases)
+        if not removed:
+            return [], []
+        dirs_to_remove = [symlink_mapping[k] for k in removed]
+        for d in dirs_to_remove:
+            shutil.rmtree(d)
+        return removed, dirs_to_remove
 
     def set_genome_alias(self, genome, digest=None, servers=None, overwrite=False, reset_digest=False,
                          get_json_url=lambda server: construct_request_url(server, API_ID_ALIAS_DIGEST)):

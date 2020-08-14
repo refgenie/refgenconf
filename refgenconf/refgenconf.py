@@ -19,6 +19,8 @@ from urllib.error import HTTPError, ContentTooShortError
 from tqdm import tqdm
 from pkg_resources import iter_entry_points
 from tempfile import TemporaryDirectory
+from rich.table import Table
+from rich.console import Console
 
 from .seqcol import SeqColClient
 from attmap import PathExAttMap as PXAM
@@ -150,10 +152,10 @@ class RefGenConf(yacman.YacAttMap):
     @property
     def genome_aliases(self):
         """
-        Mapping of genome identifiers to human-readable genome identifiers
+        Mapping of human-readable genome identifiers to genome identifiers
 
-        :return yacman.YacAttMap: mapping of genome identifiers to
-            human-readable genome identifiers
+        :return dict: mapping of human-readable genome identifiers to genome
+            identifiers
         """
         return self.genomes.alias_dict
 
@@ -221,6 +223,41 @@ class RefGenConf(yacman.YacAttMap):
         self.run_plugins(POST_LIST_HOOK)
         return OrderedDict([(g, sorted(list(self[CFG_GENOMES_KEY][g][CFG_ASSETS_KEY].keys()), key=order))
                             for g in refgens])
+
+    def get_local_asset_table(self, genomes=None, assets=None):
+        """
+        Get a rich.TAble object representing assets available locally
+
+        :param list[str] genomes: genomes to restrict the results with
+        :param list[str] assets: assets to restrict the results with
+        :return rich.table.Table: table of assets available locally
+        """
+        table = Table(title="Local refgenie assets\nServer subscriptions: {}".
+                      format(", ".join(self[CFG_SERVERS_KEY])))
+        table.add_column("genome")
+        table.add_column("asset")
+        table.add_column("tag")
+        table.add_column("seek key")
+        prev = {"aliases_str": "", "asset": "", "tag": ""}
+        if genomes:
+            genomes = [self.get_genome_alias_digest(alias=g, fallback=True) for g
+                       in genomes]
+        for genome, genome_dict in self[CFG_GENOMES_KEY].items():
+            if genomes and genome not in genomes:
+                continue
+            for asset, asset_dict in genome_dict[CFG_ASSETS_KEY].items():
+                if assets and asset not in assets:
+                    continue
+                for tag, tag_dict in asset_dict[CFG_ASSET_TAGS_KEY].items():
+                    for seek_key in list(tag_dict[CFG_SEEK_KEYS_KEY].keys()):
+                        x = "/".join(self.get_genome_alias(digest=genome,
+                                                           all_aliases=True))
+                        aliases_str = "" if x == prev["aliases_str"] else x
+                        asset = "" if asset == prev["asset"] else asset
+                        tag = "" if tag == prev["tag"] else tag
+                        table.add_row(aliases_str, asset, tag, seek_key)
+                        prev = {"aliases_str": x, "asset": asset, "tag": tag}
+        return table
 
     def assets_str(self, offset_text="  ", asset_sep=", ",
                    genome_assets_delim="/ ", genome=None, order=None):
@@ -1152,9 +1189,10 @@ class RefGenConf(yacman.YacAttMap):
         if not removed_aliases:
             return [], []
         self._remove_symlink_alias(symlink_mapping, removed_aliases)
-        return removed_aliases, dirs_to_remove
+        return removed_aliases
 
-    def set_genome_alias(self, genome, digest=None, servers=None, overwrite=False, reset_digest=False,
+    def set_genome_alias(self, genome, digest=None, servers=None, overwrite=False,
+                         reset_digest=False, create_genome=False,
                          get_json_url=lambda server: construct_request_url(server, API_ID_ALIAS_DIGEST)):
         """
         Assign a human-readable alias to a genome identifier.
@@ -1170,12 +1208,18 @@ class RefGenConf(yacman.YacAttMap):
             removed and just the current one stored
         :return bool: whether the alias has been established
         """
-        def _check_and_set_alias(rgc, d, a):
+        def _check_and_set_alias(rgc, d, a, create=False):
             """
             Set genome alias only if the key alias can be set successfully and
-            genome exists
+            genome exists or genome creation is forced
             """
-            _assert_gat_exists(rgc[CFG_GENOMES_KEY], gname=digest)
+            try:
+                _assert_gat_exists(rgc[CFG_GENOMES_KEY], gname=digest)
+            except MissingGenomeError:
+                if not create:
+                    raise
+                rgc[CFG_GENOMES_KEY][d] = PXAM()
+
             sa, ra = rgc[CFG_GENOMES_KEY].set_aliases(
                 aliases=a, key=d, overwrite=overwrite, reset_key=reset_digest)
             try:
@@ -1219,11 +1263,11 @@ class RefGenConf(yacman.YacAttMap):
         symlink_mapping = self.get_symlink_paths(genome=digest, all_aliases=True)
         if self.file_path:
             with self as r:
-                set_aliases, removed_aliases = \
-                    _check_and_set_alias(rgc=r, d=digest, a=genome)
+                set_aliases, removed_aliases = _check_and_set_alias(
+                    rgc=r, d=digest, a=genome, create=create_genome)
         else:
-            set_aliases, removed_aliases = \
-                _check_and_set_alias(rgc=self, d=digest, a=genome)
+            set_aliases, removed_aliases = _check_and_set_alias(
+                rgc=self, d=digest, a=genome, create=create_genome)
         if not set_aliases:
             return False
         self._remove_symlink_alias(symlink_mapping, removed_aliases)
@@ -1255,11 +1299,12 @@ class RefGenConf(yacman.YacAttMap):
         with open(pth, "w") as jfp:
             json.dump(asdl, jfp)
         _LOGGER.debug("Saved ASDs to JSON: {}".format(pth))
+        set_args = dict(genome=alias, digest=d, overwrite=True, create_genome=True)
         if self.file_path:
             with self as rgc:
-                rgc.set_genome_alias(genome=alias, digest=d, overwrite=True)
+                rgc.set_genome_alias(**set_args)
         else:
-            self.set_genome_alias(genome=alias, digest=d, overwrite=True)
+            self.set_genome_alias(**set_args)
         return d, asdl
 
     def get_asds_path(self, genome):

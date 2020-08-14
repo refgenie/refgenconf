@@ -8,3 +8,4 @@ pyfaidx
 jsonschema
 biopython
 pyfaidx
+rich

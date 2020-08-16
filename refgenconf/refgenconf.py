@@ -1434,7 +1434,7 @@ class RefGenConf(yacman.YacAttMap):
         return self
 
     def remove(self, genome, asset, tag=None, relationships=True, files=True,
-               force=False, aliases=False):
+               force=False):
         """
         Remove data associated with a specified genome:asset:tag combination.
         If no tags are specified, the entire asset is removed from the genome.
@@ -1469,23 +1469,23 @@ class RefGenConf(yacman.YacAttMap):
             alias_asset_paths = self.seek(genome, asset, tag, enclosing_dir=True,
                                          strict_exists=False, all_aliases=True)
             if os.path.exists(asset_path):
-                removed.extend(_remove(asset_path))
+                removed.append(_remove(asset_path))
                 removed.extend([_remove(p) for p in alias_asset_paths])
                 if self.file_path:
                     with self as r:
-                        r.cfg_remove_assets(genome, asset, tag, relationships, aliases)
+                        r.cfg_remove_assets(genome, asset, tag, relationships)
                 else:
-                    self.cfg_remove_assets(genome, asset, tag, relationships, aliases)
+                    self.cfg_remove_assets(genome, asset, tag, relationships)
             else:
                 _LOGGER.warning("Selected asset does not exist on disk ({}). "
                                 "Removing from genome config.".
                                 format(asset_path))
                 if self.file_path:
                     with self as r:
-                        r.cfg_remove_assets(genome, asset, tag, relationships, aliases)
+                        r.cfg_remove_assets(genome, asset, tag, relationships)
                         return
                 else:
-                    self.cfg_remove_assets(genome, asset, tag, relationships, aliases)
+                    self.cfg_remove_assets(genome, asset, tag, relationships)
                     return
             try:
                 self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]
@@ -1522,12 +1522,11 @@ class RefGenConf(yacman.YacAttMap):
         else:
             if self.file_path:
                 with self as r:
-                    r.cfg_remove_assets(genome, asset, tag, relationships, aliases)
+                    r.cfg_remove_assets(genome, asset, tag, relationships)
             else:
-                self.cfg_remove_assets(genome, asset, tag, relationships, aliases)
+                self.cfg_remove_assets(genome, asset, tag, relationships)
 
-    def cfg_remove_assets(self, genome, asset, tag=None, relationships=True,
-                          aliases=False):
+    def cfg_remove_assets(self, genome, asset, tag=None, relationships=True):
         """
         Remove data associated with a specified genome:asset:tag combination.
         If no tags are specified, the entire asset is removed from the genome.
@@ -1542,8 +1541,6 @@ class RefGenConf(yacman.YacAttMap):
         :param str tag: tag to be removed
         :param bool relationships: whether the asset being removed should
             be removed from its relatives as well
-        :param bool aliases: whether the genome being removed should be removed 
-            from the aliases
         :raise TypeError: if genome argument type is not a list or str
         :return RefGenConf: updated object
         """
@@ -1585,15 +1582,6 @@ class RefGenConf(yacman.YacAttMap):
                             del self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_DEFAULT_TAG_KEY]
                     if len(self[CFG_GENOMES_KEY]) == 0:
                         self[CFG_GENOMES_KEY] = None
-        if aliases and (self[CFG_GENOMES_KEY] is None
-                        or genome not in self[CFG_GENOMES_KEY]):
-            try:
-                self.remove_genome_aliases(self.get_genome_alias_digest(genome))
-            except AttributeError:
-                # if no genomes, (genomes are None) we need to manually remove
-                # all the keys from the aliases mapping in the config
-                for k in self[CFG_ALIASES_KEY].keys():
-                    self[CFG_ALIASES_KEY].__delitem__(k)
         return self
 
     def update_genomes(self, genome, data=None):

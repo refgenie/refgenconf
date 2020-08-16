@@ -160,6 +160,29 @@ class RefGenConf(yacman.YacAttMap):
         return self.genomes.alias_dict
 
     @property
+    def genome_aliases_table(self):
+        """
+        Mapping of human-readable genome identifiers to genome identifiers
+
+        :return dict: mapping of human-readable genome identifiers to genome
+            identifiers
+        """
+        table = Table(title="Genome aliases")
+        table.add_column("genome")
+        table.add_column("alias")
+        if CFG_GENOMES_KEY not in self or not self[CFG_GENOMES_KEY]:
+            return table
+        for genome, genome_dict in self[CFG_GENOMES_KEY].items():
+            if CFG_ALIASES_KEY not in self[CFG_GENOMES_KEY][genome] \
+                    or not self[CFG_GENOMES_KEY][genome][CFG_ALIASES_KEY]:
+                aliases = ""
+            else:
+                aliases = "/".join(self[CFG_GENOMES_KEY][genome][CFG_ALIASES_KEY])
+            table.add_row(genome, aliases)
+        return table
+
+
+    @property
     def data_dir(self):
         """
         Path to the genome data directory

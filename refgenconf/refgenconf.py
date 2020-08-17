@@ -246,39 +246,40 @@ class RefGenConf(yacman.YacAttMap):
         return OrderedDict([(g, sorted(list(self[CFG_GENOMES_KEY][g][CFG_ASSETS_KEY].keys()), key=order))
                             for g in refgens])
 
-    def get_local_asset_table(self, genomes=None, assets=None):
+    def get_local_asset_table(self, genomes=None):
         """
-        Get a rich.TAble object representing assets available locally
+        Get a rich.Table object representing assets available locally
 
         :param list[str] genomes: genomes to restrict the results with
-        :param list[str] assets: assets to restrict the results with
         :return rich.table.Table: table of assets available locally
         """
         table = Table(title="Local refgenie assets\nServer subscriptions: {}".
                       format(", ".join(self[CFG_SERVERS_KEY])))
         table.add_column("genome")
-        table.add_column("asset")
-        table.add_column("tag")
-        table.add_column("seek key")
-        prev = {"aliases_str": "", "asset": "", "tag": ""}
+
         if genomes:
-            genomes = [self.get_genome_alias_digest(alias=g, fallback=True) for g
-                       in genomes]
-        for genome, genome_dict in self[CFG_GENOMES_KEY].items():
-            if genomes and genome not in genomes:
-                continue
-            for asset, asset_dict in genome_dict[CFG_ASSETS_KEY].items():
-                if assets and asset not in assets:
-                    continue
-                for tag, tag_dict in asset_dict[CFG_ASSET_TAGS_KEY].items():
-                    for seek_key in list(tag_dict[CFG_SEEK_KEYS_KEY].keys()):
-                        x = "/".join(self.get_genome_alias(digest=genome,
-                                                           all_aliases=True))
-                        aliases_str = "" if x == prev["aliases_str"] else x
-                        asset = "" if asset == prev["asset"] else asset
-                        tag = "" if tag == prev["tag"] else tag
-                        table.add_row(aliases_str, asset, tag, seek_key)
-                        prev = {"aliases_str": x, "asset": asset, "tag": tag}
+            it = "([italic]{}[/italic])"
+            genomes = [self.get_genome_alias_digest(alias=g, fallback=True) for g in genomes]
+            table.add_column("asset " + it.format("seek_keys"))
+            table.add_column("tags")
+            for genome in genomes:
+                genome_dict = self[CFG_GENOMES_KEY][genome]
+                for asset, asset_dict in genome_dict[CFG_ASSETS_KEY].items():
+                    tags = list(asset_dict[CFG_ASSET_TAGS_KEY].keys())
+                    seek_keys = list(asset_dict[CFG_ASSET_TAGS_KEY][tags[0]][CFG_SEEK_KEYS_KEY].keys())
+                    table.add_row(
+                        " | ".join(genome_dict[CFG_ALIASES_KEY]),
+                        "{} ".format(asset) + it.format(", ".join(seek_keys)),
+                        ", ".join(tags)
+                    )
+        else:
+            table.add_column("assets")
+            for genome in list(self[CFG_GENOMES_KEY].keys()):
+                genome_dict = self[CFG_GENOMES_KEY][genome]
+                table.add_row(
+                    " | ".join(genome_dict[CFG_ALIASES_KEY]),
+                    ", ".join(list(genome_dict[CFG_ASSETS_KEY].keys()))
+                )
         return table
 
     def assets_str(self, offset_text="  ", asset_sep=", ",

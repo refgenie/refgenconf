@@ -181,7 +181,6 @@ class RefGenConf(yacman.YacAttMap):
             table.add_row(genome, aliases)
         return table
 
-
     @property
     def data_dir(self):
         """
@@ -976,7 +975,7 @@ class RefGenConf(yacman.YacAttMap):
                 genome = self.get_genome_alias_digest(alias=alias)
             except yacman.UndefinedAliasError:
                 _LOGGER.info("No local digest for genome alias: {}".format(genome))
-                if not self.set_genome_alias(genome=alias, servers=[server_url]):
+                if not self.set_genome_alias(genome=alias, servers=[server_url], create_genome=True):
                     return _null_return()
                 genome = self.get_genome_alias_digest(alias=alias)
             num_servers += 1
@@ -1250,7 +1249,7 @@ class RefGenConf(yacman.YacAttMap):
                     rgc[CFG_GENOMES_KEY].get_aliases(d)
             except KeyError:
                 return [], []
-            _LOGGER.info("Set genome alias ({}: {})".format(d, ", ".join(a)))
+            _LOGGER.info("Set genome alias ({}: {})".format(d, a))
             return sa, ra
 
         if not digest:

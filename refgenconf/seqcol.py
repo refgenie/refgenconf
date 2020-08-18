@@ -5,6 +5,7 @@ import hashlib
 import binascii
 
 from .henge import ITEM_TYPE, Henge
+from .exceptions import RefgenconfError
 
 
 def trunc512_digest(seq, offset=24):
@@ -83,6 +84,8 @@ class SeqColClient(Henge):
             serialized items stored in this henge.
         """
         print(f"internal schemas: {INTERNAL_SCHEMAS}")
+        assert all([os.path.exists(s) for s in INTERNAL_SCHEMAS]), \
+            RefgenconfError("Missing schema files: {}".format(INTERNAL_SCHEMAS))
         super(SeqColClient, self).__init__(
             database=database, schemas=schemas or INTERNAL_SCHEMAS,
             henges=henges, checksum_function=checksum_function

@@ -177,7 +177,7 @@ class RefGenConf(yacman.YacAttMap):
                     or not self[CFG_GENOMES_KEY][genome][CFG_ALIASES_KEY]:
                 aliases = ""
             else:
-                aliases = "/".join(self[CFG_GENOMES_KEY][genome][CFG_ALIASES_KEY])
+                aliases = " | ".join(self[CFG_GENOMES_KEY][genome][CFG_ALIASES_KEY])
             table.add_row(genome, aliases)
         return table
 
@@ -800,7 +800,6 @@ class RefGenConf(yacman.YacAttMap):
         ori_path = self.seek_src(genome, asset, tag, enclosing_dir=True, strict_exists=True)
         alias_ori_path = self.seek(genome, asset, tag, enclosing_dir=True, strict_exists=True)
         new_path = os.path.abspath(os.path.join(ori_path, os.pardir, new_tag))
-        alias_new_path = os.path.abspath(os.path.join(alias_ori_path, os.pardir, new_tag))
         if self.file_path:
             with self as r:
                 if not r.cfg_tag_asset(genome, asset, tag, new_tag):
@@ -815,7 +814,9 @@ class RefGenConf(yacman.YacAttMap):
             if os.path.exists(new_path):
                 _remove(new_path)
             os.rename(ori_path, new_path)
-            os.rename(alias_ori_path, alias_new_path)
+            _LOGGER.info("Renamed directory: {}".format(new_path))
+            self._symlink_alias(genome, asset, new_tag)
+            _remove(alias_ori_path)
         except FileNotFoundError:
             _LOGGER.warning("Could not rename original asset tag directory '{}'"
                             " to the new one '{}'".format(ori_path, new_path))

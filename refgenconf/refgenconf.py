@@ -715,12 +715,12 @@ class RefGenConf(YacAttMap):
                 _LOGGER.debug("Determined tag: {}".format(determined_tag))
                 unpack or _raise_unpack_error()
             gat = [genome, asset, determined_tag]
-            url_attrs = get_json_url(server_url, API_ID_ASSET_ATTRS).format(genome=genome, asset=asset)
+            url_asset_attrs = get_json_url(server_url, API_ID_ASSET_ATTRS).format(genome=genome, asset=asset)
+            url_genome_attrs = get_json_url(server_url, API_ID_GENOME_ATTRS).format(genome=genome)
             url_archive = get_json_url(server_url, API_ID_ARCHIVE).format(genome=genome, asset=asset)
 
             try:
-                archive_data = _download_json(url_attrs, params={"tag": determined_tag})
-                _LOGGER.debug("Determined server URL: {}".format(server_url))
+                archive_data = _download_json(url_asset_attrs, params={"tag": determined_tag})
             except DownloadJsonError:
                 no_asset_json.append(server_url)
                 if num_servers == len(self[CFG_SERVERS_KEY]):
@@ -728,6 +728,9 @@ class RefGenConf(YacAttMap):
                                   format(genome, asset, determined_tag, ", ".join(self[CFG_SERVERS_KEY])))
                     return _null_return()
                 continue
+            else:
+                _LOGGER.debug("Determined server URL: {}".format(server_url))
+                genome_archive_data = _download_json(url_genome_attrs)
 
             if sys.version_info[0] == 2:
                 archive_data = asciify_json_dict(archive_data)
@@ -826,6 +829,7 @@ class RefGenConf(YacAttMap):
                     shutil.move(os.path.join(tmpdir, asset), tag_dir)
                 if os.path.isfile(filepath):
                     os.remove(filepath)
+
             if self.file_path:
                 with self as rgc:
                     [rgc.chk_digest_update_child(gat[0], x, "{}/{}:{}".format(*gat), server_url)
@@ -833,12 +837,14 @@ class RefGenConf(YacAttMap):
                     rgc.update_tags(*gat, data={attr: archive_data[attr]
                                                 for attr in ATTRS_COPY_PULL if attr in archive_data})
                     rgc.set_default_pointer(*gat)
+                    rgc.update_genomes(genome=genome, data=genome_archive_data)
             else:
                 [self.chk_digest_update_child(gat[0], x, "{}/{}:{}".format(*gat), server_url)
                  for x in archive_data[CFG_ASSET_PARENTS_KEY] if CFG_ASSET_PARENTS_KEY in archive_data]
                 self.update_tags(*gat, data={attr: archive_data[attr]
                                              for attr in ATTRS_COPY_PULL if attr in archive_data})
                 self.set_default_pointer(*gat)
+                self.update_genomes(genome=genome, data=genome_archive_data)
             self.run_plugins(POST_PULL_HOOK)
             return gat, archive_data, server_url
 

@@ -2,6 +2,11 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format. 
 
+## [0.9.2] - 2020-08-19
+
+### Added
+- in `pull` the genome description is fetched from the server
+
 ## [0.9.1] - 2020-07-29
 
 ### Added

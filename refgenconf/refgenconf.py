@@ -246,41 +246,52 @@ class RefGenConf(yacman.YacAttMap):
         return OrderedDict([(g, sorted(list(self[CFG_GENOMES_KEY][g][CFG_ASSETS_KEY].keys()), key=order))
                             for g in refgens])
 
-    def get_local_asset_table(self, genomes=None):
+    def get_asset_table(self, genomes=None, server_url=None,
+                        get_json_url=lambda s, i: construct_request_url(s, i)):
         """
         Get a rich.Table object representing assets available locally
 
         :param list[str] genomes: genomes to restrict the results with
+        :param str server_url: server URL to query for the remote genome data
+        :param function(str, str) -> str get_json_url: how to build URL from
+            genome server URL base, genome, and asset
         :return rich.table.Table: table of assets available locally
         """
-        table = Table(title="Local refgenie assets\nServer subscriptions: {}".
-                      format(", ".join(self[CFG_SERVERS_KEY])))
-        table.add_column("genome")
-
-        if genomes:
-            it = "([italic]{}[/italic])"
-            genomes = [self.get_genome_alias_digest(alias=g, fallback=True) for g in genomes]
-            table.add_column("asset " + it.format("seek_keys"))
-            table.add_column("tags")
-            for genome in genomes:
-                genome_dict = self[CFG_GENOMES_KEY][genome]
-                for asset, asset_dict in genome_dict[CFG_ASSETS_KEY].items():
-                    tags = list(asset_dict[CFG_ASSET_TAGS_KEY].keys())
-                    seek_keys = list(asset_dict[CFG_ASSET_TAGS_KEY][tags[0]][CFG_SEEK_KEYS_KEY].keys())
+        def _fill_table_with_genomes_data(rgc, genomes_data, table, genomes=None):
+            table.add_column("genome")
+            if genomes:
+                it = "([italic]{}[/italic])"
+                genomes = [rgc.get_genome_alias_digest(alias=g, fallback=True) for g in genomes]
+                table.add_column("asset " + it.format("seek_keys"))
+                table.add_column("tags")
+                for genome in genomes:
+                    genome_dict = genomes_data[genome]
+                    for asset, asset_dict in genome_dict[CFG_ASSETS_KEY].items():
+                        tags = list(asset_dict[CFG_ASSET_TAGS_KEY].keys())
+                        seek_keys = list(asset_dict[CFG_ASSET_TAGS_KEY][tags[0]][CFG_SEEK_KEYS_KEY].keys())
+                        table.add_row(
+                            " | ".join(genome_dict[CFG_ALIASES_KEY]),
+                            "{} ".format(asset) + it.format(", ".join(seek_keys)),
+                            ", ".join(tags)
+                        )
+            else:
+                table.add_column("assets")
+                for genome in list(genomes_data.keys()):
+                    genome_dict = genomes_data[genome]
                     table.add_row(
                         " | ".join(genome_dict[CFG_ALIASES_KEY]),
-                        "{} ".format(asset) + it.format(", ".join(seek_keys)),
-                        ", ".join(tags)
+                        ", ".join(list(genome_dict[CFG_ASSETS_KEY].keys()))
                     )
+            return table
+
+        if not server_url:
+            genomes_data = self[CFG_GENOMES_KEY]
+            title = "Local refgenie assets\nServer subscriptions: {}".\
+                format(", ".join(self[CFG_SERVERS_KEY]))
         else:
-            table.add_column("assets")
-            for genome in list(self[CFG_GENOMES_KEY].keys()):
-                genome_dict = self[CFG_GENOMES_KEY][genome]
-                table.add_row(
-                    " | ".join(genome_dict[CFG_ALIASES_KEY]),
-                    ", ".join(list(genome_dict[CFG_ASSETS_KEY].keys()))
-                )
-        return table
+            genomes_data = _download_json(get_json_url(server_url, API_ID_GENOMES_DICT))
+            title = "Remote refgenie assets\nServer URL: {}".format(server_url)
+        return _fill_table_with_genomes_data(self, genomes_data, Table(title=title), genomes)
 
     def assets_str(self, offset_text="  ", asset_sep=", ",
                    genome_assets_delim="/ ", genome=None, order=None):

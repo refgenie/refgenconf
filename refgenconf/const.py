@@ -183,4 +183,3 @@ CONF_STRUCTURE = """
            default=CFG_ASSET_DEFAULT_TAG_KEY, tags=CFG_ASSET_TAGS_KEY, asset_digest=CFG_ASSET_CHECKSUM_KEY,
            tag_description=CFG_TAG_DESC_KEY, v=REQ_CFG_VERSION)
 
-

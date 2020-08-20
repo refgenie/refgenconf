@@ -355,7 +355,7 @@ class RefGenConf(yacman.YacAttMap):
             _LOGGER.info("Will remove existing to overwrite")
         tag_data = {
             CFG_ASSET_PATH_KEY: path,
-            CFG_ASSET_CHECKSUM_KEY: get_dir_digest(path) or ""
+            CFG_ASSET_CHECKSUM_KEY: get_dir_digest(abspath) or ""
         }
         msg = "Added asset: {}/{}:{} {}".format(
             genome, asset, tag, "" if not seek_keys else "with seek keys: {}".

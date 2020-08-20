@@ -175,3 +175,10 @@ def remove_genome_folder(request):
 def temp_genome_config_file(tmpdir_factory):
     """ The genome configuration file for the test suite. """
     return tmpdir_factory.mktemp("data").join("refgenie.yaml").strpath
+
+
+# seqcol configuration - to be removed when we split the projects
+
+@pytest.fixture
+def fasta_path(data_path):
+    return os.path.join(data_path, "demo_fasta")

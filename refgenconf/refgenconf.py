@@ -336,7 +336,7 @@ class RefGenConf(yacman.YacAttMap):
                           " asset to initialize.".format(genome))
             return False
         tag = tag or self.get_default_tag(genome, asset)
-        abspath = os.path.join(self.data_dir, path)
+        abspath = os.path.join(self[CFG_FOLDER_KEY], path)
         remove = False
         if not os.path.exists(abspath) or not os.path.isabs(abspath):
             raise OSError("Provided path must exist and be relative to the"

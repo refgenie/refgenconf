@@ -53,8 +53,15 @@ class TestAliasSetting:
 class TestAliasGetting:
     @pytest.mark.parametrize("digest", ["b03e6360748bf6c876363537ca5a9e0b0de2cd059133bd2d"])
     def test_get_genome_alias_basic(self, my_rgc, digest):
-        """ Get a single alias, first from the list, if multiple """
-        assert isinstance(my_rgc.get_genome_alias(digest=digest), str)
+        """
+        Get a single alias, first from the list, if multiple and then use
+        the result to get the digest back
+        """
+        alias = my_rgc.get_genome_alias(digest=digest)
+        assert isinstance(alias, str)
+        assert my_rgc.get_genome_alias_digest(alias=alias) == digest
+        # test fallback
+        assert my_rgc.get_genome_alias_digest(alias=digest, fallback=True) == digest
 
     @pytest.mark.parametrize("digest", ["b03e6360748bf6c876363537ca5a9e0b0de2cd059133bd2d"])
     def test_get_genome_alias_multi(self, my_rgc, digest):

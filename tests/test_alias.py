@@ -1,6 +1,10 @@
 import pytest
 import os
 from yacman import UndefinedAliasError
+from refgenconf.const import CFG_GENOMES_KEY, CFG_ALIASES_KEY
+from shutil import rmtree
+
+DEMO_FILES = ["demo.fa.gz", "demo2.fa", "demo3.fa", "demo4.fa", "demo5.fa.gz"]
 
 
 class TestAliasSetting:
@@ -82,3 +86,47 @@ class TestAliasGetting:
         """
         with pytest.raises(UndefinedAliasError):
             my_rgc.get_genome_alias(digest=digest, fallback=True)
+
+
+class TestAliasRemoval:
+    @pytest.mark.parametrize("digest",
+                             ["b03e6360748bf6c876363537ca5a9e0b0de2cd059133bd2d"])
+    def test_remove_genome_alias_all(self, my_rgc, digest):
+        """
+        Save original aliases state, remove all, check that aliases have
+        been removed from the object and disk, bring back the original state
+        """
+        ori_state = my_rgc.get_genome_alias(digest=digest)
+        my_rgc.set_genome_alias(digest=digest, genome=ori_state)
+        my_rgc.remove_genome_aliases(digest=digest)
+        with pytest.raises(UndefinedAliasError):
+            my_rgc.get_genome_alias(digest=digest)
+        assert all([not os.path.exists(os.path.join(my_rgc.alias_dir, a)) for a in ori_state])
+        my_rgc.set_genome_alias(digest=digest, genome=ori_state)
+        assert isinstance(my_rgc.get_genome_alias(digest=digest, all_aliases=True), list)
+
+    @pytest.mark.parametrize(["alias", "digest"], [(["hr"], "b03e6360748bf6c876363537ca5a9e0b0de2cd059133bd2d"),
+                                                   (["hr", "h_r"], "b03e6360748bf6c876363537ca5a9e0b0de2cd059133bd2d")])
+    def test_remove_genome_alias_specific(self, my_rgc, digest, alias):
+        """
+        Set selected aliases and an additional one remove the selected ones,
+        verify the additional one exists
+        """
+        my_rgc.set_genome_alias(digest=digest, genome=alias + ["human_repeats"])
+        my_rgc.remove_genome_aliases(digest=digest, aliases=alias)
+        assert "human_repeats" in my_rgc.get_genome_alias(digest=digest, all_aliases=True)
+
+
+class TestInitializeGenome:
+    @pytest.mark.parametrize("fasta_name", DEMO_FILES)
+    def test_initialize_genome(self, my_rgc, fasta_name, fasta_path):
+        """
+        Save original aliases state, remove all, check that aliases have
+        been removed from the object and disk, bring back the original state
+        """
+        d, asds = my_rgc.initialize_genome(fasta_path=os.path.join(fasta_path, fasta_name), alias=fasta_name)
+        assert d in my_rgc[CFG_GENOMES_KEY]
+        assert fasta_name in my_rgc[CFG_GENOMES_KEY][d][CFG_ALIASES_KEY]
+        with my_rgc as r:
+            del r[CFG_GENOMES_KEY][d]
+        rmtree(os.path.join(my_rgc.alias_dir, fasta_name))

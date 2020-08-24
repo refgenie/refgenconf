@@ -16,7 +16,6 @@ from collections import Iterable, Mapping, OrderedDict
 from functools import partial
 from inspect import getfullargspec as finspect
 from urllib.error import HTTPError, ContentTooShortError
-from tqdm import tqdm
 from pkg_resources import iter_entry_points
 from tempfile import TemporaryDirectory
 from rich.table import Table
@@ -1140,7 +1139,7 @@ class RefGenConf(yacman.YacAttMap):
                 self.set_default_pointer(*gat)
                 self.update_genomes(genome=genome, data=genome_archive_data)
             if asset == "fasta":
-                self.initialize_genome(fasta_path=self.seek_src(*gat), alias=alias)
+                self.initialize_genome(fasta_path=self.seek_src(*gat), alias=alias, fasta_unzipped=True)
             self.run_plugins(POST_PULL_HOOK)
             self._symlink_alias(*gat)
             return gat, archive_data, server_url
@@ -1314,7 +1313,7 @@ class RefGenConf(yacman.YacAttMap):
         self._symlink_alias(genome=digest)
         return True
 
-    def initialize_genome(self, fasta_path, alias):
+    def initialize_genome(self, fasta_path, alias, fasta_unzipped=False):
         """
         Initialize a genome
 
@@ -1330,7 +1329,7 @@ class RefGenConf(yacman.YacAttMap):
             raise FileNotFoundError("Can't initialize genome; FASTA file does "
                                     "not exist: {}".format(fasta_path))
         ssc = SeqColClient({})
-        d, _ = ssc.load_fasta(fasta_path, gzipped=True)
+        d, _ = ssc.load_fasta(fasta_path, gzipped=not fasta_unzipped)
         # retrieve annotated sequence digests list to save in a JSON file
         asdl = ssc.retrieve(druid=d, reclimit=1)
         pth = self.get_asds_path(d)
@@ -2077,23 +2076,6 @@ class RefGenConf(yacman.YacAttMap):
         return genomes if not all(x in genomes for x in genome) else genome
 
 
-class DownloadProgressBar(tqdm):
-    """
-    from: https://github.com/tqdm/tqdm#hooks-and-callbacks
-    """
-    def update_to(self, b=1, bsize=1, tsize=None):
-        """
-        Update the progress bar
-
-        :param int b: number of blocks transferred so far
-        :param int bsize: size of each block (in tqdm units)
-        :param int tsize: total size (in tqdm units)
-        """
-        if tsize is not None:
-            self.total = tsize
-        self.update(b * bsize - self.n)
-
-
 def _swap_names_in_tree(top, new_name, old_name):
     """
     Rename all files and directories within a directory tree and the
@@ -2146,9 +2128,37 @@ def _download_url_progress(url, output_path, name, params=None):
     :param str name: name to display in front of the progress bar
     :param dict params: query parameters to be added to the request
     """
-    url = url if params is None else url + "?{}".format(urllib.parse.urlencode(params))
-    with DownloadProgressBar(unit_scale=True, desc=name, unit="B", bar_format=CUSTOM_BAR_FMT, leave=False) as dpb:
-        urllib.request.urlretrieve(url, filename=output_path, reporthook=dpb.update_to)
+    from rich.progress import BarColumn, DownloadColumn, TextColumn, \
+        TransferSpeedColumn, TimeRemainingColumn, Progress, TaskID
+    from urllib.request import urlopen, urlretrieve
+
+    def _get_content_len(link):
+        f = urlopen(link)
+        content_len = f.info().get("Content-length")
+        f.close()
+        return int(content_len)
+
+    class _HookProgress(Progress):
+        def rep_hook(self, count, blockSize, totalSize):
+            progress.update(task_id, advance=blockSize)
+
+    progress = _HookProgress(
+        TextColumn("[bold blue]{task.fields[n]}", justify="right"),
+        BarColumn(bar_width=None),
+        "[progress.percentage]{task.percentage:>3.1f}%",
+        "•",
+        DownloadColumn(),
+        "•",
+        TransferSpeedColumn(),
+        "•",
+        TimeRemainingColumn(),
+    )
+
+    url = url if params is None \
+        else url + "?{}".format(urllib.parse.urlencode(params))
+    task_id = progress.add_task("download", n=name, total=_get_content_len(url))
+    with progress as p:
+        urlretrieve(url, filename=output_path, reporthook=p.rep_hook)
 
 
 def _genome_asset_path(genomes, gname, aname, tname, seek_key, enclosing_dir, no_tag=False):

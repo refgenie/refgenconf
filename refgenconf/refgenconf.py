@@ -1330,7 +1330,7 @@ class RefGenConf(yacman.YacAttMap):
             raise FileNotFoundError("Can't initialize genome; FASTA file does "
                                     "not exist: {}".format(fasta_path))
         ssc = SeqColClient({})
-        d, _ = ssc.load_fasta(fasta_path)
+        d, _ = ssc.load_fasta(fasta_path, gzipped=True)
         # retrieve annotated sequence digests list to save in a JSON file
         asdl = ssc.retrieve(druid=d, reclimit=1)
         pth = self.get_asds_path(d)

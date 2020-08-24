@@ -90,7 +90,7 @@ class SeqColClient(Henge):
             henges=henges, checksum_function=checksum_function
         )
 
-    def load_fasta(self, fa_file, skip_seq=False, topology_default="linear"):
+    def load_fasta(self, fa_file, skip_seq=False, topology_default="linear", gzipped=False):
         """
         Load a sequence collection into the database
 
@@ -106,7 +106,7 @@ class SeqColClient(Henge):
         if topology_default not in KNOWN_TOPOS:
             raise ValueError(f"Invalid topology ({topology_default}). "
                              f"Choose from: {','.join(KNOWN_TOPOS)}")
-        fa_object = parse_fasta(fa_file)
+        fa_object = parse_fasta(fa_file, gzipped)
         aslist = []
         for k in fa_object.keys():
             seq = str(fa_object[k])
@@ -230,16 +230,11 @@ def explain_flag(flag):
             print(FLAGS[2**e])
 
 
-def parse_fasta(fa_file):
+def parse_fasta(fa_file, gzipped=False):
     """
     Read in a gzipped or not gzipped FASTA file
     """
-    try:
-        return pyfaidx.Fasta(fa_file)
-    except pyfaidx.UnsupportedCompressionFormat:
-        # pyfaidx can handle bgzip but not gzip; so we just hack it here and
-        # gunzip the file into a temporary one and read it in not to interfere
-        # with the original one.
+    def parse_fasta_gzipped(fa_file):
         from gzip import open as gzopen
         from shutil import copyfileobj
         from tempfile import NamedTemporaryFile
@@ -248,3 +243,16 @@ def parse_fasta(fa_file):
             f_out.writelines(f_in.read())
             f_out.seek(0)
             return pyfaidx.Fasta(f_out.name)
+
+    if gzipped:
+        return parse_fasta_gzipped(fa_file)
+
+    try:
+        return pyfaidx.Fasta(fa_file)
+    except pyfaidx.UnsupportedCompressionFormat:
+        # pyfaidx can handle bgzip but not gzip; so we just hack it here and
+        # gunzip the file into a temporary one and read it in not to interfere
+        # with the original one.
+        return parse_fasta_gzipped(fa_file)
+
+

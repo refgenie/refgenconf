@@ -90,7 +90,7 @@ class SeqColClient(Henge):
             henges=henges, checksum_function=checksum_function
         )
 
-    def load_fasta(self, fa_file, skip_seq=False, topology_default="linear"):
+    def load_fasta(self, fa_file, skip_seq=False, topology_default="linear", gzipped=False):
         """
         Load a sequence collection into the database
 
@@ -106,7 +106,7 @@ class SeqColClient(Henge):
         if topology_default not in KNOWN_TOPOS:
             raise ValueError(f"Invalid topology ({topology_default}). "
                              f"Choose from: {','.join(KNOWN_TOPOS)}")
-        fa_object = parse_fasta(fa_file)
+        fa_object = parse_fasta(fa_file, gzipped)
         aslist = []
         for k in fa_object.keys():
             seq = str(fa_object[k])

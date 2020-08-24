@@ -76,7 +76,28 @@ class RefGenConf(yacman.YacAttMap):
         super(RefGenConf, self).__init__(filepath=filepath, entries=entries,
                                          writable=writable, wait_max=wait_max,
                                          skip_read_lock=skip_read_lock)
-
+        # assert correct config version
+        try:
+            version = self[CFG_VERSION_KEY]
+        except KeyError:
+            _missing_key_msg(CFG_VERSION_KEY, REQ_CFG_VERSION)
+            self[CFG_VERSION_KEY] = REQ_CFG_VERSION
+        else:
+            try:
+                version = float(version)
+            except ValueError:
+                _LOGGER.warning("Cannot parse config version as numeric: {}".format(version))
+            else:
+                if version < REQ_CFG_VERSION:
+                    msg = \
+                        "This genome config (v{}) is not compliant with v{} standards. " \
+                        "To use it, please downgrade refgenie: 'pip install \"refgenie>={},<{}\"'".\
+                            format(self[CFG_VERSION_KEY], str(REQ_CFG_VERSION),
+                                   REFGENIE_BY_CFG[str(version)], REFGENIE_BY_CFG[str(REQ_CFG_VERSION)])
+                    raise ConfigNotCompliantError(msg)
+                else:
+                    _LOGGER.debug("Config version is compliant: {}".format(version))
+        # initialize "genomes" mapping
         if CFG_GENOMES_KEY in self:
             if not isinstance(self[CFG_GENOMES_KEY], PXAM):
                 if self[CFG_GENOMES_KEY]:
@@ -94,28 +115,12 @@ class RefGenConf(yacman.YacAttMap):
                 aliases_strict=True,
                 exact=genome_exact
             )
+        # initialize "genomes_folder"
         if CFG_FOLDER_KEY not in self:
             self[CFG_FOLDER_KEY] = os.path.dirname(filepath) \
                 if filepath else os.getcwd()
             _missing_key_msg(CFG_FOLDER_KEY, self[CFG_FOLDER_KEY])
-        try:
-            version = self[CFG_VERSION_KEY]
-        except KeyError:
-            _missing_key_msg(CFG_VERSION_KEY, REQ_CFG_VERSION)
-            self[CFG_VERSION_KEY] = REQ_CFG_VERSION
-        else:
-            try:
-                version = float(version)
-            except ValueError:
-                _LOGGER.warning("Cannot parse config version as numeric: {}".format(version))
-            else:
-                if version < REQ_CFG_VERSION:
-                    msg = "This genome config (v{}) is not compliant with v{} standards. To use it, please downgrade " \
-                          "refgenie: 'pip install refgenie=={}'.".format(self[CFG_VERSION_KEY], str(REQ_CFG_VERSION),
-                                                                         REFGENIE_BY_CFG[str(version)])
-                    raise ConfigNotCompliantError(msg)
-                else:
-                    _LOGGER.debug("Config version is compliant: {}".format(version))
+        # initialize "genome_servers"
         if CFG_SERVERS_KEY not in self and CFG_SERVER_KEY in self:
             # backwards compatibility after server config key change
             self[CFG_SERVERS_KEY] = self[CFG_SERVER_KEY]

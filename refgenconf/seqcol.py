@@ -230,16 +230,11 @@ def explain_flag(flag):
             print(FLAGS[2**e])
 
 
-def parse_fasta(fa_file):
+def parse_fasta(fa_file, gzipped=False):
     """
     Read in a gzipped or not gzipped FASTA file
     """
-    try:
-        return pyfaidx.Fasta(fa_file)
-    except pyfaidx.UnsupportedCompressionFormat:
-        # pyfaidx can handle bgzip but not gzip; so we just hack it here and
-        # gunzip the file into a temporary one and read it in not to interfere
-        # with the original one.
+    def parse_fasta_gzipped(fa_file):
         from gzip import open as gzopen
         from shutil import copyfileobj
         from tempfile import NamedTemporaryFile
@@ -248,3 +243,16 @@ def parse_fasta(fa_file):
             f_out.writelines(f_in.read())
             f_out.seek(0)
             return pyfaidx.Fasta(f_out.name)
+
+    if gzipped:
+        return parse_fasta_gzipped(fa_file)
+
+    try:
+        return pyfaidx.Fasta(fa_file)
+    except pyfaidx.UnsupportedCompressionFormat:
+        # pyfaidx can handle bgzip but not gzip; so we just hack it here and
+        # gunzip the file into a temporary one and read it in not to interfere
+        # with the original one.
+        return parse_fasta_gzipped(fa_file)
+
+

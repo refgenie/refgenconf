@@ -186,7 +186,7 @@ class RefGenConf(yacman.YacAttMap):
                     or not self[CFG_GENOMES_KEY][genome][CFG_ALIASES_KEY]:
                 aliases = ""
             else:
-                aliases = " | ".join(self[CFG_GENOMES_KEY][genome][CFG_ALIASES_KEY])
+                aliases = ", ".join(self[CFG_GENOMES_KEY][genome][CFG_ALIASES_KEY])
             table.add_row(genome, aliases)
         return table
 
@@ -279,7 +279,7 @@ class RefGenConf(yacman.YacAttMap):
                         tags = list(asset_dict[CFG_ASSET_TAGS_KEY].keys())
                         seek_keys = list(asset_dict[CFG_ASSET_TAGS_KEY][tags[0]][CFG_SEEK_KEYS_KEY].keys())
                         table.add_row(
-                            " | ".join(genome_dict[CFG_ALIASES_KEY]),
+                            ", ".join(genome_dict[CFG_ALIASES_KEY]),
                             "{} ".format(asset) + it.format(", ".join(seek_keys)),
                             ", ".join(tags)
                         )
@@ -288,7 +288,7 @@ class RefGenConf(yacman.YacAttMap):
                 for genome in list(genomes_data.keys()):
                     genome_dict = genomes_data[genome]
                     table.add_row(
-                        " | ".join(genome_dict[CFG_ALIASES_KEY]),
+                        ", ".join(genome_dict[CFG_ALIASES_KEY]),
                         ", ".join(list(genome_dict[CFG_ASSETS_KEY].keys()))
                     )
             return table

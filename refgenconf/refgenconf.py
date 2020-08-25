@@ -12,10 +12,11 @@ import json
 import yacman
 
 from urllib.request import urlopen, urlretrieve
+from urllib.error import HTTPError, ContentTooShortError
+from urllib.parse import urlencode
 from collections import Iterable, Mapping, OrderedDict
 from functools import partial
 from inspect import getfullargspec as finspect
-from urllib.error import HTTPError, ContentTooShortError
 from pkg_resources import iter_entry_points
 from tempfile import TemporaryDirectory
 from rich.table import Table
@@ -2166,7 +2167,7 @@ def _download_url_progress(url, output_path, name, params=None):
     )
 
     url = url if params is None \
-        else url + "?{}".format(urllib.parse.urlencode(params))
+        else url + "?{}".format(urlencode(params))
     task_id = progress.add_task("download", n=name, total=_get_content_len(url))
     with progress as p:
         urlretrieve(url, filename=output_path, reporthook=p.rep_hook)

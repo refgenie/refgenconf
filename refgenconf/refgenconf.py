@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import sys
-import urllib.request
 import itertools
 import logging
 import os
@@ -12,6 +11,7 @@ import json
 
 import yacman
 
+from urllib.request import urlopen, urlretrieve
 from collections import Iterable, Mapping, OrderedDict
 from functools import partial
 from inspect import getfullargspec as finspect
@@ -20,6 +20,10 @@ from pkg_resources import iter_entry_points
 from tempfile import TemporaryDirectory
 from rich.table import Table
 from rich.console import Console
+from rich.progress import Progress, TextColumn, BarColumn
+
+from .progress_bar import _DownloadColumn, _TimeRemainingColumn, \
+    _TransferSpeedColumn
 
 from .seqcol import SeqColClient
 from attmap import PathExAttMap as PXAM
@@ -2128,30 +2132,37 @@ def _download_url_progress(url, output_path, name, params=None):
     :param str name: name to display in front of the progress bar
     :param dict params: query parameters to be added to the request
     """
-    from rich.progress import BarColumn, DownloadColumn, TextColumn, \
-        TransferSpeedColumn, TimeRemainingColumn, Progress, TaskID
-    from urllib.request import urlopen, urlretrieve
 
-    def _get_content_len(link):
-        f = urlopen(link)
+    class _HookProgress(Progress):
+        """
+        Internal class to connect progress bar with URL retrieval context manager
+        """
+        @staticmethod
+        def rep_hook(count, blockSize, totalSize):
+            """
+            Needs to take three arguments in this order
+            """
+            progress.update(task_id, advance=blockSize)
+
+    def _get_content_len(x):
+        """
+        Get length of remote content
+        """
+        f = urlopen(x)
         content_len = f.info().get("Content-length")
         f.close()
         return int(content_len)
 
-    class _HookProgress(Progress):
-        def rep_hook(self, count, blockSize, totalSize):
-            progress.update(task_id, advance=blockSize)
-
     progress = _HookProgress(
-        TextColumn("[bold blue]{task.fields[n]}", justify="right"),
+        TextColumn("[bright_white]{task.fields[n]}", justify="right"),
         BarColumn(bar_width=None),
-        "[progress.percentage]{task.percentage:>3.1f}%",
+        "[magenta]{task.percentage:>3.1f}%",
         "•",
-        DownloadColumn(),
+        _DownloadColumn(),
         "•",
-        TransferSpeedColumn(),
+        _TransferSpeedColumn(),
         "•",
-        TimeRemainingColumn(),
+        _TimeRemainingColumn(),
     )
 
     url = url if params is None \
@@ -2327,7 +2338,7 @@ def _read_remote_data(url):
     :param str url: data request
     :return dict: JSON parsed from the response from given URL request
     """
-    with urllib.request.urlopen(url) as response:
+    with urlopen(url) as response:
         encoding = response.info().get_content_charset('utf8')
         return json.loads(response.read().decode(encoding))
 

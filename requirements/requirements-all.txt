@@ -3,8 +3,5 @@ pyyaml
 requests
 #yacman>=0.7.0
 future
-pyfaidx
 jsonschema
-biopython
-pyfaidx
 rich

@@ -1,5 +1,4 @@
 import os
-import pyfaidx
 import logging
 import hashlib
 import binascii
@@ -121,9 +120,10 @@ class SeqColClient(Henge):
                     if not init:
                         name = line.replace(">", "")
                     else:
-                        aslist.append({NAME_KEY: name, LEN_KEY: len(seq),
-                                       TOPO_KEY: topology_default,
-                                       SEQ_KEY: {"" if skip_seq else SEQ_KEY: seq}})
+                        aslist.append({
+                            NAME_KEY: name, LEN_KEY: len(seq),
+                            TOPO_KEY: topology_default,
+                            SEQ_KEY: {"" if skip_seq else SEQ_KEY: seq}})
                         name = line.replace(">", "")
                     seq = ""
                     continue
@@ -247,31 +247,3 @@ def explain_flag(flag):
     for e in range(0, 13):
         if flag & 2**e:
             print(FLAGS[2**e])
-
-
-def parse_fasta(fa_file, gzipped=False):
-    """
-    Read in a gzipped or not gzipped FASTA file
-    """
-    def parse_fasta_gzipped(fa_file):
-        from gzip import open as gzopen
-        from shutil import copyfileobj
-        from tempfile import NamedTemporaryFile
-        with gzopen(fa_file, 'rt') as f_in, \
-                NamedTemporaryFile(mode='w+t', suffix=".fa") as f_out:
-            f_out.writelines(f_in.read())
-            f_out.seek(0)
-            return pyfaidx.Fasta(f_out.name)
-
-    if gzipped:
-        return parse_fasta_gzipped(fa_file)
-
-    try:
-        return pyfaidx.Fasta(fa_file)
-    except pyfaidx.UnsupportedCompressionFormat:
-        # pyfaidx can handle bgzip but not gzip; so we just hack it here and
-        # gunzip the file into a temporary one and read it in not to interfere
-        # with the original one.
-        return parse_fasta_gzipped(fa_file)
-
-

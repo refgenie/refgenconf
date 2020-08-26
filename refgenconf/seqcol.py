@@ -111,21 +111,30 @@ class SeqColClient(Henge):
 
         seq = ""
         name = ""
+        init = False
         aslist = []
         openfun = gzopen if gzipped else open
         with openfun(fa_file, 'rt') as f:
             for line in f:
                 line = line.strip('\n')
                 if line.startswith(">"):
-                    aslist.append({NAME_KEY: name, LEN_KEY: len(seq),
-                                   TOPO_KEY: topology_default,
-                                   SEQ_KEY: "" if skip_seq else seq})
-                    name = line.replace(">", "")
+                    if not init:
+                        name = line.replace(">", "")
+                    else:
+                        aslist.append({NAME_KEY: name, LEN_KEY: len(seq),
+                                       TOPO_KEY: topology_default,
+                                       SEQ_KEY: {"" if skip_seq else SEQ_KEY: seq}})
+                        name = line.replace(">", "")
                     seq = ""
                     continue
+                init = True
                 seq = seq + line
+            aslist.append(
+                {NAME_KEY: name, LEN_KEY: len(seq), TOPO_KEY: topology_default,
+                 SEQ_KEY: {"" if skip_seq else SEQ_KEY: seq}})
+
         collection_checksum = self.insert(aslist, ASL_NAME)
-        _LOGGER.debug(f"Loaded {ASL_NAME}")
+        _LOGGER.debug(f"Loaded {ASL_NAME} ({len(aslist)} sequences)")
         return collection_checksum, aslist
 
     @staticmethod

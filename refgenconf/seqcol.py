@@ -4,6 +4,8 @@ import logging
 import hashlib
 import binascii
 
+from gzip import open as gzopen
+
 from .henge import ITEM_TYPE, Henge
 from .exceptions import RefgenconfError
 
@@ -106,16 +108,24 @@ class SeqColClient(Henge):
         if topology_default not in KNOWN_TOPOS:
             raise ValueError(f"Invalid topology ({topology_default}). "
                              f"Choose from: {','.join(KNOWN_TOPOS)}")
-        fa_object = parse_fasta(fa_file, gzipped)
+
+        seq = ""
+        name = ""
         aslist = []
-        for k in fa_object.keys():
-            seq = str(fa_object[k])
-            aslist.append(
-                {NAME_KEY: k, LEN_KEY: len(seq), TOPO_KEY: topology_default,
-                 SEQ_KEY: {"" if skip_seq else SEQ_KEY: seq}}
-            )
+        openfun = gzopen if gzipped else open
+        with openfun(fa_file, 'rt') as f:
+            for line in f:
+                line = line.strip('\n')
+                if line.startswith(">"):
+                    aslist.append({NAME_KEY: name, LEN_KEY: len(seq),
+                                   TOPO_KEY: topology_default,
+                                   SEQ_KEY: "" if skip_seq else seq})
+                    name = line.replace(">", "")
+                    seq = ""
+                    continue
+                seq = seq + line
         collection_checksum = self.insert(aslist, ASL_NAME)
-        _LOGGER.debug(f"Loaded {ASL_NAME}: {aslist}")
+        _LOGGER.debug(f"Loaded {ASL_NAME}")
         return collection_checksum, aslist
 
     @staticmethod

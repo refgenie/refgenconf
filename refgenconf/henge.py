@@ -182,7 +182,6 @@ class Henge(object):
             Henge.select_item_type to automatically choose this, if only one
             fits.
         """
-        _LOGGER.debug("Item: {} / Type: {}".format(item, item_type))
 
         if item_type not in self.schemas.keys():
             _LOGGER.error("I don't know about items of type '{}'. "
@@ -201,8 +200,6 @@ class Henge(object):
                 if prop in schema["properties"]:
                     if "recursive" in schema and prop in schema["recursive"]:
                         hclass = schema["properties"][prop]["henge_class"]
-                        _LOGGER.debug(
-                            "Prop: {} / Hclass: {}".format(prop, hclass))
                         digest = self.insert(item[prop], hclass)
                         flat_item[prop] = digest
                     else:

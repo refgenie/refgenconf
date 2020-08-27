@@ -1338,8 +1338,7 @@ class RefGenConf(yacman.YacAttMap):
         # retrieve annotated sequence digests list to save in a JSON file
         asdl = ssc.retrieve(druid=d, reclimit=1)
         pth = self.get_asds_path(d)
-        if not os.path.isdir(os.path.dirname(pth)):
-            os.makedirs(os.path.dirname(pth))
+        os.makedirs(os.path.dirname(pth), exist_ok=True)
         with open(pth, "w") as jfp:
             json.dump(asdl, jfp)
         _LOGGER.debug("Saved ASDs to JSON: {}".format(pth))

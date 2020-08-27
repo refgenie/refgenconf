@@ -1336,18 +1336,14 @@ class RefGenConf(yacman.YacAttMap):
         ssc = SeqColClient({})
         d, _ = ssc.load_fasta(fasta_path, gzipped=not fasta_unzipped)
         # retrieve annotated sequence digests list to save in a JSON file
-        asdl = ssc.retrieve(druid=d, reclimit=1)
+        asdl = ssc.retrieve(druid=d)
         pth = self.get_asds_path(d)
         os.makedirs(os.path.dirname(pth), exist_ok=True)
         with open(pth, "w") as jfp:
             json.dump(asdl, jfp)
         _LOGGER.debug("Saved ASDs to JSON: {}".format(pth))
-        set_args = dict(genome=alias, digest=d, overwrite=True, create_genome=True)
-        if self.file_path:
-            with self as rgc:
-                rgc.set_genome_alias(**set_args)
-        else:
-            self.set_genome_alias(**set_args)
+        self.set_genome_alias(
+            genome=alias, digest=d, overwrite=True, create_genome=True)
         return d, asdl
 
     def get_asds_path(self, genome):

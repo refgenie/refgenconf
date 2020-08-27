@@ -58,9 +58,10 @@ LEN_KEY = "length"
 
 # internal schemas paths determination
 ASL_NAME = "AnnotatedSequenceList"
-SCHEMA_NAMES = [ASL_NAME + ".yaml"]
+ASDL_NAME = "AnnotatedSequenceDigestList"
+SCHEMA_NAMES = [ASL_NAME, ASDL_NAME]
 SCHEMA_FILEPATH = os.path.join(os.path.dirname(__file__), "schemas")
-INTERNAL_SCHEMAS = [_schema_path(s) for s in SCHEMA_NAMES]
+INTERNAL_SCHEMAS = [_schema_path("{}.yaml".format(s)) for s in SCHEMA_NAMES]
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -123,7 +124,7 @@ class SeqColClient(Henge):
                         aslist.append({
                             NAME_KEY: name, LEN_KEY: len(seq),
                             TOPO_KEY: topology_default,
-                            SEQ_KEY: {"" if skip_seq else SEQ_KEY: seq}})
+                            SEQ_KEY: "" if skip_seq else trunc512_digest(seq)})
                         name = line.replace(">", "")
                     seq = ""
                     continue
@@ -131,10 +132,10 @@ class SeqColClient(Henge):
                 seq = seq + line
             aslist.append(
                 {NAME_KEY: name, LEN_KEY: len(seq), TOPO_KEY: topology_default,
-                 SEQ_KEY: {"" if skip_seq else SEQ_KEY: seq}})
+                 SEQ_KEY: "" if skip_seq else trunc512_digest(seq)})
 
-        collection_checksum = self.insert(aslist, ASL_NAME)
-        _LOGGER.debug(f"Loaded {ASL_NAME} ({len(aslist)} sequences)")
+        collection_checksum = self.insert(aslist, ASDL_NAME)
+        _LOGGER.info(f"Loaded {ASDL_NAME} ({len(aslist)} sequences)")
         return collection_checksum, aslist
 
     @staticmethod

@@ -49,7 +49,7 @@ class Henge(object):
         """
         self.database = database
         self.checksum_function = checksum_function
-        self.digest_version = "md5"
+        self.digest_version = checksum_function.__name__
 
         if isinstance(schemas, dict):
             _LOGGER.debug("Using old dict schemas")

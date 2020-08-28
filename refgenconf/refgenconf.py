@@ -1306,6 +1306,8 @@ class RefGenConf(yacman.YacAttMap):
         # get the symlink mapping before the removal for _remove_symlink_alias
         symlink_mapping = self.get_symlink_paths(genome=digest, all_aliases=True)
         if self.file_path:
+            _LOGGER.info(f"Instance bound to a file: {self.file_path}")
+            from time import sleep
             with self as r:
                 set_aliases, removed_aliases = _check_and_set_alias(
                     rgc=r, d=digest, a=genome, create=create_genome)

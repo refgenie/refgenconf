@@ -688,19 +688,21 @@ class RefGenConf(yacman.YacAttMap):
         except TypeError:
             _raise_not_mapping(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset], "Asset section ")
 
-    def set_default_pointer(self, genome, asset, tag, force=False):
+    def set_default_pointer(self, genome, asset, tag, force=False, force_digest=None):
         """
         Point to the selected tag by default
 
         :param str genome: name of a reference genome assembly of interest
         :param str asset: name of the particular asset of interest
         :param str tag: name of the particular asset tag to point to by default
+        :param str force_digest: digest to force update of. The alias will
+            not be converted to the digest, even if provided.
         :param bool force: whether the default tag change should be forced (even if it exists)
         """
         self._assert_gat_exists(genome, asset, tag)
         if CFG_ASSET_DEFAULT_TAG_KEY not in self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset] or \
                 len(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_DEFAULT_TAG_KEY]) == 0 or force:
-            self.update_assets(genome, asset, {CFG_ASSET_DEFAULT_TAG_KEY: tag})
+            self.update_assets(genome, asset, {CFG_ASSET_DEFAULT_TAG_KEY: tag}, force_digest=force_digest)
             _LOGGER.info("Default tag for '{}/{}' set to: {}".format(genome, asset, tag))
 
     def list_assets_by_genome(self, genome=None, order=None, include_tags=False):
@@ -1236,7 +1238,7 @@ class RefGenConf(yacman.YacAttMap):
         return removed_aliases
 
     def set_genome_alias(self, genome, digest=None, servers=None, overwrite=False,
-                         reset_digest=False, create_genome=False,
+                         reset_digest=False, create_genome=False, no_write=False,
                          get_json_url=lambda server: construct_request_url(server, API_ID_ALIAS_DIGEST)):
         """
         Assign a human-readable alias to a genome identifier.
@@ -1250,6 +1252,7 @@ class RefGenConf(yacman.YacAttMap):
         :param str digest: identifier to use
         :param bool overwrite: whether all the previously set aliases should be
             removed and just the current one stored
+        :param bool no_write: whether to skip writing the alias to the file
         :return bool: whether the alias has been established
         """
         def _check_and_set_alias(rgc, d, a, create=False):
@@ -1305,9 +1308,7 @@ class RefGenConf(yacman.YacAttMap):
 
         # get the symlink mapping before the removal for _remove_symlink_alias
         symlink_mapping = self.get_symlink_paths(genome=digest, all_aliases=True)
-        if self.file_path:
-            _LOGGER.info(f"Instance bound to a file: {self.file_path}")
-            from time import sleep
+        if self.file_path and not no_write:
             with self as r:
                 set_aliases, removed_aliases = _check_and_set_alias(
                     rgc=r, d=digest, a=genome, create=create_genome)
@@ -1320,7 +1321,7 @@ class RefGenConf(yacman.YacAttMap):
         self._symlink_alias(genome=digest)
         return True
 
-    def initialize_genome(self, fasta_path, alias, fasta_unzipped=False):
+    def initialize_genome(self, fasta_path, alias, fasta_unzipped=False, skip_alias_write=False):
         """
         Initialize a genome
 
@@ -1329,6 +1330,7 @@ class RefGenConf(yacman.YacAttMap):
 
         :param str fasta_path: path to a FASTA file to initialize genome with
         :param str alias: alias to set for the genome
+        :param bool skip_alias_write: whether to skip writing the alias to the file
         :return str, list[dict[]]: human-readable name for the genome
         """
         _LOGGER.info("Initializing genome: {}".format(alias))
@@ -1344,8 +1346,8 @@ class RefGenConf(yacman.YacAttMap):
         with open(pth, "w") as jfp:
             json.dump(asdl, jfp)
         _LOGGER.debug("Saved ASDs to JSON: {}".format(pth))
-        self.set_genome_alias(
-            genome=alias, digest=d, overwrite=True, create_genome=True)
+        self.set_genome_alias(genome=alias, digest=d, overwrite=True,
+                              create_genome=True, no_write=skip_alias_write)
         return d, asdl
 
     def get_asds_path(self, genome):
@@ -1403,7 +1405,7 @@ class RefGenConf(yacman.YacAttMap):
                 _extend_unique(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag]
                                [relationship], data)
 
-    def update_seek_keys(self, genome, asset, tag=None, keys=None):
+    def update_seek_keys(self, genome, asset, tag=None, keys=None, force_digest=None):
         """
         A convenience method which wraps the updated assets and uses it to
         update the seek keys for a tagged asset.
@@ -1411,19 +1413,21 @@ class RefGenConf(yacman.YacAttMap):
         :param str genome: genome to be added/updated
         :param str asset: asset to be added/updated
         :param str tag: tag to be added/updated
+        :param str force_digest: digest to force update of. The alias will
+            not be converted to the digest, even if provided.
         :param Mapping keys: seek_keys to be added/updated
         :return RefGenConf: updated object
         """
         tag = tag or self.get_default_tag(genome, asset)
         if _check_insert_data(keys, Mapping, "keys"):
-            self.update_tags(genome, asset, tag)
+            self.update_tags(genome, asset, tag, force_digest=force_digest)
             asset = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]
             _safe_setdef(asset[CFG_ASSET_TAGS_KEY][tag], CFG_SEEK_KEYS_KEY,
                          PXAM())
             asset[CFG_ASSET_TAGS_KEY][tag][CFG_SEEK_KEYS_KEY].update(keys)
         return self
 
-    def update_tags(self, genome, asset=None, tag=None, data=None):
+    def update_tags(self, genome, asset=None, tag=None, data=None, force_digest=None):
         """
         Updates the genomes in RefGenConf object at any level.
         If a requested genome-asset-tag mapping is missing, it will be created
@@ -1431,11 +1435,13 @@ class RefGenConf(yacman.YacAttMap):
         :param str genome: genome to be added/updated
         :param str asset: asset to be added/updated
         :param str tag: tag to be added/updated
+        :param str force_digest: digest to force update of. The alias will
+            not be converted to the digest, even if provided.
         :param Mapping data: data to be added/updated
         :return RefGenConf: updated object
         """
         if _check_insert_data(genome, str, "genome"):
-            genome = self.get_genome_alias_digest(alias=genome, fallback=True)
+            genome = force_digest or self.get_genome_alias_digest(alias=genome, fallback=True)
             _safe_setdef(self[CFG_GENOMES_KEY], genome, PXAM())
             if _check_insert_data(asset, str, "asset"):
                 _safe_setdef(self[CFG_GENOMES_KEY][genome], CFG_ASSETS_KEY,
@@ -1451,18 +1457,20 @@ class RefGenConf(yacman.YacAttMap):
                         self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag].update(data)
         return self
 
-    def update_assets(self, genome, asset=None, data=None):
+    def update_assets(self, genome, asset=None, data=None, force_digest=None):
         """
         Updates the genomes in RefGenConf object at any level.
         If a requested genome-asset mapping is missing, it will be created
 
         :param str genome: genome to be added/updated
         :param str asset: asset to be added/updated
+        :param str force_digest: digest to force update of. The alias will
+            not be converted to the digest, even if provided.
         :param Mapping data: data to be added/updated
         :return RefGenConf: updated object
         """
         if _check_insert_data(genome, str, "genome"):
-            genome = self.get_genome_alias_digest(alias=genome, fallback=True)
+            genome = force_digest or self.get_genome_alias_digest(alias=genome, fallback=True)
             _safe_setdef(self[CFG_GENOMES_KEY], genome, PXAM())
             if _check_insert_data(asset, str, "asset"):
                 _safe_setdef(self[CFG_GENOMES_KEY][genome], CFG_ASSETS_KEY,
@@ -1625,17 +1633,19 @@ class RefGenConf(yacman.YacAttMap):
                         self[CFG_GENOMES_KEY] = None
         return self
 
-    def update_genomes(self, genome, data=None):
+    def update_genomes(self, genome, data=None, force_digest=None):
         """
         Updates the genomes in RefGenConf object at any level.
         If a requested genome is missing, it will be added
 
         :param str genome: genome to be added/updated
+        :param str force_digest: digest to force update of. The alias will
+            not be converted to the digest, even if provided.
         :param Mapping data: data to be added/updated
         :return RefGenConf: updated object
         """
         if _check_insert_data(genome, str, "genome"):
-            genome = self.get_genome_alias_digest(alias=genome, fallback=True)
+            genome = force_digest or self.get_genome_alias_digest(alias=genome, fallback=True)
             _safe_setdef(self[CFG_GENOMES_KEY], genome,
                          PXAM({CFG_ASSETS_KEY: PXAM()}))
             if _check_insert_data(data, Mapping, "data"):

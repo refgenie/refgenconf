@@ -8,6 +8,7 @@ import signal
 import warnings
 import shutil
 import json
+import requests
 
 import yacman
 
@@ -25,8 +26,12 @@ from rich.progress import Progress, TextColumn, BarColumn
 
 from .progress_bar import _DownloadColumn, _TimeRemainingColumn, \
     _TransferSpeedColumn
+# from progress_bar import _DownloadColumn, _TimeRemainingColumn, \
+#     _TransferSpeedColumn
 
 from .seqcol import SeqColClient
+# from seqcol import SeqColClient
+
 from attmap import PathExAttMap as PXAM
 from ubiquerg import checksum, is_url, query_yes_no, untar, is_writable, \
     parse_registry_path as prp
@@ -34,6 +39,10 @@ from ubiquerg import checksum, is_url, query_yes_no, untar, is_writable, \
 from .const import *
 from .helpers import asciify_json_dict, select_genome_config, get_dir_digest
 from .exceptions import *
+
+# from const import *
+# from helpers import asciify_json_dict, select_genome_config, get_dir_digest
+# from exceptions import *
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -75,7 +84,8 @@ class RefGenConf(yacman.YacAttMap):
         """
 
         def _missing_key_msg(key, value):
-            _LOGGER.debug("Config lacks '{}' key. Setting to: {}".format(key, value))
+            _LOGGER.debug(
+                "Config lacks '{}' key. Setting to: {}".format(key, value))
 
         super(RefGenConf, self).__init__(filepath=filepath, entries=entries,
                                          writable=writable, wait_max=wait_max,
@@ -90,17 +100,28 @@ class RefGenConf(yacman.YacAttMap):
             try:
                 version = float(version)
             except ValueError:
-                _LOGGER.warning("Cannot parse config version as numeric: {}".format(version))
+                _LOGGER.warning(
+                    "Cannot parse config version as numeric: {}".format(version))
             else:
                 if version < REQ_CFG_VERSION:
+                    # msg = \
+                    #     "This genome config (v{}) is not compliant with v{} standards. " \
+                    #     "To use it, please downgrade refgenie: 'pip install \"refgenie>={},<{}\"'".\
+                    #     format(self[CFG_VERSION_KEY], str(REQ_CFG_VERSION),
+                    #            REFGENIE_BY_CFG[str(version)], REFGENIE_BY_CFG[str(REQ_CFG_VERSION)])
+                    # raise ConfigNotCompliantError(msg)
                     msg = \
-                        "This genome config (v{}) is not compliant with v{} standards. " \
-                        "To use it, please downgrade refgenie: 'pip install \"refgenie>={},<{}\"'".\
-                            format(self[CFG_VERSION_KEY], str(REQ_CFG_VERSION),
-                                   REFGENIE_BY_CFG[str(version)], REFGENIE_BY_CFG[str(REQ_CFG_VERSION)])
-                    raise ConfigNotCompliantError(msg)
+                        "This genome config v{} is not compliant with v{} standards.".\
+                        format(self[CFG_VERSION_KEY], str(REQ_CFG_VERSION))
+                    warnings.warn(msg)
+                    update_config(REQ_CFG_VERSION, filepath)
+                    super(RefGenConf, self).__init__(filepath=filepath, entries=entries,
+                                                     writable=writable, wait_max=wait_max,
+                                                     skip_read_lock=skip_read_lock)
+
                 else:
-                    _LOGGER.debug("Config version is compliant: {}".format(version))
+                    _LOGGER.debug(
+                        "Config version is compliant: {}".format(version))
         # initialize "genomes" mapping
         if CFG_GENOMES_KEY in self:
             if not isinstance(self[CFG_GENOMES_KEY], PXAM):
@@ -118,7 +139,7 @@ class RefGenConf(yacman.YacAttMap):
                                    for k, v in x.items()},
                 aliases_strict=True,
                 exact=genome_exact
-            )
+        )
         # initialize "genomes_folder"
         if CFG_FOLDER_KEY not in self:
             self[CFG_FOLDER_KEY] = os.path.dirname(filepath) \
@@ -129,10 +150,12 @@ class RefGenConf(yacman.YacAttMap):
             # backwards compatibility after server config key change
             self[CFG_SERVERS_KEY] = self[CFG_SERVER_KEY]
             del self[CFG_SERVER_KEY]
-            _LOGGER.debug("Moved servers list from '{}' to '{}'".format(CFG_SERVER_KEY, CFG_SERVERS_KEY))
+            _LOGGER.debug("Moved servers list from '{}' to '{}'".format(
+                CFG_SERVER_KEY, CFG_SERVERS_KEY))
         try:
             if isinstance(self[CFG_SERVERS_KEY], list):
-                tmp_list = [server_url.rstrip("/") for server_url in self[CFG_SERVERS_KEY]]
+                tmp_list = [server_url.rstrip("/")
+                            for server_url in self[CFG_SERVERS_KEY]]
                 self[CFG_SERVERS_KEY] = tmp_list
             else:  # Logic in pull_asset expects a list, even for a single server
                 self[CFG_SERVERS_KEY] = self[CFG_SERVERS_KEY].rstrip("/")
@@ -186,7 +209,8 @@ class RefGenConf(yacman.YacAttMap):
                     or not self[CFG_GENOMES_KEY][genome][CFG_ALIASES_KEY]:
                 aliases = ""
             else:
-                aliases = ", ".join(self[CFG_GENOMES_KEY][genome][CFG_ALIASES_KEY])
+                aliases = ", ".join(
+                    self[CFG_GENOMES_KEY][genome][CFG_ALIASES_KEY])
             table.add_row(genome, aliases)
         return table
 
@@ -231,7 +255,8 @@ class RefGenConf(yacman.YacAttMap):
         self.make_writable(filepath)
         self.write()
         self.make_readonly()
-        _LOGGER.info("Initialized genome configuration file: {}".format(filepath))
+        _LOGGER.info(
+            "Initialized genome configuration file: {}".format(filepath))
         return filepath
 
     def list(self, genome=None, order=None, include_tags=False):
@@ -270,17 +295,20 @@ class RefGenConf(yacman.YacAttMap):
             table.add_column("genome")
             if genomes:
                 it = "([italic]{}[/italic])"
-                genomes = [rgc.get_genome_alias_digest(alias=g, fallback=True) for g in genomes]
+                genomes = [rgc.get_genome_alias_digest(
+                    alias=g, fallback=True) for g in genomes]
                 table.add_column("asset " + it.format("seek_keys"))
                 table.add_column("tags")
                 for genome in genomes:
                     genome_dict = genomes_data[genome]
                     for asset, asset_dict in genome_dict[CFG_ASSETS_KEY].items():
                         tags = list(asset_dict[CFG_ASSET_TAGS_KEY].keys())
-                        seek_keys = list(asset_dict[CFG_ASSET_TAGS_KEY][tags[0]][CFG_SEEK_KEYS_KEY].keys())
+                        seek_keys = list(
+                            asset_dict[CFG_ASSET_TAGS_KEY][tags[0]][CFG_SEEK_KEYS_KEY].keys())
                         table.add_row(
                             ", ".join(genome_dict[CFG_ALIASES_KEY]),
-                            "{} ".format(asset) + it.format(", ".join(seek_keys)),
+                            "{} ".format(asset) +
+                            it.format(", ".join(seek_keys)),
                             ", ".join(tags)
                         )
             else:
@@ -298,7 +326,8 @@ class RefGenConf(yacman.YacAttMap):
             title = "Local refgenie assets\nServer subscriptions: {}".\
                 format(", ".join(self[CFG_SERVERS_KEY]))
         else:
-            genomes_data = _download_json(get_json_url(server_url, API_ID_GENOMES_DICT))
+            genomes_data = _download_json(
+                get_json_url(server_url, API_ID_GENOMES_DICT))
             title = "Remote refgenie assets\nServer URL: {}".format(server_url)
         return _fill_table_with_genomes_data(self, genomes_data, Table(title=title), genomes)
 
@@ -357,7 +386,7 @@ class RefGenConf(yacman.YacAttMap):
         else:
             if not force and not \
                     query_yes_no("'{}/{}:{}' exists. Do you want to overwrite?".
-                                         format(genome, asset, tag)):
+                                 format(genome, asset, tag)):
                 _LOGGER.info("Aborted by a user, asset no added")
                 return False
             remove = True
@@ -368,12 +397,13 @@ class RefGenConf(yacman.YacAttMap):
         }
         msg = "Added asset: {}/{}:{} {}".format(
             genome, asset, tag, "" if not seek_keys else "with seek keys: {}".
-                format(seek_keys))
+            format(seek_keys))
         if not self.file_path:
             if remove:
                 self.cfg_remove_assets(genome, asset, tag)
             self.update_tags(genome, asset, tag, tag_data)
-            self.update_seek_keys(genome, asset, tag, seek_keys or {asset: "."})
+            self.update_seek_keys(genome, asset, tag,
+                                  seek_keys or {asset: "."})
             self.set_default_pointer(genome, asset, tag)
             _LOGGER.info(msg)
         else:
@@ -381,7 +411,8 @@ class RefGenConf(yacman.YacAttMap):
                 if remove:
                     rgc.cfg_remove_assets(genome, asset, tag)
                 rgc.update_tags(genome, asset, tag, tag_data)
-                rgc.update_seek_keys(genome, asset, tag, seek_keys or {asset: "."})
+                rgc.update_seek_keys(genome, asset, tag,
+                                     seek_keys or {asset: "."})
                 rgc.set_default_pointer(genome, asset, tag)
                 _LOGGER.info(msg)
         self._symlink_alias(genome, asset, tag)
@@ -408,7 +439,7 @@ class RefGenConf(yacman.YacAttMap):
         if asset:
             tag = tag or self.get_default_tag(genome, asset)
         return {a: os.path.join(self.alias_dir, a, asset, tag) if asset else
-            os.path.join(self.alias_dir, a) for a in alias}
+                os.path.join(self.alias_dir, a) for a in alias}
 
     def _symlink_alias(self, genome, asset=None, tag=None,
                        link_fun=lambda s, t: os.symlink(s, t)):
@@ -446,7 +477,8 @@ class RefGenConf(yacman.YacAttMap):
                     appendix = os.path.relpath(root, src_path)
                     for dir in dirs:
                         try:
-                            os.makedirs(os.path.join(path, appendix, _rpl(dir)))
+                            os.makedirs(os.path.join(
+                                path, appendix, _rpl(dir)))
                         except FileExistsError:
                             continue
                     for file in files:
@@ -542,8 +574,10 @@ class RefGenConf(yacman.YacAttMap):
             this configuration instance, but the requested asset is unknown
         """
         tag_name = tag_name or self.get_default_tag(genome_name, asset_name)
-        genome_digest = self.get_genome_alias_digest(genome_name, fallback=True)
-        genome_ids = _make_list_of_str(self.get_genome_alias(genome_digest, fallback=True, all_aliases=all_aliases))
+        genome_digest = self.get_genome_alias_digest(
+            genome_name, fallback=True)
+        genome_ids = _make_list_of_str(self.get_genome_alias(
+            genome_digest, fallback=True, all_aliases=all_aliases))
         self._assert_gat_exists(genome_name, asset_name, tag_name)
         asset_tag_data = self[CFG_GENOMES_KEY][genome_name][CFG_ASSETS_KEY][asset_name][CFG_ASSET_TAGS_KEY][tag_name]
         if not seek_key:
@@ -555,8 +589,10 @@ class RefGenConf(yacman.YacAttMap):
             seek_val = asset_tag_data[CFG_SEEK_KEYS_KEY][seek_key]
         if enclosing_dir:
             seek_val = ""
-        fullpath = os.path.join(self.alias_dir, genome_digest, asset_name, tag_name, seek_val)
-        fullpaths = [fullpath.replace(genome_digest, gid) for gid in genome_ids]
+        fullpath = os.path.join(
+            self.alias_dir, genome_digest, asset_name, tag_name, seek_val)
+        fullpaths = [fullpath.replace(genome_digest, gid)
+                     for gid in genome_ids]
         paths_existence = [check_exist(fp) for fp in fullpaths]
         if all(paths_existence):
             return fullpaths if all_aliases else fullpaths[0]
@@ -573,8 +609,8 @@ class RefGenConf(yacman.YacAttMap):
         return fullpaths if all_aliases else fullpaths[0]
 
     def seek_src(self, genome_name, asset_name, tag_name=None, seek_key=None,
-             strict_exists=None, enclosing_dir=False,
-             check_exist=lambda p: os.path.exists(p) or is_url(p)):
+                 strict_exists=None, enclosing_dir=False,
+                 check_exist=lambda p: os.path.exists(p) or is_url(p)):
         """
         Seek path to a specified genome-asset-tag
 
@@ -604,7 +640,8 @@ class RefGenConf(yacman.YacAttMap):
             "getting asset: '{}/{}.{}:{}'".format(genome_name, asset_name, seek_key,
                                                   tag_name))
         if not callable(check_exist) or len(finspect(check_exist).args) != 1:
-            raise TypeError("Asset existence check must be a one-arg function.")
+            raise TypeError(
+                "Asset existence check must be a one-arg function.")
         # 3 'path' key options supported
         # option1: absolute path
         # get just the saute path value from the config
@@ -667,7 +704,8 @@ class RefGenConf(yacman.YacAttMap):
         try:
             self._assert_gat_exists(genome, asset)
         except RefgenconfError:
-            _LOGGER.info("Using '{}' as the default tag for '{}/{}'".format(DEFAULT_TAG, genome, asset))
+            _LOGGER.info(
+                "Using '{}' as the default tag for '{}/{}'".format(DEFAULT_TAG, genome, asset))
             return DEFAULT_TAG
         try:
             return self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_DEFAULT_TAG_KEY]
@@ -686,7 +724,8 @@ class RefGenConf(yacman.YacAttMap):
                                   .format(CFG_ASSET_DEFAULT_TAG_KEY, genome, asset, alt), RuntimeWarning)
                 return alt
         except TypeError:
-            _raise_not_mapping(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset], "Asset section ")
+            _raise_not_mapping(self[CFG_GENOMES_KEY][genome]
+                               [CFG_ASSETS_KEY][asset], "Asset section ")
 
     def set_default_pointer(self, genome, asset, tag, force=False, force_digest=None):
         """
@@ -702,8 +741,10 @@ class RefGenConf(yacman.YacAttMap):
         self._assert_gat_exists(genome, asset, tag)
         if CFG_ASSET_DEFAULT_TAG_KEY not in self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset] or \
                 len(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_DEFAULT_TAG_KEY]) == 0 or force:
-            self.update_assets(genome, asset, {CFG_ASSET_DEFAULT_TAG_KEY: tag}, force_digest=force_digest)
-            _LOGGER.info("Default tag for '{}/{}' set to: {}".format(genome, asset, tag))
+            self.update_assets(
+                genome, asset, {CFG_ASSET_DEFAULT_TAG_KEY: tag}, force_digest=force_digest)
+            _LOGGER.info(
+                "Default tag for '{}/{}' set to: {}".format(genome, asset, tag))
 
     def list_assets_by_genome(self, genome=None, order=None, include_tags=False):
         """
@@ -795,7 +836,8 @@ class RefGenConf(yacman.YacAttMap):
         data_by_server = {}
         for url in self[CFG_SERVERS_KEY]:
             url = get_url(url, API_ID_ASSETS)
-            data_by_server[url] = self._list_remote(url, genome, order, as_str=as_str)
+            data_by_server[url] = self._list_remote(
+                url, genome, order, as_str=as_str)
         return data_by_server
 
     def tag(self, genome, asset, tag, new_tag, files=True):
@@ -819,8 +861,10 @@ class RefGenConf(yacman.YacAttMap):
         :return bool: a logical indicating whether the tagging was successful
         """
         self.run_plugins(PRE_TAG_HOOK)
-        ori_path = self.seek_src(genome, asset, tag, enclosing_dir=True, strict_exists=True)
-        alias_ori_path = self.seek(genome, asset, tag, enclosing_dir=True, strict_exists=True)
+        ori_path = self.seek_src(
+            genome, asset, tag, enclosing_dir=True, strict_exists=True)
+        alias_ori_path = self.seek(
+            genome, asset, tag, enclosing_dir=True, strict_exists=True)
         new_path = os.path.abspath(os.path.join(ori_path, os.pardir, new_tag))
         if self.file_path:
             with self as r:
@@ -845,7 +889,8 @@ class RefGenConf(yacman.YacAttMap):
         else:
             if self.file_path:
                 with self as r:
-                    r.cfg_remove_assets(genome, asset, tag, relationships=False)
+                    r.cfg_remove_assets(genome, asset, tag,
+                                        relationships=False)
             else:
                 self.cfg_remove_assets(genome, asset, tag, relationships=False)
             _LOGGER.debug("Asset '{}/{}' tagged with '{}' has been removed from"
@@ -879,7 +924,7 @@ class RefGenConf(yacman.YacAttMap):
                              "tags for '{}/{}' are: {}".format(genome, asset, ", ".join(get_asset_tags(asset_mapping))))
         if new_tag in asset_mapping[CFG_ASSET_TAGS_KEY]:
             if not query_yes_no("You already have a '{}' asset tagged as '{}', do you wish to override?".
-                                        format(asset, new_tag)):
+                                format(asset, new_tag)):
                 _LOGGER.info("Tag action aborted by the user")
                 return
         children = []
@@ -895,9 +940,11 @@ class RefGenConf(yacman.YacAttMap):
                 _LOGGER.info("Tag action aborted by the user")
                 return False
             # updates children's parents
-            self._update_relatives_tags(genome, asset, tag, new_tag, children, update_children=False)
+            self._update_relatives_tags(
+                genome, asset, tag, new_tag, children, update_children=False)
             # updates parents' children
-            self._update_relatives_tags(genome, asset, tag, new_tag, parents, update_children=True)
+            self._update_relatives_tags(
+                genome, asset, tag, new_tag, parents, update_children=True)
         self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][new_tag] = \
             asset_mapping[CFG_ASSET_TAGS_KEY][tag]
         if CFG_ASSET_DEFAULT_TAG_KEY in asset_mapping and asset_mapping[CFG_ASSET_DEFAULT_TAG_KEY] == tag:
@@ -918,10 +965,12 @@ class RefGenConf(yacman.YacAttMap):
         """
         relative_key = CFG_ASSET_CHILDREN_KEY if update_children else CFG_ASSET_PARENTS_KEY
         for r in relatives:
-            _LOGGER.debug("updating {} in '{}'".format("children" if update_children else "parents", r))
+            _LOGGER.debug("updating {} in '{}'".format(
+                "children" if update_children else "parents", r))
             r_data = prp(r)
             try:
-                self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][r_data["item"]][CFG_ASSET_TAGS_KEY][r_data["tag"]]
+                self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][r_data["item"]
+                                                              ][CFG_ASSET_TAGS_KEY][r_data["tag"]]
             except KeyError:
                 _LOGGER.warning("The {} asset of '{}/{}' does not exist: {}".
                                 format("parent" if update_children else "child", genome, asset, r))
@@ -930,22 +979,25 @@ class RefGenConf(yacman.YacAttMap):
             if relative_key in \
                     self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][r_data["item"]][CFG_ASSET_TAGS_KEY][r_data["tag"]]:
                 relatives = \
-                    self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][r_data["item"]][CFG_ASSET_TAGS_KEY][r_data["tag"]]\
-                        [relative_key]
+                    self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][r_data["item"]
+                                                                  ][CFG_ASSET_TAGS_KEY][r_data["tag"]][relative_key]
                 for relative in relatives:
                     ori_relative_data = prp(relative)
                     if ori_relative_data["item"] == asset and ori_relative_data["tag"] == tag:
                         ori_relative_data["tag"] = new_tag
-                        updated_relatives.append("{}/{}:{}".format(genome, asset, new_tag))
+                        updated_relatives.append(
+                            "{}/{}:{}".format(genome, asset, new_tag))
                     else:
                         updated_relatives.append("{}/{}:{}".format(ori_relative_data["namespace"],
                                                                    ori_relative_data["item"], ori_relative_data["tag"]))
-            self.update_relatives_assets(genome, r_data["item"], r_data["tag"], updated_relatives, update_children)
-            self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][r_data["item"]][CFG_ASSET_TAGS_KEY][r_data["tag"]]\
-                [relative_key] = updated_relatives
+            self.update_relatives_assets(
+                genome, r_data["item"], r_data["tag"], updated_relatives, update_children)
+            self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][r_data["item"]
+                                                          ][CFG_ASSET_TAGS_KEY][r_data["tag"]][relative_key] = updated_relatives
 
     def pull(self, genome, asset, tag, unpack=True, force=None, force_large=None, size_cutoff=10,
-             get_json_url=lambda server, operation_id: construct_request_url(server, operation_id),
+             get_json_url=lambda server, operation_id: construct_request_url(
+                 server, operation_id),
              build_signal_handler=_handle_sigint):
         """
         Download and possibly unpack one or more assets for a given ref gen.
@@ -984,7 +1036,8 @@ class RefGenConf(yacman.YacAttMap):
             return gat, None, None
 
         def _raise_unpack_error():
-            raise NotImplementedError("Option to not extract tarballs is not yet supported.")
+            raise NotImplementedError(
+                "Option to not extract tarballs is not yet supported.")
 
         num_servers = 0
         bad_servers = []
@@ -998,7 +1051,8 @@ class RefGenConf(yacman.YacAttMap):
             try:
                 genome = self.get_genome_alias_digest(alias=alias)
             except yacman.UndefinedAliasError:
-                _LOGGER.info("No local digest for genome alias: {}".format(genome))
+                _LOGGER.info(
+                    "No local digest for genome alias: {}".format(genome))
                 if not self.set_genome_alias(genome=alias, servers=[server_url], create_genome=True):
                     return _null_return()
                 genome = self.get_genome_alias_digest(alias=alias)
@@ -1007,7 +1061,8 @@ class RefGenConf(yacman.YacAttMap):
                 determined_tag = _download_json(get_json_url(server_url, API_ID_DEFAULT_TAG).format(genome=genome, asset=asset)) \
                     if tag is None else tag
             except DownloadJsonError:
-                _LOGGER.warning("Could not retrieve JSON from: {}".format(server_url))
+                _LOGGER.warning(
+                    "Could not retrieve JSON from: {}".format(server_url))
                 bad_servers.append(server_url)
                 continue
             else:
@@ -1015,12 +1070,16 @@ class RefGenConf(yacman.YacAttMap):
                 _LOGGER.debug("Determined tag: {}".format(determined_tag))
                 unpack or _raise_unpack_error()
             gat = [genome, asset, determined_tag]
-            url_asset_attrs = get_json_url(server_url, API_ID_ASSET_ATTRS).format(genome=genome, asset=asset)
-            url_genome_attrs = get_json_url(server_url, API_ID_GENOME_ATTRS).format(genome=genome)
-            url_archive = get_json_url(server_url, API_ID_ARCHIVE).format(genome=genome, asset=asset)
+            url_asset_attrs = get_json_url(
+                server_url, API_ID_ASSET_ATTRS).format(genome=genome, asset=asset)
+            url_genome_attrs = get_json_url(
+                server_url, API_ID_GENOME_ATTRS).format(genome=genome)
+            url_archive = get_json_url(server_url, API_ID_ARCHIVE).format(
+                genome=genome, asset=asset)
 
             try:
-                archive_data = _download_json(url_asset_attrs, params={"tag": determined_tag})
+                archive_data = _download_json(
+                    url_asset_attrs, params={"tag": determined_tag})
             except DownloadJsonError:
                 no_asset_json.append(server_url)
                 if num_servers == len(self[CFG_SERVERS_KEY]):
@@ -1040,7 +1099,8 @@ class RefGenConf(yacman.YacAttMap):
             # local directory the downloaded archive will be temporarily saved in
             genome_dir_path = os.path.join(self.data_dir, genome, DATA_DIR)
             # local path to the temporarily saved archive
-            filepath = os.path.join(genome_dir_path, asset + "__" + determined_tag + ".tgz")
+            filepath = os.path.join(
+                genome_dir_path, asset + "__" + determined_tag + ".tgz")
             # check if the genome/asset:tag exists and get request user decision
             if os.path.exists(tag_dir):
                 def preserve():
@@ -1062,7 +1122,8 @@ class RefGenConf(yacman.YacAttMap):
 
             bundle_name = '{}/{}:{}'.format(*gat)
             archsize = archive_data[CFG_ARCHIVE_SIZE_KEY]
-            _LOGGER.debug("'{}' archive size: {}".format(bundle_name, archsize))
+            _LOGGER.debug("'{}' archive size: {}".format(
+                bundle_name, archsize))
 
             if not force_large and _is_large_archive(archsize, size_cutoff):
                 if force_large is False:
@@ -1083,9 +1144,11 @@ class RefGenConf(yacman.YacAttMap):
             _LOGGER.info("Downloading URL: {}".format(url_archive))
             try:
                 signal.signal(signal.SIGINT, build_signal_handler(filepath))
-                _download_url_progress(url_archive, filepath, bundle_name, params={"tag": determined_tag})
+                _download_url_progress(url_archive, filepath, bundle_name, params={
+                                       "tag": determined_tag})
             except HTTPError:
-                _LOGGER.error("Asset archive '{}/{}:{}' is missing on the server: {s}".format(*gat, s=server_url))
+                _LOGGER.error(
+                    "Asset archive '{}/{}:{}' is missing on the server: {s}".format(*gat, s=server_url))
                 if server_url == self[CFG_SERVERS_KEY][-1]:
                     # it this was the last server on the list, return
                     return _null_return()
@@ -1108,7 +1171,8 @@ class RefGenConf(yacman.YacAttMap):
                 _LOGGER.info("Download complete: {}".format(filepath))
 
             new_checksum = checksum(filepath)
-            old_checksum = archive_data and archive_data.get(CFG_ARCHIVE_CHECKSUM_KEY)
+            old_checksum = archive_data and archive_data.get(
+                CFG_ARCHIVE_CHECKSUM_KEY)
             if old_checksum and new_checksum != old_checksum:
                 _LOGGER.error("Downloaded archive ('{}') checksum mismatch: ({}, {})".
                               format(filepath, new_checksum, old_checksum))
@@ -1117,7 +1181,8 @@ class RefGenConf(yacman.YacAttMap):
                 _LOGGER.debug("Matched checksum: '{}'".format(old_checksum))
             # successfully downloaded and moved tarball; untar it
             if unpack and filepath.endswith(".tgz"):
-                _LOGGER.info("Extracting asset tarball and saving to: {}".format(tag_dir))
+                _LOGGER.info(
+                    "Extracting asset tarball and saving to: {}".format(tag_dir))
                 with TemporaryDirectory(dir=genome_dir_path) as tmpdir:
                     # here we suspect the unarchived asset to be an asset-named
                     # directory with the asset data inside and we transfer it
@@ -1125,7 +1190,8 @@ class RefGenConf(yacman.YacAttMap):
                     untar(filepath, tmpdir)
                     if os.path.isdir(tag_dir):
                         shutil.rmtree(tag_dir)
-                        _LOGGER.info("Removed existing directory: {}".format(tag_dir))
+                        _LOGGER.info(
+                            "Removed existing directory: {}".format(tag_dir))
                     shutil.move(os.path.join(tmpdir, asset), tag_dir)
                 if os.path.isfile(filepath):
                     os.remove(filepath)
@@ -1146,7 +1212,8 @@ class RefGenConf(yacman.YacAttMap):
                 self.set_default_pointer(*gat)
                 self.update_genomes(genome=genome, data=genome_archive_data)
             if asset == "fasta":
-                self.initialize_genome(fasta_path=self.seek_src(*gat), alias=alias, fasta_unzipped=True)
+                self.initialize_genome(fasta_path=self.seek_src(
+                    *gat), alias=alias, fasta_unzipped=True)
             self.run_plugins(POST_PULL_HOOK)
             self._symlink_alias(*gat)
             return gat, archive_data, server_url
@@ -1226,7 +1293,8 @@ class RefGenConf(yacman.YacAttMap):
                 return rmd
 
         # get the symlink mapping before the removal for _remove_symlink_alias
-        symlink_mapping = self.get_symlink_paths(genome=digest, all_aliases=True)
+        symlink_mapping = self.get_symlink_paths(
+            genome=digest, all_aliases=True)
         if self.file_path:
             with self as r:
                 removed_aliases = _check_and_remove_alias(r, digest, aliases)
@@ -1303,11 +1371,12 @@ class RefGenConf(yacman.YacAttMap):
                     continue
                 _LOGGER.info(
                     "Determined server digest for local genome alias ({}): {}".
-                        format(genome, digest))
+                    format(genome, digest))
                 break
 
         # get the symlink mapping before the removal for _remove_symlink_alias
-        symlink_mapping = self.get_symlink_paths(genome=digest, all_aliases=True)
+        symlink_mapping = self.get_symlink_paths(
+            genome=digest, all_aliases=True)
         if self.file_path and not no_write:
             with self as r:
                 set_aliases, removed_aliases = _check_and_set_alias(
@@ -1372,16 +1441,18 @@ class RefGenConf(yacman.YacAttMap):
             format(self.get_genome_alias_digest(alias=genome, fallback=True),
                    asset, tag)
         for rel_type in CFG_ASSET_RELATIVES_KEYS:
-            tmp = CFG_ASSET_RELATIVES_KEYS[len(CFG_ASSET_RELATIVES_KEYS) - 1 - CFG_ASSET_RELATIVES_KEYS.index(rel_type)]
+            tmp = CFG_ASSET_RELATIVES_KEYS[len(
+                CFG_ASSET_RELATIVES_KEYS) - 1 - CFG_ASSET_RELATIVES_KEYS.index(rel_type)]
             tag_data = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag]
             if rel_type not in tag_data:
                 continue
             for rel in tag_data[rel_type]:
                 parsed = prp(rel)
-                _LOGGER.debug("Removing '{}' from '{}' {}".format(to_remove, rel, tmp))
+                _LOGGER.debug("Removing '{}' from '{}' {}".format(
+                    to_remove, rel, tmp))
                 try:
-                    self[CFG_GENOMES_KEY][parsed["namespace"] or genome][CFG_ASSETS_KEY][parsed["item"]]\
-                        [CFG_ASSET_TAGS_KEY][parsed["tag"]][tmp].remove(to_remove)
+                    self[CFG_GENOMES_KEY][parsed["namespace"] or genome][CFG_ASSETS_KEY][parsed["item"]][CFG_ASSET_TAGS_KEY][parsed["tag"]
+                                                                                                                             ][tmp].remove(to_remove)
                 except (KeyError, ValueError):
                     pass
 
@@ -1399,8 +1470,10 @@ class RefGenConf(yacman.YacAttMap):
         tag = tag or self.get_default_tag(genome, asset)
         relationship = CFG_ASSET_CHILDREN_KEY if children else CFG_ASSET_PARENTS_KEY
         if _check_insert_data(data, list, "data"):
-            self.update_tags(genome, asset, tag)  # creates/asserts the genome/asset:tag combination
-            self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag].setdefault(relationship, list())
+            # creates/asserts the genome/asset:tag combination
+            self.update_tags(genome, asset, tag)
+            self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag].setdefault(
+                relationship, list())
             self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag][relationship] = \
                 _extend_unique(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag]
                                [relationship], data)
@@ -1441,7 +1514,8 @@ class RefGenConf(yacman.YacAttMap):
         :return RefGenConf: updated object
         """
         if _check_insert_data(genome, str, "genome"):
-            genome = force_digest or self.get_genome_alias_digest(alias=genome, fallback=True)
+            genome = force_digest or self.get_genome_alias_digest(
+                alias=genome, fallback=True)
             _safe_setdef(self[CFG_GENOMES_KEY], genome, PXAM())
             if _check_insert_data(asset, str, "asset"):
                 _safe_setdef(self[CFG_GENOMES_KEY][genome], CFG_ASSETS_KEY,
@@ -1454,7 +1528,8 @@ class RefGenConf(yacman.YacAttMap):
                     _safe_setdef(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY]
                                  [asset][CFG_ASSET_TAGS_KEY], tag, PXAM())
                     if _check_insert_data(data, Mapping, "data"):
-                        self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag].update(data)
+                        self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag].update(
+                            data)
         return self
 
     def update_assets(self, genome, asset=None, data=None, force_digest=None):
@@ -1470,7 +1545,8 @@ class RefGenConf(yacman.YacAttMap):
         :return RefGenConf: updated object
         """
         if _check_insert_data(genome, str, "genome"):
-            genome = force_digest or self.get_genome_alias_digest(alias=genome, fallback=True)
+            genome = force_digest or self.get_genome_alias_digest(
+                alias=genome, fallback=True)
             _safe_setdef(self[CFG_GENOMES_KEY], genome, PXAM())
             if _check_insert_data(asset, str, "asset"):
                 _safe_setdef(self[CFG_GENOMES_KEY][genome], CFG_ASSETS_KEY,
@@ -1516,7 +1592,7 @@ class RefGenConf(yacman.YacAttMap):
             asset_path = self.seek_src(genome, asset, tag, enclosing_dir=True,
                                        strict_exists=False)
             alias_asset_paths = self.seek(genome, asset, tag, enclosing_dir=True,
-                                         strict_exists=False, all_aliases=True)
+                                          strict_exists=False, all_aliases=True)
             if os.path.exists(asset_path):
                 removed.append(_remove(asset_path))
                 removed.extend([_remove(p) for p in alias_asset_paths])
@@ -1554,7 +1630,8 @@ class RefGenConf(yacman.YacAttMap):
                     alias_genome_dirs = \
                         [os.path.abspath(os.path.join(p, os.path.pardir))
                          for p in alias_asset_dirs]
-                    _entity_dir_removal_log(genome_dir, "genome", req_dict, removed)
+                    _entity_dir_removal_log(
+                        genome_dir, "genome", req_dict, removed)
                     removed.extend([_remove(p) for p in alias_genome_dirs])
                     try:
                         if self.file_path:
@@ -1619,8 +1696,10 @@ class RefGenConf(yacman.YacAttMap):
                     del self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag]
                     _del_if_empty(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset], CFG_ASSET_TAGS_KEY,
                                   [self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY], asset])
-                    _del_if_empty(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY], asset)
-                    _del_if_empty(self[CFG_GENOMES_KEY][genome], CFG_ASSETS_KEY, [self[CFG_GENOMES_KEY], genome])
+                    _del_if_empty(self[CFG_GENOMES_KEY]
+                                  [genome][CFG_ASSETS_KEY], asset)
+                    _del_if_empty(self[CFG_GENOMES_KEY][genome], CFG_ASSETS_KEY, [
+                                  self[CFG_GENOMES_KEY], genome])
                     _del_if_empty(self[CFG_GENOMES_KEY], genome)
                     try:
                         default_tag = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_DEFAULT_TAG_KEY]
@@ -1645,7 +1724,8 @@ class RefGenConf(yacman.YacAttMap):
         :return RefGenConf: updated object
         """
         if _check_insert_data(genome, str, "genome"):
-            genome = force_digest or self.get_genome_alias_digest(alias=genome, fallback=True)
+            genome = force_digest or self.get_genome_alias_digest(
+                alias=genome, fallback=True)
             _safe_setdef(self[CFG_GENOMES_KEY], genome,
                          PXAM({CFG_ASSETS_KEY: PXAM()}))
             if _check_insert_data(data, Mapping, "data"):
@@ -1669,7 +1749,7 @@ class RefGenConf(yacman.YacAttMap):
         else:
             raise GenomeConfigFormatError(
                 "The '{}' is missing. Can't update the server list".
-                    format(CFG_SERVERS_KEY))
+                format(CFG_SERVERS_KEY))
 
     def subscribe(self, urls, reset=False):
         """
@@ -1701,7 +1781,8 @@ class RefGenConf(yacman.YacAttMap):
                 ori_servers.remove(s)
                 unsub_list.append(s)
             except ValueError:
-                _LOGGER.warning("URL '{}' not in genome_servers list: {}".format(s, ori_servers))
+                _LOGGER.warning(
+                    "URL '{}' not in genome_servers list: {}".format(s, ori_servers))
         if self.file_path:
             with self as r:
                 r._update_genome_servers(ori_servers, reset=True)
@@ -1804,7 +1885,8 @@ class RefGenConf(yacman.YacAttMap):
         try:
             local_digest = self.id(genome, asset, tag)
             if remote_digest != local_digest:
-                raise RemoteDigestMismatchError(asset, local_digest, remote_digest)
+                raise RemoteDigestMismatchError(
+                    asset, local_digest, remote_digest)
         except RefgenconfError:
             _LOGGER.debug("Could not find '{}/{}:{}' digest. Digest for this parent will be populated "
                           "with the server one after the pull".format(genome, asset, tag))
@@ -1837,15 +1919,18 @@ class RefGenConf(yacman.YacAttMap):
             self._assert_gat_exists(genome, asset, tag,
                                     allow_incomplete=not self.is_asset_complete(genome, asset, tag))
         except (KeyError, MissingAssetError, MissingGenomeError, MissingSeekKeyError):
-            self.update_tags(genome, asset, tag, {CFG_ASSET_CHECKSUM_KEY: remote_digest})
-            _LOGGER.info("Could not find '{}/{}:{}' digest. Populating with server data".format(genome, asset, tag))
+            self.update_tags(genome, asset, tag, {
+                             CFG_ASSET_CHECKSUM_KEY: remote_digest})
+            _LOGGER.info(
+                "Could not find '{}/{}:{}' digest. Populating with server data".format(genome, asset, tag))
         else:
-            local_digest = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY] \
-                [tag][CFG_ASSET_CHECKSUM_KEY]
+            local_digest = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_CHECKSUM_KEY]
             if remote_digest != local_digest:
-                raise RemoteDigestMismatchError(asset, local_digest, remote_digest)
+                raise RemoteDigestMismatchError(
+                    asset, local_digest, remote_digest)
         finally:
-            self.update_relatives_assets(genome, asset, tag, [child_name], children=True)
+            self.update_relatives_assets(
+                genome, asset, tag, [child_name], children=True)
 
     def id(self, genome, asset, tag=None):
         """
@@ -1895,8 +1980,10 @@ class RefGenConf(yacman.YacAttMap):
                 return json.load(jfp)
 
         return SeqColClient({}).compare_asds(
-            _get_asds_for_genome(self, self.get_genome_alias_digest(genome1, True)),
-            _get_asds_for_genome(self, self.get_genome_alias_digest(genome2, True)),
+            _get_asds_for_genome(
+                self, self.get_genome_alias_digest(genome1, True)),
+            _get_asds_for_genome(
+                self, self.get_genome_alias_digest(genome2, True)),
             explain=explain
         )
 
@@ -2001,16 +2088,19 @@ class RefGenConf(yacman.YacAttMap):
             the structure of the given genomes mapping suggests that it was
             parsed from an improperly formatted/structured genome config file.
         """
-        _LOGGER.debug("checking existence of: {}/{}:{}".format(gname, aname, tname))
+        _LOGGER.debug(
+            "checking existence of: {}/{}:{}".format(gname, aname, tname))
         try:
             genome = self[CFG_GENOMES_KEY][gname]
         except KeyError:
-            raise MissingGenomeError("Your genomes do not include '{}'".format(gname))
+            raise MissingGenomeError(
+                "Your genomes do not include '{}'".format(gname))
         if aname is not None:
             try:
                 asset_data = genome[CFG_ASSETS_KEY][aname]
             except KeyError:
-                raise MissingAssetError("Genome '{}' exists, but asset '{}' is missing".format(gname, aname))
+                raise MissingAssetError(
+                    "Genome '{}' exists, but asset '{}' is missing".format(gname, aname))
             except TypeError:
                 _raise_not_mapping(asset_data, "Asset section ")
             if tname is not None:
@@ -2083,9 +2173,57 @@ class RefGenConf(yacman.YacAttMap):
                 else:
                     missing.append(g)
             if missing:
-                _LOGGER.warning("Genomes do not include: {}".format(", ".join(missing)))
+                _LOGGER.warning(
+                    "Genomes do not include: {}".format(", ".join(missing)))
             return None if not filtered else filtered
         return genomes if not all(x in genomes for x in genome) else genome
+
+
+def update_config(target_version, filepath):
+    """
+        update the config file to a target version
+
+        :param str target_version: the version updated to
+        :param str filepath: file path for the current config file
+    """
+
+    config = yacman.YacAttMap(filepath=filepath, writable=True)
+    current_version = config["config_version"]
+    genome_folder = config["genome_folder"]
+    for k, v in config["genomes"].items():
+        v.aliases = [k]
+        response = requests.get(
+            "http://refgenomes.databio.org:82/v3/alias/genome_digest/"+k)
+        if response.json()['detail']:
+            ssc = SeqColClient({})
+            d, _ = ssc.load_fasta(genome_folder+'/'+k +
+                                  '/fasta/default/'+k+'.fa')
+        else:
+            d = response.json()
+
+        for asset_k, asset_v in v["assets"].items():
+            for seek_k, seek_v in asset_v["tags"]["default"]["seek_keys"].items():
+                asset_v["tags"]["default"]["seek_keys"][seek_k] = seek_v.replace(
+                    k, d)
+
+            if (asset_k == "fasta" and "asset_children" in asset_v["tags"]["default"]):
+                for i in range(len(asset_v["tags"]["default"]["asset_children"])):
+                    asset_v["tags"]["default"]["asset_children"][i] = asset_v["tags"]["default"]["asset_children"][i].replace(
+                        k, d)
+            elif asset_k != "fasta":
+                for i in range(len(asset_v["tags"]["default"]["asset_parents"])):
+                    asset_v["tags"]["default"]["asset_parents"][i] = asset_v["tags"]["default"]["asset_parents"][i].replace(
+                        k, d)
+
+        config["genomes"][d] = config["genomes"].pop(k)
+        del config["genomes"][d]["genome_digest"]
+
+        config["config_version"] = target_version
+        config.write()
+    msg = \
+        "The genome config has been updated from v{} to v{}. ".\
+        format(str(current_version), str(target_version))
+    warnings.warn(msg)
 
 
 def _swap_names_in_tree(top, new_name, old_name):
@@ -2100,7 +2238,8 @@ def _swap_names_in_tree(top, new_name, old_name):
     """
 
     def _rename(x, rt):
-        os.rename(os.path.join(rt, x), os.path.join(rt, x.replace(old_name, new_name)))
+        os.rename(os.path.join(rt, x), os.path.join(
+            rt, x.replace(old_name, new_name)))
 
     if not os.path.isdir(top):
         return False
@@ -2175,7 +2314,8 @@ def _download_url_progress(url, output_path, name, params=None):
 
     url = url if params is None \
         else url + "?{}".format(urlencode(params))
-    task_id = progress.add_task("download", n=name, total=_get_content_len(url))
+    task_id = progress.add_task(
+        "download", n=name, total=_get_content_len(url))
     with progress as p:
         urlretrieve(url, filename=output_path, reporthook=p.rep_hook)
 
@@ -2247,16 +2387,19 @@ def _assert_gat_exists(genomes, gname, aname=None, tname=None, allow_incomplete=
         the structure of the given genomes mapping suggests that it was
         parsed from an improperly formatted/structured genome config file.
     """
-    _LOGGER.debug("checking existence of: {}/{}:{}".format(gname, aname, tname))
+    _LOGGER.debug(
+        "checking existence of: {}/{}:{}".format(gname, aname, tname))
     try:
         genome = genomes[gname]
     except KeyError:
-        raise MissingGenomeError("Your genomes do not include '{}'".format(gname))
+        raise MissingGenomeError(
+            "Your genomes do not include '{}'".format(gname))
     if aname is not None:
         try:
             asset_data = genome[CFG_ASSETS_KEY][aname]
         except KeyError:
-            raise MissingAssetError("Genome '{}' exists, but asset '{}' is missing".format(gname, aname))
+            raise MissingAssetError(
+                "Genome '{}' exists, but asset '{}' is missing".format(gname, aname))
         except TypeError:
             _raise_not_mapping(asset_data, "Asset section ")
         if tname is not None:
@@ -2312,7 +2455,8 @@ def _make_genome_assets_line(gen, assets, offset_text="  ", genome_assets_delim=
     :param function(str) -> object order: how to key asset names for sort
     :return str: text representation of a single assembly's name and assets
     """
-    tagged_assets = asset_sep.join(sorted(_make_asset_tags_product(assets, asset_tag_delim), key=order))
+    tagged_assets = asset_sep.join(
+        sorted(_make_asset_tags_product(assets, asset_tag_delim), key=order))
     return "{}{}{}{}".format(gen.rjust(rjust), genome_assets_delim, offset_text, tagged_assets)
 
 
@@ -2333,9 +2477,11 @@ def _make_asset_tags_product(assets, asset_tag_delim=":", asset_sk_delim="."):
             # proceed only if asset is 'complete' -- has seek_keys
             if seek_keys is not None:
                 # add seek_keys if exist and different from the asset name, otherwise just the asset name
-                sk_assets.extend([asset_sk_delim.join([aname, sk]) if sk != aname else aname for sk in seek_keys])
+                sk_assets.extend([asset_sk_delim.join(
+                    [aname, sk]) if sk != aname else aname for sk in seek_keys])
             # add tags to the asset.seek_key list
-            tagged_assets.extend([asset_tag_delim.join(i) for i in itertools.product(sk_assets, [tname])])
+            tagged_assets.extend([asset_tag_delim.join(i)
+                                  for i in itertools.product(sk_assets, [tname])])
     return tagged_assets
 
 
@@ -2370,7 +2516,8 @@ def _make_list_of_str(arg):
     :raise TypeError: if a fault argument was provided
     """
     def _raise_faulty_arg():
-        raise TypeError("Provided argument has to be a list[str] or a str, got '{}'".format(arg.__class__.__name__))
+        raise TypeError("Provided argument has to be a list[str] or a str, got '{}'".format(
+            arg.__class__.__name__))
 
     if isinstance(arg, str):
         return [arg]
@@ -2448,7 +2595,8 @@ def map_paths_by_id(json_dict):
     # check the required input dict characteristics to construct the mapping
     if "openapi" not in json_dict or not isinstance(json_dict["openapi"], str) \
             or "paths" not in json_dict or not isinstance(json_dict["paths"], dict):
-        raise ValueError("The provided mapping is not a valid representation of a JSON openAPI description")
+        raise ValueError(
+            "The provided mapping is not a valid representation of a JSON openAPI description")
     return {values["get"]["operationId"]: endpoint for endpoint, values in json_dict["paths"].items()}
 
 
@@ -2502,7 +2650,8 @@ def _safe_setdef(mapping, attr, val):
     try:
         mapping.setdefault(attr, val)
     except (TypeError, AttributeError):
-        _raise_not_mapping(mapping, "Cannot update; Section '{}' ".format(attr))
+        _raise_not_mapping(
+            mapping, "Cannot update; Section '{}' ".format(attr))
     return mapping
 
 

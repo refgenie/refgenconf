@@ -43,6 +43,6 @@ class TestSCCCompare:
     @pytest.mark.parametrize(["code", "fasta1", "fasta2"], CMP_SETUP)
     def test_fasta_compare(self, code, fasta1, fasta2, fasta_path):
         scc = SeqColClient({})
-        d, _ = scc.load_fasta(os.path.join(fasta_path, fasta1))
-        d2, _ = scc.load_fasta(os.path.join(fasta_path, fasta2))
+        d, _ = scc.load_fasta(os.path.join(fasta_path, fasta1), gzipped=True if fasta1.endswith(".gz") else False)
+        d2, _ = scc.load_fasta(os.path.join(fasta_path, fasta2),  gzipped=True if fasta2.endswith(".gz") else False)
         assert scc.compare(d, d2) == code

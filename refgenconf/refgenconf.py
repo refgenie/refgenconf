@@ -7,6 +7,7 @@ import os
 import signal
 import warnings
 import shutil
+from distutils.dir_util import copy_tree
 import json
 
 import yacman
@@ -2186,7 +2187,8 @@ class RefGenConf(yacman.YacAttMap):
         def check_genome_digests(config):
             missing_digest = []
             for k, v in config["genomes"].items():
-                if not "fasta" in v["assets"]:
+                if not os.path.exists(config["genome_folder"]+'/'+k +
+                                      '/fasta/default/'+k+'.fa'):
                     response = requests.get(
                         "http://refgenomes.databio.org:82/v3/alias/genome_digest/"+k)
                     if response.json()['detail']:
@@ -2199,7 +2201,7 @@ class RefGenConf(yacman.YacAttMap):
                     .format(missing_digest)):
                 _LOGGER.info("Action aborted by the user. To use it, please downgrade refgenie: 'pip install \"refgenie>={},<{}\"'".
                              format(REFGENIE_BY_CFG[str(config["config_version"])], REFGENIE_BY_CFG[str(REQ_CFG_VERSION)]))
-                return
+                return missing_digest
         # reformat config file
 
         def format_config(config, target_version):
@@ -2213,8 +2215,12 @@ class RefGenConf(yacman.YacAttMap):
                 if response.json()['detail']:
                     # if genome asset not exist on serer, generate the digest using the local fasta asset
                     ssc = SeqColClient({})
-                    d, _ = ssc.load_fasta(config["genome_folder"]+'/'+k +
-                                          '/fasta/default/'+k+'.fa')
+                    try:
+                        d, _ = ssc.load_fasta(config["genome_folder"]+'/'+k +
+                                              '/fasta/default/'+k+'.fa')
+                    except OSError:
+                        del config["genomes"][k]
+                        continue
                 else:
                     d = response.json()
                 # convert seek keys, childran/parent asset keys from aliases to genome digests
@@ -2241,8 +2247,27 @@ class RefGenConf(yacman.YacAttMap):
                 config.write()
             return config
         # restructure the genome_folder
-        # def alter_file_tree(config, genomes_folder):
-            # do something
+
+        def alter_file_tree(config):
+            my_genome = {}
+            for k, v in config["genomes"].items():
+                my_genome.update([(v["aliases"][0], k)])
+            os.mkdir(config["genome_folder"]+'/alias/')
+            # move folder
+            for root, dirs, files in os.walk(config["genome_folder"]):
+                for dir in dirs:
+                    if dir in my_genome:
+                        shutil.move(config["genome_folder"]+"/" + dir,
+                                    config["genome_folder"]+'/alias/' + dir)
+                del dirs[:]
+            os.mkdir(config["genome_folder"]+'/data/')
+            copy_tree(config["genome_folder"]+'/alias/',
+                      config["genome_folder"]+'/data/')
+
+            for root, dirs, files in os.walk(config["genome_folder"]+'/data/'):
+                for dir in dirs:
+                    _swap_names_in_tree(root+dir, my_genome[dir], dir)
+                del dirs[:]
 
         # load the config file
         config = yacman.YacAttMap(filepath=filepath, writable=True)
@@ -2255,8 +2280,10 @@ class RefGenConf(yacman.YacAttMap):
             return
 
         # check if any genome lack of local fasta asset and not on server
-        check_genome_digests(config)
+        genome_drop = check_genome_digests(config)
         config = format_config(config, target_version)  # reformat config file
+        # print(config)
+        alter_file_tree(config)
 
 
 def _swap_names_in_tree(top, new_name, old_name):

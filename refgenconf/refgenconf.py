@@ -99,19 +99,11 @@ class RefGenConf(yacman.YacAttMap):
                     msg = \
                         "This genome config (v{}) is not compliant with v{} standards. \n" \
                         "To use it, please upgrade the config file: 'refgenie upgrade --target-version {}', or " \
-                        "downgrade refgenie: 'pip install \"refgenie>={},<{}\"'".\
+                        "downgrade refgenconf: 'pip install \"refgenconf>={},<{}\"'".\
                         format(self[CFG_VERSION_KEY], str(REQ_CFG_VERSION),
                                str(REQ_CFG_VERSION),
                                REFGENIE_BY_CFG[str(version)], REFGENIE_BY_CFG[str(REQ_CFG_VERSION)])
                     raise ConfigNotCompliantError(msg)
-                    # msg = \
-                    #     "This genome config v{} is not compliant with v{} standards.".\
-                    #     format(self[CFG_VERSION_KEY], str(REQ_CFG_VERSION))
-                    # warnings.warn(msg)
-                    # update_config(REQ_CFG_VERSION, filepath)
-                    # super(RefGenConf, self).__init__(filepath=filepath, entries=entries,
-                    #                                  writable=writable, wait_max=wait_max,
-                    #                                  skip_read_lock=skip_read_lock)
 
                 else:
                     _LOGGER.debug(

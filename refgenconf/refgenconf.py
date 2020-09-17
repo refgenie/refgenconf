@@ -8,7 +8,6 @@ import signal
 import warnings
 import shutil
 import json
-import requests
 
 import yacman
 
@@ -26,12 +25,8 @@ from rich.progress import Progress, TextColumn, BarColumn
 
 from .progress_bar import _DownloadColumn, _TimeRemainingColumn, \
     _TransferSpeedColumn
-# from progress_bar import _DownloadColumn, _TimeRemainingColumn, \
-#     _TransferSpeedColumn
 
 from .seqcol import SeqColClient
-# from seqcol import SeqColClient
-
 from attmap import PathExAttMap as PXAM
 from ubiquerg import checksum, is_url, query_yes_no, untar, is_writable, \
     parse_registry_path as prp
@@ -39,10 +34,6 @@ from ubiquerg import checksum, is_url, query_yes_no, untar, is_writable, \
 from .const import *
 from .helpers import asciify_json_dict, select_genome_config, get_dir_digest
 from .exceptions import *
-
-# from const import *
-# from helpers import asciify_json_dict, select_genome_config, get_dir_digest
-# from exceptions import *
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -104,20 +95,22 @@ class RefGenConf(yacman.YacAttMap):
                     "Cannot parse config version as numeric: {}".format(version))
             else:
                 if version < REQ_CFG_VERSION:
-                    # msg = \
-                    #     "This genome config (v{}) is not compliant with v{} standards. " \
-                    #     "To use it, please downgrade refgenie: 'pip install \"refgenie>={},<{}\"'".\
-                    #     format(self[CFG_VERSION_KEY], str(REQ_CFG_VERSION),
-                    #            REFGENIE_BY_CFG[str(version)], REFGENIE_BY_CFG[str(REQ_CFG_VERSION)])
-                    # raise ConfigNotCompliantError(msg)
                     msg = \
-                        "This genome config v{} is not compliant with v{} standards.".\
-                        format(self[CFG_VERSION_KEY], str(REQ_CFG_VERSION))
-                    warnings.warn(msg)
-                    update_config(REQ_CFG_VERSION, filepath)
-                    super(RefGenConf, self).__init__(filepath=filepath, entries=entries,
-                                                     writable=writable, wait_max=wait_max,
-                                                     skip_read_lock=skip_read_lock)
+                        "This genome config (v{}) is not compliant with v{} standards. \n" \
+                        "To use it, please upgrade the config file: 'refgenie upgrade --target-version {}', or " \
+                        "downgrade refgenie: 'pip install \"refgenie>={},<{}\"'".\
+                        format(self[CFG_VERSION_KEY], str(REQ_CFG_VERSION),
+                               str(REQ_CFG_VERSION),
+                               REFGENIE_BY_CFG[str(version)], REFGENIE_BY_CFG[str(REQ_CFG_VERSION)])
+                    raise ConfigNotCompliantError(msg)
+                    # msg = \
+                    #     "This genome config v{} is not compliant with v{} standards.".\
+                    #     format(self[CFG_VERSION_KEY], str(REQ_CFG_VERSION))
+                    # warnings.warn(msg)
+                    # update_config(REQ_CFG_VERSION, filepath)
+                    # super(RefGenConf, self).__init__(filepath=filepath, entries=entries,
+                    #                                  writable=writable, wait_max=wait_max,
+                    #                                  skip_read_lock=skip_read_lock)
 
                 else:
                     _LOGGER.debug(
@@ -2178,52 +2171,92 @@ class RefGenConf(yacman.YacAttMap):
             return None if not filtered else filtered
         return genomes if not all(x in genomes for x in genome) else genome
 
+    def config_upgrade(target_version, filepath, force=False):
+        """
+            upgrade the config file to a target version, 
+            and alter genome_folder stucture 
 
-def update_config(target_version, filepath):
-    """
-        update the config file to a target version
+            :param str target_version: the version updated to
+            :param str filepath: file path for the current config file
+            :param bool force
+        """
+        import requests
+        # check if any genome lack of local fasta asset and not on server
 
-        :param str target_version: the version updated to
-        :param str filepath: file path for the current config file
-    """
+        def check_genome_digests(config):
+            missing_digest = []
+            for k, v in config["genomes"].items():
+                if not "fasta" in v["assets"]:
+                    response = requests.get(
+                        "http://refgenomes.databio.org:82/v3/alias/genome_digest/"+k)
+                    if response.json()['detail']:
+                        missing_digest.append(k)
 
-    config = yacman.YacAttMap(filepath=filepath, writable=True)
-    current_version = config["config_version"]
-    genome_folder = config["genome_folder"]
-    for k, v in config["genomes"].items():
-        v.aliases = [k]
-        response = requests.get(
-            "http://refgenomes.databio.org:82/v3/alias/genome_digest/"+k)
-        if response.json()['detail']:
-            ssc = SeqColClient({})
-            d, _ = ssc.load_fasta(genome_folder+'/'+k +
-                                  '/fasta/default/'+k+'.fa')
-        else:
-            d = response.json()
+            if missing_digest and not query_yes_no(
+                    "The following genome(s) would be lost due to the lack of local and remote fasta asset(s): \n"
+                    "{} \n"
+                    "Would you like to proceed?"
+                    .format(missing_digest)):
+                _LOGGER.info("Action aborted by the user. To use it, please downgrade refgenie: 'pip install \"refgenie>={},<{}\"'".
+                             format(REFGENIE_BY_CFG[str(config["config_version"])], REFGENIE_BY_CFG[str(REQ_CFG_VERSION)]))
+                return
+        # reformat config file
 
-        for asset_k, asset_v in v["assets"].items():
-            for seek_k, seek_v in asset_v["tags"]["default"]["seek_keys"].items():
-                asset_v["tags"]["default"]["seek_keys"][seek_k] = seek_v.replace(
-                    k, d)
+        def format_config(config, target_version):
+            # reformat the config file
+            for k, v in config["genomes"].items():
+                # create "aliases" section
+                v.aliases = [k]
+                # get genome digest from the server
+                response = requests.get(
+                    "http://refgenomes.databio.org:82/v3/alias/genome_digest/"+k)
+                if response.json()['detail']:
+                    # if genome asset not exist on serer, generate the digest using the local fasta asset
+                    ssc = SeqColClient({})
+                    d, _ = ssc.load_fasta(config["genome_folder"]+'/'+k +
+                                          '/fasta/default/'+k+'.fa')
+                else:
+                    d = response.json()
+                # convert seek keys, childran/parent asset keys from aliases to genome digests
+                for asset_k, asset_v in v["assets"].items():
+                    for seek_k, seek_v in asset_v["tags"]["default"]["seek_keys"].items():
+                        asset_v["tags"]["default"]["seek_keys"][seek_k] = seek_v.replace(
+                            k, d)
 
-            if (asset_k == "fasta" and "asset_children" in asset_v["tags"]["default"]):
-                for i in range(len(asset_v["tags"]["default"]["asset_children"])):
-                    asset_v["tags"]["default"]["asset_children"][i] = asset_v["tags"]["default"]["asset_children"][i].replace(
-                        k, d)
-            elif asset_k != "fasta":
-                for i in range(len(asset_v["tags"]["default"]["asset_parents"])):
-                    asset_v["tags"]["default"]["asset_parents"][i] = asset_v["tags"]["default"]["asset_parents"][i].replace(
-                        k, d)
+                    if (asset_k == "fasta" and "asset_children" in asset_v["tags"]["default"]):
+                        for i in range(len(asset_v["tags"]["default"]["asset_children"])):
+                            asset_v["tags"]["default"]["asset_children"][i] = asset_v["tags"]["default"]["asset_children"][i].replace(
+                                k, d)
+                    elif asset_k != "fasta":
+                        for i in range(len(asset_v["tags"]["default"]["asset_parents"])):
+                            asset_v["tags"]["default"]["asset_parents"][i] = asset_v["tags"]["default"]["asset_parents"][i].replace(
+                                k, d)
+                # use the genome digest as primary keys
+                config["genomes"][d] = config["genomes"].pop(k)
+                # remove old "genome_digest" section
+                del config["genomes"][d]["genome_digest"]
+                # change the config_version
+                config["config_version"] = target_version
+                # write over the config file
+                config.write()
+            return config
+        # restructure the genome_folder
+        # def alter_file_tree(config, genomes_folder):
+            # do something
 
-        config["genomes"][d] = config["genomes"].pop(k)
-        del config["genomes"][d]["genome_digest"]
+        # load the config file
+        config = yacman.YacAttMap(filepath=filepath, writable=True)
+        # prompt the user
+        if not force and not query_yes_no(
+                "Upgrade config to v{}. This will alter the files on disk. Would you like to proceed?"
+                .format(target_version)):
+            _LOGGER.info("Action aborted by the user. To use it, please downgrade refgenie: 'pip install \"refgenie>={},<{}\"'".
+                         format(REFGENIE_BY_CFG[str(config["config_version"])], REFGENIE_BY_CFG[str(REQ_CFG_VERSION)]))
+            return
 
-        config["config_version"] = target_version
-        config.write()
-    msg = \
-        "The genome config has been updated from v{} to v{}. ".\
-        format(str(current_version), str(target_version))
-    warnings.warn(msg)
+        # check if any genome lack of local fasta asset and not on server
+        check_genome_digests(config)
+        config = format_config(config, target_version)  # reformat config file
 
 
 def _swap_names_in_tree(top, new_name, old_name):
@@ -2260,7 +2293,7 @@ def _download_json(url, params=None):
     :param dict params: query parameters
     :return dict: served data
     """
-    import requests
+
     _LOGGER.debug("Downloading JSON data; querying URL: '{}'".format(url))
     resp = requests.get(url, params=params)
     if resp.ok:

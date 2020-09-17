@@ -3,6 +3,7 @@
 import os
 from yacman import select_config
 from .const import CFG_ENV_VARS, BUILD_STATS_DIR
+# from const import CFG_ENV_VARS, BUILD_STATS_DIR
 from re import sub
 from ubiquerg import is_command_callable
 

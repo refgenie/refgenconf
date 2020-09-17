@@ -86,7 +86,8 @@ class SeqColClient(Henge):
             serialized items stored in this henge.
         """
         assert all([os.path.exists(s) for s in INTERNAL_SCHEMAS]), \
-            RefgenconfError("Missing schema files: {}".format(INTERNAL_SCHEMAS))
+            RefgenconfError(
+                "Missing schema files: {}".format(INTERNAL_SCHEMAS))
         super(SeqColClient, self).__init__(
             database=database, schemas=schemas or INTERNAL_SCHEMAS,
             henges=henges, checksum_function=checksum_function

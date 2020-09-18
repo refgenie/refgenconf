@@ -7,6 +7,7 @@ import os
 import signal
 import warnings
 import shutil
+# from shutil import include_patterns
 from distutils.dir_util import copy_tree
 import json
 
@@ -2244,21 +2245,32 @@ class RefGenConf(yacman.YacAttMap):
             my_genome = {}
             for k, v in config["genomes"].items():
                 my_genome.update([(v["aliases"][0], k)])
+            os.mkdir(config["genome_folder"]+'/data/')
             os.mkdir(config["genome_folder"]+'/alias/')
             # move folder
             for root, dirs, files in os.walk(config["genome_folder"]):
                 for dir in dirs:
                     if dir in my_genome:
                         shutil.move(config["genome_folder"]+"/" + dir,
-                                    config["genome_folder"]+'/alias/' + dir)
+                                    config["genome_folder"]+'/data/' + dir)
                 del dirs[:]
-            os.mkdir(config["genome_folder"]+'/data/')
-            copy_tree(config["genome_folder"]+'/alias/',
-                      config["genome_folder"]+'/data/')
 
             for root, dirs, files in os.walk(config["genome_folder"]+'/data/'):
                 for dir in dirs:
                     _swap_names_in_tree(root+dir, my_genome[dir], dir)
+                    os.mkdir(config["genome_folder"]+'/alias/'+dir)
+                    # create symlink for alias folder
+                    for genome, assets, files in os.walk(root+my_genome[dir]):
+                        for asset in assets:
+                            old_path = os.path.join(genome, asset)
+                            new_path = old_path.replace(
+                                my_genome[dir], dir).replace("/data/", "/alias/")
+                            os.mkdir(new_path)
+                        for file in files:
+                            old_path = os.path.join(genome, file)
+                            new_path = old_path.replace(
+                                my_genome[dir], dir).replace("/data/", "/alias/")
+                            os.symlink(old_path, new_path)
                 del dirs[:]
 
         # load the config file
@@ -2274,7 +2286,6 @@ class RefGenConf(yacman.YacAttMap):
         # check if any genome lack of local fasta asset and not on server
         genome_drop = check_genome_digests(config)
         config = format_config(config, target_version)  # reformat config file
-        # print(config)
         alter_file_tree(config)
 
 

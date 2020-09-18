@@ -8,6 +8,7 @@ import signal
 import warnings
 import shutil
 import json
+import requests
 
 import yacman
 
@@ -2172,7 +2173,7 @@ class RefGenConf(yacman.YacAttMap):
             :param str filepath: file path for the current config file
             :param bool force
         """
-        import requests
+
         # check if any genome lack of local fasta asset and not on server
 
         def check_genome_digests(config):

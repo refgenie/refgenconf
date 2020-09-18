@@ -7,8 +7,6 @@ import os
 import signal
 import warnings
 import shutil
-# from shutil import include_patterns
-from distutils.dir_util import copy_tree
 import json
 
 import yacman

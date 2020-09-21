@@ -2166,12 +2166,12 @@ class RefGenConf(yacman.YacAttMap):
 
     def config_upgrade(target_version, filepath, force=False):
         """
-            upgrade the config file to a target version, 
-            and alter genome_folder stucture 
+        upgrade the config file to a target version, 
+        and alter genome_folder stucture 
 
-            :param str target_version: the version updated to
-            :param str filepath: file path for the current config file
-            :param bool force
+        :param str target_version: the version updated to
+        :param str filepath: file path for the current config file
+        :param bool force
         """
 
         # check if any genome lack of local fasta asset and not on server

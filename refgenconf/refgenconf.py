@@ -2183,7 +2183,7 @@ class RefGenConf(yacman.YacAttMap):
             missing_digest = []
             for k, v in config[CFG_GENOMES_KEY].items():
                 if not os.path.exists(config[CFG_FOLDER_KEY]+'/'+k +
-                                      '/fasta/default/'+k+'.fa'):
+                                      '/fasta/'):
                     response = requests.get(
                         "http://refgenomes.databio.org:82/v3/alias/genome_digest/"+k)
                     if response.json()['detail']:
@@ -2203,7 +2203,7 @@ class RefGenConf(yacman.YacAttMap):
             # reformat the config file
             for k, v in config[CFG_GENOMES_KEY].items():
                 # create "aliases" section
-                v.aliases = [k]
+                v[CFG_ALIASES_KEY] = [k]
                 # get genome digest from the server
                 response = requests.get(
                     "http://refgenomes.databio.org:82/v3/alias/genome_digest/"+k)
@@ -2211,40 +2211,56 @@ class RefGenConf(yacman.YacAttMap):
                     # if genome asset not exist on serer, generate the digest using the local fasta asset
                     ssc = SeqColClient({})
                     try:
+                        tag = v[CFG_ASSETS_KEY]["fasta"][CFG_ASSET_DEFAULT_TAG_KEY]
                         d, _ = ssc.load_fasta(config[CFG_FOLDER_KEY]+'/'+k +
-                                              '/fasta/default/'+k+'.fa')
-                    except OSError:
+                                              '/fasta/'+str(tag)+'/'+k+'.fa')
+                    except KeyError:
                         del config[CFG_GENOMES_KEY][k]
                         continue
                 else:
                     d = response.json()
                 # convert seek keys, childran/parent asset keys from aliases to genome digests
                 for asset_k, asset_v in v[CFG_ASSETS_KEY].items():
-                    for seek_k, seek_v in asset_v[CFG_ASSET_TAGS_KEY]["default"][CFG_SEEK_KEYS_KEY].items():
-                        asset_v[CFG_ASSET_TAGS_KEY["default"][CFG_SEEK_KEYS_KEY][seek_k]= seek_v.replace(
-                            k, d)
+                    for tag_k, tag_v in asset_v[CFG_ASSET_TAGS_KEY].items():
+                        for seek_k, seek_v in tag_v[CFG_SEEK_KEYS_KEY].items():
+                            asset_v[CFG_ASSET_TAGS_KEY][tag_k][CFG_SEEK_KEYS_KEY][seek_k] = seek_v.replace(
+                                k, d)
 
-                    if (asset_k == "fasta" and CFG_ASSET_CHILDREN_KEY in asset_v[CFG_ASSET_TAGS_KEY]["default"]):
-                        for i in range(len(asset_v[CFG_ASSET_TAGS_KEY]["default"][CFG_ASSET_CHILDREN_KEY])):
-                            asset_v[CFG_ASSET_TAGS_KEY]["default"][CFG_ASSET_CHILDREN_KEY][i]= asset_v[CFG_ASSET_TAGS_KEY]["default"][CFG_ASSET_CHILDREN_KEY][i].replace(
-                                k, d)
-                    elif asset_k != "fasta":
-                        for i in range(len(asset_v[CFG_ASSET_TAGS_KEY]["default"][CFG_ASSET_PARENTS_KEY])):
-                            asset_v[CFG_ASSET_TAGS_KEY]["default"][CFG_ASSET_PARENTS_KEY][i]= asset_v[CFG_ASSET_TAGS_KEY]["default"][CFG_ASSET_PARENTS_KEY][i].replace(
-                                k, d)
+                        if (asset_k == "fasta" and CFG_ASSET_CHILDREN_KEY in asset_v[CFG_ASSET_TAGS_KEY][tag_k]):
+                            for i in range(len(asset_v[CFG_ASSET_TAGS_KEY][tag_k][CFG_ASSET_CHILDREN_KEY])):
+                                asset_v[CFG_ASSET_TAGS_KEY][tag_k][CFG_ASSET_CHILDREN_KEY][i] = asset_v[CFG_ASSET_TAGS_KEY][tag_k][CFG_ASSET_CHILDREN_KEY][i].replace(
+                                    k, d)
+                        elif asset_k != "fasta":
+                            for i in range(len(asset_v[CFG_ASSET_TAGS_KEY][tag_k][CFG_ASSET_PARENTS_KEY])):
+                                asset_v[CFG_ASSET_TAGS_KEY][tag_k][CFG_ASSET_PARENTS_KEY][i] = asset_v[CFG_ASSET_TAGS_KEY][tag_k][CFG_ASSET_PARENTS_KEY][i].replace(
+                                    k, d)
+                # for asset_k, asset_v in v[CFG_ASSETS_KEY].items():
+                #     for seek_k, seek_v in asset_v[CFG_ASSET_TAGS_KEY]["default"][CFG_SEEK_KEYS_KEY].items():
+                #         asset_v[CFG_ASSET_TAGS_KEY]["default"][CFG_SEEK_KEYS_KEY][seek_k]= seek_v.replace(
+                #             k, d)
+
+                #     if (asset_k == "fasta" and CFG_ASSET_CHILDREN_KEY in asset_v[CFG_ASSET_TAGS_KEY]["default"]):
+                #         for i in range(len(asset_v[CFG_ASSET_TAGS_KEY]["default"][CFG_ASSET_CHILDREN_KEY])):
+                #             asset_v[CFG_ASSET_TAGS_KEY]["default"][CFG_ASSET_CHILDREN_KEY][i]= asset_v[CFG_ASSET_TAGS_KEY]["default"][CFG_ASSET_CHILDREN_KEY][i].replace(
+                #                 k, d)
+                #     elif asset_k != "fasta":
+                #         for i in range(len(asset_v[CFG_ASSET_TAGS_KEY]["default"][CFG_ASSET_PARENTS_KEY])):
+                #             asset_v[CFG_ASSET_TAGS_KEY]["default"][CFG_ASSET_PARENTS_KEY][i]= asset_v[CFG_ASSET_TAGS_KEY]["default"][CFG_ASSET_PARENTS_KEY][i].replace(
+                #                 k, d)
+
                 # use the genome digest as primary keys
-                config[CFG_GENOMES_KEY][d]= config[CFG_GENOMES_KEY].pop(k)
+                config[CFG_GENOMES_KEY][d] = config[CFG_GENOMES_KEY].pop(k)
                 # remove old "genome_digest" section
                 del config[CFG_GENOMES_KEY][d][CFG_CHECKSUM_KEY]
                 # change the config_version
-                config[CFG_VERSION_KEY]= target_version
+                config[CFG_VERSION_KEY] = target_version
                 # write over the config file
                 config.write()
             return config
         # restructure the genome_folder
 
         def alter_file_tree(config):
-            my_genome= {}
+            my_genome = {}
             for k, v in config[CFG_GENOMES_KEY].items():
                 my_genome.update([(v[CFG_ALIASES_KEY][0], k)])
             os.mkdir(config[CFG_FOLDER_KEY]+'/data/')
@@ -2264,19 +2280,19 @@ class RefGenConf(yacman.YacAttMap):
                     # create symlink for alias folder
                     for genome, assets, files in os.walk(root+my_genome[dir]):
                         for asset in assets:
-                            old_path= os.path.join(genome, asset)
-                            new_path= old_path.replace(
+                            old_path = os.path.join(genome, asset)
+                            new_path = old_path.replace(
                                 my_genome[dir], dir).replace("/data/", "/alias/")
                             os.mkdir(new_path)
                         for file in files:
-                            old_path= os.path.join(genome, file)
-                            new_path= old_path.replace(
+                            old_path = os.path.join(genome, file)
+                            new_path = old_path.replace(
                                 my_genome[dir], dir).replace("/data/", "/alias/")
                             os.symlink(old_path, new_path)
                 del dirs[:]
 
         # load the config file
-        config= yacman.YacAttMap(filepath=filepath, writable=True)
+        config = yacman.YacAttMap(filepath=filepath, writable=True)
         # prompt the user
         if not force and not query_yes_no(
                 "Upgrade config to v{}. This will alter the files on disk. Would you like to proceed?"
@@ -2286,8 +2302,8 @@ class RefGenConf(yacman.YacAttMap):
             return
 
         # check if any genome lack of local fasta asset and not on server
-        genome_drop= check_genome_digests(config)
-        config= format_config(config, target_version)  # reformat config file
+        genome_drop = check_genome_digests(config)
+        config = format_config(config, target_version)  # reformat config file
         alter_file_tree(config)
 
 
@@ -2327,11 +2343,11 @@ def _download_json(url, params=None):
     """
 
     _LOGGER.debug("Downloading JSON data; querying URL: '{}'".format(url))
-    resp= requests.get(url, params=params)
+    resp = requests.get(url, params=params)
     if resp.ok:
         return resp.json()
     elif resp.status_code == 404:
-        resp= None
+        resp = None
     raise DownloadJsonError(resp)
 
 
@@ -2360,12 +2376,12 @@ def _download_url_progress(url, output_path, name, params=None):
         """
         Get length of remote content
         """
-        f= urlopen(x)
-        content_len= f.info().get("Content-length")
+        f = urlopen(x)
+        content_len = f.info().get("Content-length")
         f.close()
         return int(content_len)
 
-    progress= _HookProgress(
+    progress = _HookProgress(
         TextColumn("[bright_white]{task.fields[n]}", justify="right"),
         BarColumn(bar_width=None),
         "[magenta]{task.percentage:>3.1f}%",
@@ -2377,9 +2393,9 @@ def _download_url_progress(url, output_path, name, params=None):
         _TimeRemainingColumn(),
     )
 
-    url= url if params is None \
+    url = url if params is None \
         else url + "?{}".format(urlencode(params))
-    task_id= progress.add_task(
+    task_id = progress.add_task(
         "download", n=name, total=_get_content_len(url))
     with progress as p:
         urlretrieve(url, filename=output_path, reporthook=p.rep_hook)
@@ -2409,20 +2425,20 @@ def _genome_asset_path(genomes, gname, aname, tname, seek_key, enclosing_dir, no
         parsed from an improperly formatted/structured genome config file.
     """
     _assert_gat_exists(genomes, gname, aname, tname)
-    asset_tag_data= genomes[gname][CFG_ASSETS_KEY][aname][CFG_ASSET_TAGS_KEY][tname]
+    asset_tag_data = genomes[gname][CFG_ASSETS_KEY][aname][CFG_ASSET_TAGS_KEY][tname]
     if enclosing_dir:
         if no_tag:
             return asset_tag_data[CFG_ASSET_PATH_KEY]
         return os.path.join(asset_tag_data[CFG_ASSET_PATH_KEY], tname)
     if seek_key is None:
         if aname in asset_tag_data[CFG_SEEK_KEYS_KEY]:
-            seek_key= aname
+            seek_key = aname
         else:
             if no_tag:
                 return asset_tag_data[CFG_ASSET_PATH_KEY]
             return os.path.join(asset_tag_data[CFG_ASSET_PATH_KEY], tname)
     try:
-        seek_key_value= asset_tag_data[CFG_SEEK_KEYS_KEY][seek_key]
+        seek_key_value = asset_tag_data[CFG_SEEK_KEYS_KEY][seek_key]
     except KeyError:
         raise MissingSeekKeyError("genome/asset:tag bundle '{}/{}:{}' exists, but seek_key '{}' is missing".
                                   format(gname, aname, tname, seek_key))
@@ -2455,13 +2471,13 @@ def _assert_gat_exists(genomes, gname, aname=None, tname=None, allow_incomplete=
     _LOGGER.debug(
         "checking existence of: {}/{}:{}".format(gname, aname, tname))
     try:
-        genome= genomes[gname]
+        genome = genomes[gname]
     except KeyError:
         raise MissingGenomeError(
             "Your genomes do not include '{}'".format(gname))
     if aname is not None:
         try:
-            asset_data= genome[CFG_ASSETS_KEY][aname]
+            asset_data = genome[CFG_ASSETS_KEY][aname]
         except KeyError:
             raise MissingAssetError(
                 "Genome '{}' exists, but asset '{}' is missing".format(gname, aname))
@@ -2469,7 +2485,7 @@ def _assert_gat_exists(genomes, gname, aname=None, tname=None, allow_incomplete=
             _raise_not_mapping(asset_data, "Asset section ")
         if tname is not None:
             try:
-                tag_data= asset_data[CFG_ASSET_TAGS_KEY][tname]
+                tag_data = asset_data[CFG_ASSET_TAGS_KEY][tname]
             except KeyError:
                 raise MissingTagError(
                     "genome/asset bundle '{}/{}' exists, but tag '{}' is missing".format(gname, aname, tname))
@@ -2499,10 +2515,10 @@ def _is_large_archive(size, cutoff=10):
     _LOGGER.debug("Checking archive size: '{}'".format(size))
     if size.endswith("MB"):
         # convert to gigs
-        size= '{0:f}GB'.format(_str2float(size) / 1000)
+        size = '{0:f}GB'.format(_str2float(size) / 1000)
     if size.endswith("KB"):
         # convert to gigs
-        size= '{0:f}GB'.format(_str2float(size) / 1000**2)
+        size = '{0:f}GB'.format(_str2float(size) / 1000**2)
     return size.endswith("TB") or (size.endswith("GB") and _str2float(size) > cutoff)
 
 
@@ -2520,7 +2536,7 @@ def _make_genome_assets_line(gen, assets, offset_text="  ", genome_assets_delim=
     :param function(str) -> object order: how to key asset names for sort
     :return str: text representation of a single assembly's name and assets
     """
-    tagged_assets= asset_sep.join(
+    tagged_assets = asset_sep.join(
         sorted(_make_asset_tags_product(assets, asset_tag_delim), key=order))
     return "{}{}{}{}".format(gen.rjust(rjust), genome_assets_delim, offset_text, tagged_assets)
 
@@ -2534,11 +2550,11 @@ def _make_asset_tags_product(assets, asset_tag_delim=":", asset_sk_delim="."):
     :param str asset_sk_delim: how to represent the asset-seek_key link
     :return list: list representation of tagged assets
     """
-    tagged_assets= []
+    tagged_assets = []
     for aname, asset in assets.items():
         for tname, tag in asset[CFG_ASSET_TAGS_KEY].items():
-            sk_assets= []
-            seek_keys= get_tag_seek_keys(tag)
+            sk_assets = []
+            seek_keys = get_tag_seek_keys(tag)
             # proceed only if asset is 'complete' -- has seek_keys
             if seek_keys is not None:
                 # add seek_keys if exist and different from the asset name, otherwise just the asset name
@@ -2558,7 +2574,7 @@ def _read_remote_data(url):
     :return dict: JSON parsed from the response from given URL request
     """
     with urlopen(url) as response:
-        encoding= response.info().get_content_charset('utf8')
+        encoding = response.info().get_content_charset('utf8')
         return json.loads(response.read().decode(encoding))
 
 
@@ -2652,7 +2668,7 @@ def _get_server_endpoints_mapping(url):
     :param str url: server URL
     :return dict: endpoints mapped by their operationIds
     """
-    json= _download_json(url + "/openapi.json")
+    json = _download_json(url + "/openapi.json")
     return map_paths_by_id(asciify_json_dict(json) if sys.version_info[0] == 2 else json)
 
 
@@ -2691,7 +2707,7 @@ def _entity_dir_removal_log(directory, entity_class, asset_dict, removed_entitie
     :param dict asset_dict: selected genome/asset:tag combination
     :param list removed_entities: list of the removed entities to append to
     """
-    subclass= "asset" if entity_class == "genome" else "tag"
+    subclass = "asset" if entity_class == "genome" else "tag"
     if os.path.basename(directory) == asset_dict[entity_class]:
         _LOGGER.info("Last {sub} for {ec} '{en}' has been removed, removing {ec} directory".
                      format(sub=subclass, ec=entity_class, en=asset_dict[entity_class]))

@@ -3480,27 +3480,37 @@ class RefGenConf_old(yacman.YacAttMap):
         self.run_plugins(POST_UPDATE_HOOK)
         return path
 
-    def config_upgrade(self, target_version, filepath, force=False):
+    def config_upgrade(self, target_version, force=False):
         """
         upgrade the config file to a target version,
         and alter genome_folder stucture
 
         :param str target_version: the version updated to
-        :param str filepath: file path for the current config file
         :param bool force
         """
 
         # check if any genome lack of local fasta asset and not on server
 
-        def check_genome_digests(config):
+        def check_genome_digests(get_json_url=lambda server: construct_request_url(server, API_ID_ALIAS_DIGEST)):
             missing_digest = []
-            for k, v in config[CFG_GENOMES_KEY].items():
-                if not os.path.exists(config[CFG_FOLDER_KEY]+'/'+k +
-                                      '/fasta/'):
-                    response = requests.get(
-                        "http://refgenomes.databio.org:82/v3/alias/genome_digest/"+k)
-                    if response.json()['detail']:
-                        missing_digest.append(k)
+            for genome in self[CFG_GENOMES_KEY]:
+                tag = self.get_default_tag(genome, "fasta", use_existing=False)
+                try:
+                    asset_path = self.seek(
+                        genome, "fasta", tag, enclosing_dir=True)
+                except:
+                    cnt = 0
+                    servers = self[CFG_SERVERS_KEY]
+                    for server in servers:
+                        cnt += 1
+                        url_alias = get_json_url(
+                            server=server).format(alias=genome)
+                        try:
+                            digest = _download_json(url_alias)
+                        except DownloadJsonError:
+                            if cnt == len(servers):
+                                missing_digest.append(genome)
+                            continue
 
             if missing_digest and not query_yes_no(
                     "The following genome(s) would be lost due to the lack of local and remote fasta asset(s): \n"
@@ -3508,68 +3518,62 @@ class RefGenConf_old(yacman.YacAttMap):
                     "Would you like to proceed?"
                     .format(missing_digest)):
                 _LOGGER.info("Action aborted by the user. To use it, please downgrade refgenie: 'pip install \"refgenie>={},<{}\"'".
-                             format(REFGENIE_BY_CFG[str(config[CFG_VERSION_KEY])], REFGENIE_BY_CFG[str(REQ_CFG_VERSION)]))
-                return missing_digest
+                             format(REFGENIE_BY_CFG[str(self[CFG_VERSION_KEY])], REFGENIE_BY_CFG[str(REQ_CFG_VERSION)]))
         # reformat config file
 
-        def format_config(config, target_version):
+        def format_config(target_version, get_json_url=lambda server: construct_request_url(server, API_ID_ALIAS_DIGEST)):
             # reformat the config file
-            for k, v in config[CFG_GENOMES_KEY].items():
+            for genome, genome_v in self[CFG_GENOMES_KEY].items():
                 # create "aliases" section
-                v[CFG_ALIASES_KEY] = [k]
+                self[CFG_ALIASES_KEY] = [genome]
                 # get genome digest from the server
-                response = requests.get(
-                    "http://refgenomes.databio.org:82/v3/alias/genome_digest/"+k)
-                if response.json()['detail']:
-                    # if genome asset not exist on serer, generate the digest using the local fasta asset
-                    ssc = SeqColClient({})
+                cnt = 0
+                servers = self[CFG_SERVERS_KEY]
+                for server in servers:
+                    cnt += 1
+                    url_alias = get_json_url(
+                        server=server).format(alias=genome)
                     try:
-                        tag = v[CFG_ASSETS_KEY]["fasta"][CFG_ASSET_DEFAULT_TAG_KEY]
-                        d, _ = ssc.load_fasta(config[CFG_FOLDER_KEY]+'/'+k +
-                                              '/fasta/'+str(tag)+'/'+k+'.fa')
-                    except KeyError:
-                        del config[CFG_GENOMES_KEY][k]
+                        digest = _download_json(url_alias)
+                    except DownloadJsonError:
+                        if cnt == len(servers):
+                            try:
+                                tag = self.get_default_tag(genome, "fasta")
+                                asset_path = self.seek(
+                                    genome, "fasta", tag, enclosing_dir=True)
+                                ssc = SeqColClient({})
+                                digest, _ = ssc.load_fasta(
+                                    os.path.join(asset_path, genome+'.fa'))
+                            except:
+                                continue
                         continue
-                else:
-                    d = response.json()
+                if not digest:
+                    del self[CFG_GENOMES_KEY][genome]
                 # convert seek keys, childran/parent asset keys from aliases to genome digests
-                for asset_k, asset_v in v[CFG_ASSETS_KEY].items():
-                    for tag_k, tag_v in asset_v[CFG_ASSET_TAGS_KEY].items():
-                        for seek_k, seek_v in tag_v[CFG_SEEK_KEYS_KEY].items():
-                            asset_v[CFG_ASSET_TAGS_KEY][tag_k][CFG_SEEK_KEYS_KEY][seek_k] = seek_v.replace(
-                                k, d)
+                for asset, asset_v in genome_v[CFG_ASSETS_KEY].items():
+                    for tag, tag_v in asset_v[CFG_ASSET_TAGS_KEY].items():
+                        for seek, seek_v in tag_v[CFG_SEEK_KEYS_KEY].items():
+                            asset_v[CFG_ASSET_TAGS_KEY][tag][CFG_SEEK_KEYS_KEY][seek] = seek_v.replace(
+                                genome, digest)
 
-                        if (asset_k == "fasta" and CFG_ASSET_CHILDREN_KEY in asset_v[CFG_ASSET_TAGS_KEY][tag_k]):
-                            for i in range(len(asset_v[CFG_ASSET_TAGS_KEY][tag_k][CFG_ASSET_CHILDREN_KEY])):
-                                asset_v[CFG_ASSET_TAGS_KEY][tag_k][CFG_ASSET_CHILDREN_KEY][i] = asset_v[CFG_ASSET_TAGS_KEY][tag_k][CFG_ASSET_CHILDREN_KEY][i].replace(
-                                    k, d)
-                        elif asset_k != "fasta":
-                            for i in range(len(asset_v[CFG_ASSET_TAGS_KEY][tag_k][CFG_ASSET_PARENTS_KEY])):
-                                asset_v[CFG_ASSET_TAGS_KEY][tag_k][CFG_ASSET_PARENTS_KEY][i] = asset_v[CFG_ASSET_TAGS_KEY][tag_k][CFG_ASSET_PARENTS_KEY][i].replace(
-                                    k, d)
-                # for asset_k, asset_v in v[CFG_ASSETS_KEY].items():
-                #     for seek_k, seek_v in asset_v[CFG_ASSET_TAGS_KEY]["default"][CFG_SEEK_KEYS_KEY].items():
-                #         asset_v[CFG_ASSET_TAGS_KEY]["default"][CFG_SEEK_KEYS_KEY][seek_k]= seek_v.replace(
-                #             k, d)
-
-                #     if (asset_k == "fasta" and CFG_ASSET_CHILDREN_KEY in asset_v[CFG_ASSET_TAGS_KEY]["default"]):
-                #         for i in range(len(asset_v[CFG_ASSET_TAGS_KEY]["default"][CFG_ASSET_CHILDREN_KEY])):
-                #             asset_v[CFG_ASSET_TAGS_KEY]["default"][CFG_ASSET_CHILDREN_KEY][i]= asset_v[CFG_ASSET_TAGS_KEY]["default"][CFG_ASSET_CHILDREN_KEY][i].replace(
-                #                 k, d)
-                #     elif asset_k != "fasta":
-                #         for i in range(len(asset_v[CFG_ASSET_TAGS_KEY]["default"][CFG_ASSET_PARENTS_KEY])):
-                #             asset_v[CFG_ASSET_TAGS_KEY]["default"][CFG_ASSET_PARENTS_KEY][i]= asset_v[CFG_ASSET_TAGS_KEY]["default"][CFG_ASSET_PARENTS_KEY][i].replace(
-                #                 k, d)
+                        if (asset == "fasta" and CFG_ASSET_CHILDREN_KEY in asset_v[CFG_ASSET_TAGS_KEY][tag]):
+                            for i in range(len(asset_v[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_CHILDREN_KEY])):
+                                asset_v[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_CHILDREN_KEY][i] = asset_v[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_CHILDREN_KEY][i].replace(
+                                    genome, digest)
+                        elif asset != "fasta":
+                            for i in range(len(asset_v[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_PARENTS_KEY])):
+                                asset_v[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_PARENTS_KEY][i] = asset_v[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_PARENTS_KEY][i].replace(
+                                    genome, digest)
 
                 # use the genome digest as primary keys
-                config[CFG_GENOMES_KEY][d] = config[CFG_GENOMES_KEY].pop(k)
+                self[CFG_GENOMES_KEY][digest] = self[CFG_GENOMES_KEY].pop(
+                    genome)
                 # remove old "genome_digest" section
-                del config[CFG_GENOMES_KEY][d][CFG_CHECKSUM_KEY]
+                del self[CFG_GENOMES_KEY][digest][CFG_CHECKSUM_KEY]
                 # change the config_version
-                config[CFG_VERSION_KEY] = target_version
-                # write over the config file
-                config.write()
-            return config
+                self[CFG_VERSION_KEY] = target_version
+            # write over the config file
+            self.write()
         # restructure the genome_folder
 
         def alter_file_tree(config):
@@ -3604,20 +3608,18 @@ class RefGenConf_old(yacman.YacAttMap):
                             os.symlink(old_path, new_path)
                 del dirs[:]
 
-        # load the config file
-        config = yacman.YacAttMap(filepath=filepath, writable=True)
         # prompt the user
         if not force and not query_yes_no(
                 "Upgrade config to v{}. This will alter the files on disk. Would you like to proceed?"
                 .format(target_version)):
             _LOGGER.info("Action aborted by the user. To use it, please downgrade refgenie: 'pip install \"refgenie>={},<{}\"'".
-                         format(REFGENIE_BY_CFG[str(config[CFG_VERSION_KEY])], REFGENIE_BY_CFG[str(REQ_CFG_VERSION)]))
+                         format(REFGENIE_BY_CFG[str(self[CFG_VERSION_KEY])], REFGENIE_BY_CFG[str(REQ_CFG_VERSION)]))
             return
 
         # check if any genome lack of local fasta asset and not on server
-        genome_drop = check_genome_digests(config)
-        config = format_config(config, target_version)  # reformat config file
-        alter_file_tree(config)
+        check_genome_digests()
+        format_config(target_version)  # reformat config file
+        alter_file_tree()
 
 
 def _swap_names_in_tree(top, new_name, old_name):

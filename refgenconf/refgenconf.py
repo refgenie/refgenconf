@@ -2178,43 +2178,43 @@ def config_upgrade(target_version, filepath, force=False):
     :param bool force
     """
 
-    # check if any genome lack of local fasta asset and not on server
+    # # check if any genome lack of local fasta asset and not on server
 
-    def check_genome_digests(get_json_url=lambda server: construct_request_url(server, API_ID_ALIAS_DIGEST)):
-        missing_digest = []
-        for genome in rgc[CFG_GENOMES_KEY]:
-            tag = rgc.get_default_tag(genome, "fasta", use_existing=False)
-            try:
-                asset_path = rgc.seek(
-                    genome, "fasta", tag, enclosing_dir=True)
-            except:
-                cnt = 0
-                servers = rgc[CFG_SERVERS_KEY]
-                for server in servers:
-                    cnt += 1
-                    url_alias = get_json_url(
-                        server=server).format(alias=genome)
-                    try:
-                        digest = _download_json(url_alias)
-                    except DownloadJsonError:
-                        if cnt == len(servers):
-                            missing_digest.append(genome)
-                        continue
+    # def check_genome_digests(get_json_url=lambda server: construct_request_url(server, API_ID_ALIAS_DIGEST)):
+    #     missing_digest = []
+    #     for genome in rgc[CFG_GENOMES_KEY]:
+    #         tag = rgc.get_default_tag(genome, "fasta")
+    #         cnt = 0
+    #         servers = rgc[CFG_SERVERS_KEY]
+    #         for server in servers:
+    #             cnt += 1
+    #             url_alias = get_json_url(
+    #                 server=server).format(alias=genome)
+    #             try:
+    #                 digest = _download_json(url_alias)
+    #             except DownloadJsonError:
+    #                 if cnt == len(servers):
+    #                     try:
+    #                         asset_path = rgc.seek(genome, "fasta", tag)
+    #                     except:
+    #                         missing_digest.append(genome)
+    #                 continue
 
-        if missing_digest and not query_yes_no(
-                "The following genome(s) would be lost due to the lack of local and remote fasta asset(s): \n"
-                "{} \n"
-                "Would you like to proceed?"
-                .format(missing_digest)):
-            _LOGGER.info("Action aborted by the user. To use it, please downgrade refgenie: 'pip install \"refgenie>={},<{}\"'".
-                         format(REFGENIE_BY_CFG[str(rgc[CFG_VERSION_KEY])], REFGENIE_BY_CFG[str(REQ_CFG_VERSION)]))
+    #     if missing_digest and not query_yes_no(
+    #             "The following genome(s) would be lost due to the lack of local and remote fasta asset(s): \n"
+    #             "{} \n"
+    #             "Would you like to proceed?"
+    #             .format(missing_digest)):
+    #         _LOGGER.info("Action aborted by the user. To use it, please downgrade refgenie: 'pip install \"refgenie>={},<{}\"'".
+    #                      format(REFGENIE_BY_CFG[str(rgc[CFG_VERSION_KEY])], REFGENIE_BY_CFG[str(REQ_CFG_VERSION)]))
+
     # reformat config file
 
     def format_config(target_version, get_json_url=lambda server: construct_request_url(server, API_ID_ALIAS_DIGEST)):
-        # reformat the config file
+        missing_digest = []
+        # check if any genome lack of local fasta asset and not on server
         for genome, genome_v in rgc[CFG_GENOMES_KEY].items():
-            # create "aliases" section
-            genome_v[CFG_ALIASES_KEY] = [genome]
+            digest = ""
             # get genome digest from the server
             cnt = 0
             servers = rgc[CFG_SERVERS_KEY]
@@ -2236,31 +2236,45 @@ def config_upgrade(target_version, filepath, force=False):
                         except:
                             continue
                     continue
-            if not digest:
+
+            if digest:
+                # create "aliases" section
+                genome_v[CFG_ALIASES_KEY] = [genome]
+                # convert seek keys, childran/parent asset keys from aliases to genome digests
+                for asset, asset_v in genome_v[CFG_ASSETS_KEY].items():
+                    for tag, tag_v in asset_v[CFG_ASSET_TAGS_KEY].items():
+                        for seek, seek_v in tag_v[CFG_SEEK_KEYS_KEY].items():
+                            asset_v[CFG_ASSET_TAGS_KEY][tag][CFG_SEEK_KEYS_KEY][seek] = seek_v.replace(
+                                genome, digest)
+
+                        if (asset == "fasta" and CFG_ASSET_CHILDREN_KEY in asset_v[CFG_ASSET_TAGS_KEY][tag]):
+                            for i in range(len(asset_v[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_CHILDREN_KEY])):
+                                asset_v[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_CHILDREN_KEY][i] = asset_v[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_CHILDREN_KEY][i].replace(
+                                    genome, digest)
+                        elif asset != "fasta":
+                            for i in range(len(asset_v[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_PARENTS_KEY])):
+                                asset_v[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_PARENTS_KEY][i] = asset_v[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_PARENTS_KEY][i].replace(
+                                    genome, digest)
+
+                # use the genome digest as primary keys
+                rgc[CFG_GENOMES_KEY][digest] = rgc[CFG_GENOMES_KEY].pop(
+                    genome)
+                # remove old "genome_digest" section
+                del rgc[CFG_GENOMES_KEY][digest][CFG_CHECKSUM_KEY]
+            else:
+                missing_digest.append(genome)
                 del rgc[CFG_GENOMES_KEY][genome]
-            # convert seek keys, childran/parent asset keys from aliases to genome digests
-            for asset, asset_v in genome_v[CFG_ASSETS_KEY].items():
-                for tag, tag_v in asset_v[CFG_ASSET_TAGS_KEY].items():
-                    for seek, seek_v in tag_v[CFG_SEEK_KEYS_KEY].items():
-                        asset_v[CFG_ASSET_TAGS_KEY][tag][CFG_SEEK_KEYS_KEY][seek] = seek_v.replace(
-                            genome, digest)
 
-                    if (asset == "fasta" and CFG_ASSET_CHILDREN_KEY in asset_v[CFG_ASSET_TAGS_KEY][tag]):
-                        for i in range(len(asset_v[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_CHILDREN_KEY])):
-                            asset_v[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_CHILDREN_KEY][i] = asset_v[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_CHILDREN_KEY][i].replace(
-                                genome, digest)
-                    elif asset != "fasta":
-                        for i in range(len(asset_v[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_PARENTS_KEY])):
-                            asset_v[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_PARENTS_KEY][i] = asset_v[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_PARENTS_KEY][i].replace(
-                                genome, digest)
+        if missing_digest and not query_yes_no(
+            "The following genome(s) would be lost due to the lack of local and remote fasta asset(s): \n"
+            "{} \n"
+            "Would you like to proceed?"
+                .format(missing_digest)):
+            _LOGGER.info("Action aborted by the user. To use it, please downgrade refgenie: 'pip install \"refgenie>={},<{}\"'".
+                         format(REFGENIE_BY_CFG[str(rgc[CFG_VERSION_KEY])], REFGENIE_BY_CFG[str(REQ_CFG_VERSION)]))
 
-            # use the genome digest as primary keys
-            rgc[CFG_GENOMES_KEY][digest] = rgc[CFG_GENOMES_KEY].pop(
-                genome)
-            # remove old "genome_digest" section
-            del rgc[CFG_GENOMES_KEY][digest][CFG_CHECKSUM_KEY]
-            # change the config_version
-            rgc[CFG_VERSION_KEY] = target_version
+        # change the config_version
+        rgc[CFG_VERSION_KEY] = target_version
         # write over the config file
         rgc.write()
     # restructure the genome_folder
@@ -2307,10 +2321,10 @@ def config_upgrade(target_version, filepath, force=False):
         return
 
     rgc = _RefGenConfV03(filepath=filepath, writable=True)
-    # check if any genome lack of local fasta asset and not on server
-    check_genome_digests()
+    # # check if any genome lack of local fasta asset and not on server
+    # check_genome_digests()
     format_config(target_version)  # reformat config file
-    alter_file_tree()
+    # alter_file_tree()
 
 
 def _swap_names_in_tree(top, new_name, old_name):

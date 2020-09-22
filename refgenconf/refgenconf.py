@@ -7,6 +7,7 @@ import os
 import signal
 import warnings
 import shutil
+from shutil import copytree, ignore_patterns
 import json
 import requests
 
@@ -2178,36 +2179,6 @@ def config_upgrade(target_version, filepath, force=False):
     :param bool force
     """
 
-    # # check if any genome lack of local fasta asset and not on server
-
-    # def check_genome_digests(get_json_url=lambda server: construct_request_url(server, API_ID_ALIAS_DIGEST)):
-    #     missing_digest = []
-    #     for genome in rgc[CFG_GENOMES_KEY]:
-    #         tag = rgc.get_default_tag(genome, "fasta")
-    #         cnt = 0
-    #         servers = rgc[CFG_SERVERS_KEY]
-    #         for server in servers:
-    #             cnt += 1
-    #             url_alias = get_json_url(
-    #                 server=server).format(alias=genome)
-    #             try:
-    #                 digest = _download_json(url_alias)
-    #             except DownloadJsonError:
-    #                 if cnt == len(servers):
-    #                     try:
-    #                         asset_path = rgc.seek(genome, "fasta", tag)
-    #                     except:
-    #                         missing_digest.append(genome)
-    #                 continue
-
-    #     if missing_digest and not query_yes_no(
-    #             "The following genome(s) would be lost due to the lack of local and remote fasta asset(s): \n"
-    #             "{} \n"
-    #             "Would you like to proceed?"
-    #             .format(missing_digest)):
-    #         _LOGGER.info("Action aborted by the user. To use it, please downgrade refgenie: 'pip install \"refgenie>={},<{}\"'".
-    #                      format(REFGENIE_BY_CFG[str(rgc[CFG_VERSION_KEY])], REFGENIE_BY_CFG[str(REQ_CFG_VERSION)]))
-
     # reformat config file
 
     def format_config(target_version, get_json_url=lambda server: construct_request_url(server, API_ID_ALIAS_DIGEST)):
@@ -2265,32 +2236,24 @@ def config_upgrade(target_version, filepath, force=False):
                 missing_digest.append(genome)
                 del rgc[CFG_GENOMES_KEY][genome]
 
-        if missing_digest and not query_yes_no(
-            "The following genome(s) would be lost due to the lack of local and remote fasta asset(s): \n"
-            "{} \n"
-            "Would you like to proceed?"
-                .format(missing_digest)):
-            _LOGGER.info("Action aborted by the user. To use it, please downgrade refgenie: 'pip install \"refgenie>={},<{}\"'".
-                         format(REFGENIE_BY_CFG[str(rgc[CFG_VERSION_KEY])], REFGENIE_BY_CFG[str(REQ_CFG_VERSION)]))
+        return missing_digest
 
-        # change the config_version
-        rgc[CFG_VERSION_KEY] = target_version
-        # write over the config file
-        rgc.write()
     # restructure the genome_folder
 
     def alter_file_tree():
         my_genome = {}
         for k, v in rgc[CFG_GENOMES_KEY].items():
             my_genome.update([(v[CFG_ALIASES_KEY][0], k)])
+
         os.mkdir(os.path.abspath(os.path.join(rgc[CFG_FOLDER_KEY], DATA_DIR)))
         os.mkdir(os.path.abspath(os.path.join(rgc[CFG_FOLDER_KEY], ALIAS_DIR)))
-        # move folder
+
+        # copy folder
         for root, dirs, files in os.walk(rgc[CFG_FOLDER_KEY]):
             for dir in dirs:
                 if dir in my_genome:
-                    shutil.move(os.path.join(rgc[CFG_FOLDER_KEY], dir),
-                                os.path.join(rgc[CFG_FOLDER_KEY], DATA_DIR, dir))
+                    shutil.copytree(os.path.join(rgc[CFG_FOLDER_KEY], dir),
+                                    os.path.join(rgc[CFG_FOLDER_KEY], DATA_DIR, dir), ignore=ignore_patterns("*.DS_Store"))
             del dirs[:]
 
         for root, dirs, files in os.walk(os.path.join(rgc[CFG_FOLDER_KEY], DATA_DIR)):
@@ -2312,6 +2275,11 @@ def config_upgrade(target_version, filepath, force=False):
                         os.symlink(old_path, new_path)
             del dirs[:]
 
+        for genome, genome_v in rgc[CFG_GENOMES_KEY].items():
+            d = os.path.join(rgc[CFG_FOLDER_KEY], genome_v[CFG_ALIASES_KEY][0])
+            shutil.rmtree(d)
+
+    rgc = _RefGenConfV03(filepath=filepath, writable=True)
     # prompt the user
     if not force and not query_yes_no(
             "Upgrade config to v{}. This will alter the files on disk. Would you like to proceed?"
@@ -2320,11 +2288,22 @@ def config_upgrade(target_version, filepath, force=False):
                      format(REFGENIE_BY_CFG[str(rgc[CFG_VERSION_KEY])], REFGENIE_BY_CFG[str(REQ_CFG_VERSION)]))
         return
 
-    rgc = _RefGenConfV03(filepath=filepath, writable=True)
-    # # check if any genome lack of local fasta asset and not on server
-    # check_genome_digests()
-    format_config(target_version)  # reformat config file
-    # alter_file_tree()
+    missing_digest = format_config(target_version)  # reformat config file
+    if not force and missing_digest and not query_yes_no(
+        "The following genome(s) would be lost due to the lack of local and remote fasta asset(s): \n"
+        "{} \n"
+        "Would you like to proceed?"
+            .format(missing_digest)):
+        _LOGGER.info("Action aborted by the user. To use it, please downgrade refgenie: 'pip install \"refgenie>={},<{}\"'".
+                     format(REFGENIE_BY_CFG[str(rgc[CFG_VERSION_KEY])], REFGENIE_BY_CFG[str(REQ_CFG_VERSION)]))
+        return
+
+    # change the config_version
+    rgc[CFG_VERSION_KEY] = target_version
+    # write over the config file
+    rgc.write()
+
+    alter_file_tree()
 
 
 def _swap_names_in_tree(top, new_name, old_name):

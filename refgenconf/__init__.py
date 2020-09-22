@@ -6,7 +6,7 @@ from .helpers import *
 from .refgenconf import *
 
 
-__all__ = ["RefGenConf", "RefGenConf_old", "select_genome_config", "get_dir_digest",
+__all__ = ["RefGenConf", "config_upgrade", "select_genome_config", "get_dir_digest",
            "GenomeConfigFormatError", "MissingAssetError",
            "MissingConfigDataError", "MissingGenomeError", "RefgenconfError",
            "UnboundEnvironmentVariablesError"] + ["DEFAULT_SERVER"] + \

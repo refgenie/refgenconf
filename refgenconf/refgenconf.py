@@ -2172,7 +2172,7 @@ class RefGenConf(yacman.YacAttMap):
         return genomes if not all(x in genomes for x in genome) else genome
 
 
-def config_upgrade(target_version, filepath, force=False):
+def config_upgrade(target_version, filepath, force=False, get_json_url=lambda server: construct_request_url(server, API_ID_ALIAS_DIGEST), link_fun=lambda s, t: os.symlink(s, t)):
     """
     upgrade the config to a target version:
     check if any genome that is unable to retrieve genome digest in the current config file (lack of local fasta asset and not on the server) 
@@ -2188,7 +2188,7 @@ def config_upgrade(target_version, filepath, force=False):
 
     # reformat config file
 
-    def format_config(target_version, get_json_url=lambda server: construct_request_url(server, API_ID_ALIAS_DIGEST)):
+    def format_config(target_version):
         missing_digest = []
         # check if any genome lack of local fasta asset and not on server
         for genome, genome_v in rgc[CFG_GENOMES_KEY].items():
@@ -2277,7 +2277,7 @@ def config_upgrade(target_version, filepath, force=False):
                         old_path = os.path.join(genome, file)
                         new_path = old_path.replace(
                             my_genome[dir], dir).replace(DATA_DIR, ALIAS_DIR)
-                        os.symlink(old_path, new_path)
+                        link_fun(old_path, new_path)
             del dirs[:]
 
         for genome, genome_v in rgc[CFG_GENOMES_KEY].items():

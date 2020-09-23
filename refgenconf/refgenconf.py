@@ -2205,10 +2205,9 @@ def config_upgrade(target_version, filepath, force=False):
                         try:
                             tag = rgc.get_default_tag(genome, "fasta")
                             asset_path = rgc.seek(
-                                genome, "fasta", tag, enclosing_dir=True)
+                                genome, "fasta", tag, "fasta")
                             ssc = SeqColClient({})
-                            digest, _ = ssc.load_fasta(
-                                os.path.join(asset_path, genome+'.fa'))
+                            digest, _ = ssc.load_fasta(asset_path)
                         except:
                             continue
                     continue

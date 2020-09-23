@@ -809,7 +809,7 @@ class _RefGenConfV03(YacAttMap):
                 _LOGGER.error(str(e))
                 _LOGGER.error("Server {}/{} refused download. "
                               "Check your internet settings".
-                              format(server_url, API_VERSION))
+                              format(server_url, API_VERSION_2))
                 return _null_return()
             except ContentTooShortError as e:
                 _LOGGER.error(str(e))

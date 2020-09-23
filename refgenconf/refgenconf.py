@@ -2210,7 +2210,7 @@ def config_upgrade(target_version, filepath, force=False, get_json_url=lambda se
                                 genome, "fasta", tag, "fasta")
                             ssc = SeqColClient({})
                             digest, _ = ssc.load_fasta(asset_path)
-                        except:
+                        except MissingAssetError:
                             continue
                     continue
 

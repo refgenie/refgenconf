@@ -2172,10 +2172,15 @@ class RefGenConf(yacman.YacAttMap):
 
 def config_upgrade(target_version, filepath, force=False):
     """
-    upgrade the config file to a target version,
-    and alter genome_folder stucture
+    upgrade the config to a target version:
+    check if any genome that is unable to retrieve genome digest in the current config file (lack of local fasta asset and not on the server) 
+    drop genome(s) that are unable to retrieve genome digest,
+    convert the config file to target_version format,
+    update file structure inside genome_folder, 
+    remove old files inside genome_folder once the upgrade is complete
 
     :param str target_version: the version updated to
+    :param str filepath: path to config file
     :param bool force
     """
 

@@ -100,11 +100,13 @@ class RefGenConf(yacman.YacAttMap):
                 if version < REQ_CFG_VERSION:
                     msg = \
                         "This genome config (v{}) is not compliant with v{} standards. \n" \
-                        "To use it, please upgrade the config file: 'refgenie upgrade --target-version {}', or " \
-                        "downgrade refgenconf: 'pip install \"refgenconf>={},<{}\"'".\
+                        "To use current refgenconf, please use config_upgrade function to upgrade, or" \
+                        "downgrade refgenconf: 'pip install \"refgenconf>={},<{}\"'. \n"\
+                        "If refgenie is installed, you can use 'refgenie upgrade --target-version {}'".\
                         format(self[CFG_VERSION_KEY], str(REQ_CFG_VERSION),
-                               str(REQ_CFG_VERSION),
-                               REFGENIE_BY_CFG[str(version)], REFGENIE_BY_CFG[str(REQ_CFG_VERSION)])
+                               REFGENIE_BY_CFG[str(version)], REFGENIE_BY_CFG[str(
+                                   REQ_CFG_VERSION)],
+                               str(REQ_CFG_VERSION))
                     raise ConfigNotCompliantError(msg)
 
                 else:
@@ -2221,12 +2223,11 @@ def config_upgrade(target_version, filepath, force=False):
                         for seek, seek_v in tag_v[CFG_SEEK_KEYS_KEY].items():
                             asset_v[CFG_ASSET_TAGS_KEY][tag][CFG_SEEK_KEYS_KEY][seek] = seek_v.replace(
                                 genome, digest)
-
-                        if (asset == "fasta" and CFG_ASSET_CHILDREN_KEY in asset_v[CFG_ASSET_TAGS_KEY][tag]):
+                        if CFG_ASSET_CHILDREN_KEY in tag_v:
                             for i in range(len(asset_v[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_CHILDREN_KEY])):
                                 asset_v[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_CHILDREN_KEY][i] = asset_v[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_CHILDREN_KEY][i].replace(
                                     genome, digest)
-                        elif asset != "fasta":
+                        if CFG_ASSET_PARENTS_KEY in tag_v:
                             for i in range(len(asset_v[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_PARENTS_KEY])):
                                 asset_v[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_PARENTS_KEY][i] = asset_v[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_PARENTS_KEY][i].replace(
                                     genome, digest)
@@ -2257,7 +2258,7 @@ def config_upgrade(target_version, filepath, force=False):
             for dir in dirs:
                 if dir in my_genome:
                     shutil.copytree(os.path.join(rgc[CFG_FOLDER_KEY], dir),
-                                    os.path.join(rgc[CFG_FOLDER_KEY], DATA_DIR, dir), ignore=ignore_patterns("*.DS_Store"))
+                                    os.path.join(rgc[CFG_FOLDER_KEY], DATA_DIR, dir))
             del dirs[:]
 
         for root, dirs, files in os.walk(os.path.join(rgc[CFG_FOLDER_KEY], DATA_DIR)):
@@ -2270,12 +2271,12 @@ def config_upgrade(target_version, filepath, force=False):
                     for asset in assets:
                         old_path = os.path.join(genome, asset)
                         new_path = old_path.replace(
-                            my_genome[dir], dir).replace("/data/", "/alias/")
+                            my_genome[dir], dir).replace(DATA_DIR, ALIAS_DIR)
                         os.mkdir(new_path)
                     for file in files:
                         old_path = os.path.join(genome, file)
                         new_path = old_path.replace(
-                            my_genome[dir], dir).replace("/data/", "/alias/")
+                            my_genome[dir], dir).replace(DATA_DIR, ALIAS_DIR)
                         os.symlink(old_path, new_path)
             del dirs[:]
 
@@ -2286,9 +2287,13 @@ def config_upgrade(target_version, filepath, force=False):
     rgc = _RefGenConfV03(filepath=filepath, writable=True)
     # prompt the user
     if not force and not query_yes_no(
-            "Upgrade config to v{}. This will alter the files on disk. Would you like to proceed?"
-            .format(target_version)):
-        _LOGGER.info("Action aborted by the user. To use it, please downgrade refgenie: 'pip install \"refgenie>={},<{}\"'".
+            "Upgrade config to v{}. This will alter the files on disk: "
+            "contents inside '{}' will be replace by 'data' and 'alias' dir, "
+            "use genome digest as genome asset/file names inside 'data',"
+            "use alias as genome asset/file names inside 'alias'. "
+            "Would you like to proceed?"
+            .format(target_version, rgc[CFG_FOLDER_KEY])):
+        _LOGGER.info("Action aborted by the user. ".
                      format(REFGENIE_BY_CFG[str(rgc[CFG_VERSION_KEY])], REFGENIE_BY_CFG[str(REQ_CFG_VERSION)]))
         return
 
@@ -2298,7 +2303,7 @@ def config_upgrade(target_version, filepath, force=False):
         "{} \n"
         "Would you like to proceed?"
             .format(missing_digest)):
-        _LOGGER.info("Action aborted by the user. To use it, please downgrade refgenie: 'pip install \"refgenie>={},<{}\"'".
+        _LOGGER.info("Action aborted by the user. ".
                      format(REFGENIE_BY_CFG[str(rgc[CFG_VERSION_KEY])], REFGENIE_BY_CFG[str(REQ_CFG_VERSION)]))
         return
 

@@ -2290,19 +2290,19 @@ def config_upgrade(target_version, filepath, force=False,
     # TODO: add upgrade-specific docs page
     url = "http://refgenie.databio.org/" 
     if not force and not query_yes_no(
-            f"Upgrading config to v{target_version}. Current genome identifiers 
-            will be replaced with sequence-derived digests and contents inside 
-            '{rgc[CFG_FOLDER_KEY]}' will be replaced by '{DATA_DIR}' and 
-            '{ALIAS_DIR}' directories. For more info visit: {url}. 
-            Would you like to proceed?"):
+            f"Upgrading config to v{target_version}. Current genome identifiers "\
+            f"will be replaced with sequence-derived digests and contents "\
+            f"inside {rgc[CFG_FOLDER_KEY]}' will be replaced by '{DATA_DIR}' "\
+            f"and '{ALIAS_DIR}' directories. For more info visit: {url}. "\
+            f"Would you like to proceed?"):
         _LOGGER.info("Action aborted by the user.")
         return
 
     missing_digest = format_config(target_version)  # reformat config file
     if not force and missing_digest and not query_yes_no(
-        f"The following genomes will be lost due to the lack of local fasta 
-        assets and remote genome digests: {', '.join(missing_digest)}.
-         Would you like to proceed?"):
+        f"The following genomes will be lost due to the lack of local fasta "\
+        f"assets and remote genome digests: {', '.join(missing_digest)}. "\
+        f"Would you like to proceed?"):
         _LOGGER.info("Action aborted by the user.")
         return
 

@@ -2172,18 +2172,19 @@ class RefGenConf(yacman.YacAttMap):
         return genomes if not all(x in genomes for x in genome) else genome
 
 
-def config_upgrade(target_version, filepath, force=False, get_json_url=lambda server: construct_request_url(server, API_ID_ALIAS_DIGEST), link_fun=lambda s, t: os.symlink(s, t)):
+def config_upgrade(target_version, filepath, force=False, 
+    get_json_url=lambda server: construct_request_url(server, API_ID_ALIAS_DIGEST), 
+    link_fun=lambda s, t: os.symlink(s, t)):
     """
-    upgrade the config to a target version:
-    check if any genome that is unable to retrieve genome digest in the current config file (lack of local fasta asset and not on the server) 
-    drop genome(s) that are unable to retrieve genome digest,
-    convert the config file to target_version format,
-    update file structure inside genome_folder, 
-    remove old files inside genome_folder once the upgrade is complete
+    Upgrade the config to a selected target version. 
+    
+    Convert the config file to target_version format, update file structure 
+    inside genome_folder. Drop genomes for which genome_digest is not available 
+    on any of the servers and do not have a fasta asset locally. 
 
     :param str target_version: the version updated to
     :param str filepath: path to config file
-    :param bool force
+    :param bool: whether the upgrade should be confirmed upfront
     """
 
     # reformat config file

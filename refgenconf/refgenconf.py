@@ -2287,25 +2287,23 @@ def config_upgrade(target_version, filepath, force=False,
 
     rgc = _RefGenConfV03(filepath=filepath, writable=True)
     # prompt the user
+    # TODO: add upgrade-specific docs page
+    url = "http://refgenie.databio.org/" 
     if not force and not query_yes_no(
-            "Upgrade config to v{}. This will alter the files on disk: "
-            "contents inside '{}' will be replace by 'data' and 'alias' dir, "
-            "use genome digest as genome asset/file names inside 'data',"
-            "use alias as genome asset/file names inside 'alias'. "
-            "Would you like to proceed?"
-            .format(target_version, rgc[CFG_FOLDER_KEY])):
-        _LOGGER.info("Action aborted by the user. ".
-                     format(REFGENIE_BY_CFG[str(rgc[CFG_VERSION_KEY])], REFGENIE_BY_CFG[str(REQ_CFG_VERSION)]))
+            f"Upgrading config to v{target_version}. Current genome identifiers 
+            will be replaced with sequence-derived digests and contents inside 
+            '{rgc[CFG_FOLDER_KEY]}' will be replaced by '{DATA_DIR}' and 
+            '{ALIAS_DIR}' directories. For more info visit: {url}. 
+            Would you like to proceed?"):
+        _LOGGER.info("Action aborted by the user.")
         return
 
     missing_digest = format_config(target_version)  # reformat config file
     if not force and missing_digest and not query_yes_no(
-        "The following genome(s) would be lost due to the lack of local and remote fasta asset(s): \n"
-        "{} \n"
-        "Would you like to proceed?"
-            .format(missing_digest)):
-        _LOGGER.info("Action aborted by the user. ".
-                     format(REFGENIE_BY_CFG[str(rgc[CFG_VERSION_KEY])], REFGENIE_BY_CFG[str(REQ_CFG_VERSION)]))
+        f"The following genomes will be lost due to the lack of local fasta 
+        assets and remote genome digests: {', '.join(missing_digest)}.
+         Would you like to proceed?"):
+        _LOGGER.info("Action aborted by the user.")
         return
 
     # change the config_version

@@ -2172,15 +2172,16 @@ class RefGenConf(yacman.YacAttMap):
         return genomes if not all(x in genomes for x in genome) else genome
 
 
-def config_upgrade(target_version, filepath, force=False, 
-    get_json_url=lambda server: construct_request_url(server, API_ID_ALIAS_DIGEST), 
-    link_fun=lambda s, t: os.symlink(s, t)):
+def config_upgrade(target_version, filepath, force=False,
+                   get_json_url=lambda server: construct_request_url(
+                       server, API_ID_ALIAS_DIGEST),
+                   link_fun=lambda s, t: os.symlink(s, t)):
     """
-    Upgrade the config to a selected target version. 
-    
-    Convert the config file to target_version format, update file structure 
-    inside genome_folder. Drop genomes for which genome_digest is not available 
-    on any of the servers and do not have a fasta asset locally. 
+    Upgrade the config to a selected target version.
+
+    Convert the config file to target_version format, update file structure
+    inside genome_folder. Drop genomes for which genome_digest is not available
+    on any of the servers and do not have a fasta asset locally.
 
     :param str target_version: the version updated to
     :param str filepath: path to config file
@@ -2285,10 +2286,24 @@ def config_upgrade(target_version, filepath, force=False,
             d = os.path.join(rgc[CFG_FOLDER_KEY], genome_v[CFG_ALIASES_KEY][0])
             shutil.rmtree(d)
 
-    rgc = _RefGenConfV03(filepath=filepath, writable=True)
+    # init rgc obj with provided config
+    current_version = yacman.YacAttMap(filepath=filepath)[CFG_VERSION_KEY]
+    if current_version == 0.3:
+        rgc = _RefGenConfV03(filepath=filepath, writable=True)
+    else:
+        _LOGGER.info(
+            f"Action aborted: Upgrade from v{current_version} config is not available.")
+        return
+
+    if not target_version in CFG_UPGRADE[str(rgc[CFG_VERSION_KEY])]:
+        # print(CFG_UPGRADE[str(rgc[CFG_VERSION_KEY])])
+        _LOGGER.info(f"Action aborted: The requested target_version, v{target_version}, is unavailable."\
+                     f"Available target version(s) for v{str(rgc[CFG_VERSION_KEY])}: {CFG_UPGRADE[str(rgc[CFG_VERSION_KEY])]}")
+        return
+
     # prompt the user
     # TODO: add upgrade-specific docs page
-    url = "http://refgenie.databio.org/" 
+    url = "http://refgenie.databio.org/"
     if not force and not query_yes_no(
             f"Upgrading config to v{target_version}. Current genome identifiers "\
             f"will be replaced with sequence-derived digests and contents "\
@@ -2302,16 +2317,17 @@ def config_upgrade(target_version, filepath, force=False,
     if not force and missing_digest and not query_yes_no(
         f"The following genomes will be lost due to the lack of local fasta "\
         f"assets and remote genome digests: {', '.join(missing_digest)}. "\
-        f"Would you like to proceed?"):
+            f"Would you like to proceed?"):
         _LOGGER.info("Action aborted by the user.")
         return
+
+    # alter genome_folder structure
+    alter_file_tree()
 
     # change the config_version
     rgc[CFG_VERSION_KEY] = target_version
     # write over the config file
     rgc.write()
-
-    alter_file_tree()
 
 
 def _swap_names_in_tree(top, new_name, old_name):

@@ -2223,15 +2223,16 @@ def config_upgrade(target_version, filepath, force=False,
                 for asset, asset_v in genome_v[CFG_ASSETS_KEY].items():
                     for tag, tag_v in asset_v[CFG_ASSET_TAGS_KEY].items():
                         for seek, seek_v in tag_v[CFG_SEEK_KEYS_KEY].items():
-                            asset_v[CFG_ASSET_TAGS_KEY][tag][CFG_SEEK_KEYS_KEY][seek] = seek_v.replace(
-                                genome, digest)
+                            seek_v = seek_v.replace(genome, digest)
+
                         if CFG_ASSET_CHILDREN_KEY in tag_v:
                             for i in range(len(asset_v[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_CHILDREN_KEY])):
-                                asset_v[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_CHILDREN_KEY][i] = asset_v[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_CHILDREN_KEY][i].replace(
+                                tag_v[CFG_ASSET_CHILDREN_KEY][i] = tag_v[CFG_ASSET_CHILDREN_KEY][i].replace(
                                     genome, digest)
+
                         if CFG_ASSET_PARENTS_KEY in tag_v:
                             for i in range(len(asset_v[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_PARENTS_KEY])):
-                                asset_v[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_PARENTS_KEY][i] = asset_v[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_PARENTS_KEY][i].replace(
+                                tag_v[CFG_ASSET_PARENTS_KEY][i] = tag_v[CFG_ASSET_PARENTS_KEY][i].replace(
                                     genome, digest)
 
                 # use the genome digest as primary keys

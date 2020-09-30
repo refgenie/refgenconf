@@ -2323,7 +2323,7 @@ def config_upgrade(target_version, filepath, force=False,
         return
 
     # alter genome_folder structure
-    # alter_file_tree()
+    alter_file_tree()
 
     # change the config_version
     rgc[CFG_VERSION_KEY] = target_version

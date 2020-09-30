@@ -2223,7 +2223,7 @@ def config_upgrade(target_version, filepath, force=False,
                 for asset, asset_v in genome_v[CFG_ASSETS_KEY].items():
                     for tag, tag_v in asset_v[CFG_ASSET_TAGS_KEY].items():
                         for seek, seek_v in tag_v[CFG_SEEK_KEYS_KEY].items():
-                            seek_v = seek_v.replace(genome, digest)
+                            tag_v[CFG_SEEK_KEYS_KEY][seek] = seek_v.replace(genome, digest)
 
                         if CFG_ASSET_CHILDREN_KEY in tag_v:
                             for i in range(len(asset_v[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_CHILDREN_KEY])):
@@ -2323,7 +2323,7 @@ def config_upgrade(target_version, filepath, force=False,
         return
 
     # alter genome_folder structure
-    alter_file_tree()
+    # alter_file_tree()
 
     # change the config_version
     rgc[CFG_VERSION_KEY] = target_version

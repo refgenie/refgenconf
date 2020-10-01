@@ -35,7 +35,8 @@ from ubiquerg import checksum, is_url, query_yes_no, untar, is_writable, \
     parse_registry_path as prp
 
 from .const import *
-from .helpers import asciify_json_dict, select_genome_config, get_dir_digest
+from .helpers import asciify_json_dict, select_genome_config, get_dir_digest, \
+    format_config_03_04, alter_file_tree_03_04, download_json
 from .exceptions import *
 
 _LOGGER = logging.getLogger(__name__)
@@ -319,7 +320,7 @@ class RefGenConf(yacman.YacAttMap):
             title = "Local refgenie assets\nServer subscriptions: {}".\
                 format(", ".join(self[CFG_SERVERS_KEY]))
         else:
-            genomes_data = _download_json(
+            genomes_data = download_json(
                 get_json_url(server_url, API_ID_GENOMES_DICT))
             title = "Remote refgenie assets\nServer URL: {}".format(server_url)
         return _fill_table_with_genomes_data(self, genomes_data, Table(title=title), genomes)
@@ -1051,7 +1052,7 @@ class RefGenConf(yacman.YacAttMap):
                 genome = self.get_genome_alias_digest(alias=alias)
             num_servers += 1
             try:
-                determined_tag = _download_json(get_json_url(server_url, API_ID_DEFAULT_TAG).format(genome=genome, asset=asset)) \
+                determined_tag = download_json(get_json_url(server_url, API_ID_DEFAULT_TAG).format(genome=genome, asset=asset)) \
                     if tag is None else tag
             except DownloadJsonError:
                 _LOGGER.warning(
@@ -1071,7 +1072,7 @@ class RefGenConf(yacman.YacAttMap):
                 genome=genome, asset=asset)
 
             try:
-                archive_data = _download_json(
+                archive_data = download_json(
                     url_asset_attrs, params={"tag": determined_tag})
             except DownloadJsonError:
                 no_asset_json.append(server_url)
@@ -1082,7 +1083,7 @@ class RefGenConf(yacman.YacAttMap):
                 continue
             else:
                 _LOGGER.debug("Determined server URL: {}".format(server_url))
-                genome_archive_data = _download_json(url_genome_attrs)
+                genome_archive_data = download_json(url_genome_attrs)
 
             if sys.version_info[0] == 2:
                 archive_data = asciify_json_dict(archive_data)
@@ -1354,7 +1355,7 @@ class RefGenConf(yacman.YacAttMap):
                 _LOGGER.info("Setting '{}' identity with server: {}".
                              format(genome, url_alias))
                 try:
-                    digest = _download_json(url_alias)
+                    digest = download_json(url_alias)
                 except DownloadJsonError:
                     if cnt == len(servers):
                         _LOGGER.error(
@@ -1870,7 +1871,7 @@ class RefGenConf(yacman.YacAttMap):
         asset_digest_url = construct_request_url(server_url, API_ID_DIGEST).\
             format(genome=genome, asset=asset, tag=tag)
         try:
-            remote_digest = _download_json(asset_digest_url)
+            remote_digest = download_json(asset_digest_url)
         except DownloadJsonError:
             _LOGGER.warning("Parent asset ({}/{}:{}) not found on the server. The asset provenance was not verified.".
                             format(genome, asset, tag))
@@ -1903,7 +1904,7 @@ class RefGenConf(yacman.YacAttMap):
         asset_digest_url = construct_request_url(server_url, API_ID_DIGEST).\
             format(genome=genome, asset=asset, tag=tag)
         try:
-            remote_digest = _download_json(asset_digest_url)
+            remote_digest = download_json(asset_digest_url)
         except DownloadJsonError:
             return
         try:
@@ -2172,7 +2173,10 @@ class RefGenConf(yacman.YacAttMap):
         return genomes if not all(x in genomes for x in genome) else genome
 
 
-def upgrade_config(target_version, filepath, force=False):
+def upgrade_config(target_version, filepath, force=False,
+                   get_json_url=lambda server: construct_request_url(
+                       server, API_ID_ALIAS_DIGEST),
+                   link_fun=lambda s, t: os.symlink(s, t)):
     """
     Upgrade the config to a selected target version.
 
@@ -2182,13 +2186,11 @@ def upgrade_config(target_version, filepath, force=False):
 
     :param str target_version: the version updated to
     :param str filepath: path to config file
-    :param bool: whether the upgrade should be confirmed upfront
+    :param bool force: whether the upgrade should be confirmed upfront
     :param function(str, str) -> str get_json_url: how to build URL from
             genome server URL base, genome, and asset
     :param callable link_fun: function to use to link files, e.g os.symlink or os.link
     """
-
-
     # init rgc obj with provided config
     current_version = yacman.YacAttMap(filepath=filepath)[CFG_VERSION_KEY]
 
@@ -2217,7 +2219,8 @@ def upgrade_config(target_version, filepath, force=False):
         _LOGGER.info("Action aborted by the user.")
         return
 
-    missing_digest = _format_config_03_04(rgc)  # reformat config file
+    # reformat config file
+    missing_digest = format_config_03_04(rgc, get_json_url=get_json_url)
     if not force and missing_digest and not query_yes_no(
         f"The following genomes will be lost due to the lack of local fasta "\
         f"assets and remote genome digests: {', '.join(missing_digest)}. "\
@@ -2226,189 +2229,12 @@ def upgrade_config(target_version, filepath, force=False):
         return
 
     # alter genome_folder structure
-    _alter_file_tree_03_04(rgc)
+    alter_file_tree_03_04(rgc, link_fun=link_fun)
 
     # change the config_version
     rgc[CFG_VERSION_KEY] = target_version
     # write over the config file
     rgc.write()
-
-def _format_config_03_04(rgc, get_json_url=lambda server: construct_request_url(
-                       server, API_ID_ALIAS_DIGEST)):
-    """
-    upgrade the v0.3 config file format to v0.4 format:
-    get genome digests from the server or local fasta assets,
-    use the genome digests as primary key, 
-    add 'aliases' section to the config,
-    remove 'genome_digests' section from the config
-    replace all aliases in keys/asset names with genome digests 
-
-    :param obj rgc: RefGenConfV03 obj 
-    :return list: a list of genomes that will not be included in the upgraded config
-                  due to lack of genome digest
-    """
-    
-    _LOGGER.info("Upgrade the v0.3 config file format to v0.4 format.")
-    
-    missing_digest = []
-    
-    # check if any genome lack of local fasta asset and not on server
-    for genome, genome_v in rgc[CFG_GENOMES_KEY].items():
-        digest = ""
-        # get genome digest from the server
-        cnt = 0
-        servers = rgc[CFG_SERVERS_KEY]
-        for server in servers:
-            cnt += 1
-            url_alias = get_json_url(
-                server=server).format(alias=genome)
-            try:
-                digest = _download_json(url_alias)
-                _LOGGER.info(f"Retrieve {genome} genome digest from the server.")
-            except DownloadJsonError:
-                if cnt == len(servers):
-                    try:
-                        tag = rgc.get_default_tag(genome, "fasta")
-                        asset_path = rgc.seek(
-                            genome, "fasta", tag, "fasta")
-                        ssc = SeqColClient({})
-                        digest, _ = ssc.load_fasta(asset_path)
-                        _LOGGER.info(f"Generate {genome} genome digest from local fasta file.")
-                    except MissingAssetError:
-                        _LOGGER.info(f"Fail to retrieve the genome digest for {genome}.")
-                        continue
-                continue
-
-        if digest:
-            # create "aliases" section
-            genome_v[CFG_ALIASES_KEY] = [genome]
-            # convert seek keys, childran/parent asset keys from aliases to genome digests
-            for asset, asset_v in genome_v[CFG_ASSETS_KEY].items():
-                for tag, tag_v in asset_v[CFG_ASSET_TAGS_KEY].items():
-                    for seek, seek_v in tag_v[CFG_SEEK_KEYS_KEY].items():
-                        tag_v[CFG_SEEK_KEYS_KEY][seek] = seek_v.replace(genome, digest)
-
-                    if CFG_ASSET_CHILDREN_KEY in tag_v:
-                        for i in range(len(asset_v[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_CHILDREN_KEY])):
-                            tag_v[CFG_ASSET_CHILDREN_KEY][i] = tag_v[CFG_ASSET_CHILDREN_KEY][i].replace(
-                                genome, digest)
-
-                    if CFG_ASSET_PARENTS_KEY in tag_v:
-                        for i in range(len(asset_v[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_PARENTS_KEY])):
-                            tag_v[CFG_ASSET_PARENTS_KEY][i] = tag_v[CFG_ASSET_PARENTS_KEY][i].replace(
-                                genome, digest)
-
-            # use the genome digest as primary keys
-            rgc[CFG_GENOMES_KEY][digest] = rgc[CFG_GENOMES_KEY].pop(
-                genome)
-            # remove old "genome_digest" section
-            del rgc[CFG_GENOMES_KEY][digest][CFG_CHECKSUM_KEY]
-        else:
-            missing_digest.append(genome)
-            del rgc[CFG_GENOMES_KEY][genome]
-
-    return missing_digest
-
-
-def _alter_file_tree_03_04(rgc, link_fun=lambda s, t: os.symlink(s, t)):
-    """
-    update file structure inside genome_folder:
-    Drop genomes for which genome_digest is not available
-    on any of the servers and do not have a fasta asset locally.
-    contents inside genome_folder will be replaced by 'alias' and 'data' dir
-
-    :param obj rgc: RefGenConfV03 obj
-    """
-
-    from refgenconf import _swap_names_in_tree
-
-    _LOGGER.info(f"Upgrade '{rgc[CFG_FOLDER_KEY]}' structure.")
-
-    my_genome = {}
-    for k, v in rgc[CFG_GENOMES_KEY].items():
-        my_genome.update([(v[CFG_ALIASES_KEY][0], k)])
-
-    _LOGGER.info(f"Create '{DATA_DIR}' and '{ALIAS_DIR}' directories inside '{rgc[CFG_FOLDER_KEY]}'.")
-    os.mkdir(os.path.abspath(os.path.join(rgc[CFG_FOLDER_KEY], DATA_DIR)))
-    os.mkdir(os.path.abspath(os.path.join(rgc[CFG_FOLDER_KEY], ALIAS_DIR)))
-
-    _LOGGER.info(f"Copy genome assets to '{DATA_DIR}'. " \
-                 f"Genomes failed to retrieve genome digest will be ignored.")
-    for root, dirs, files in os.walk(rgc[CFG_FOLDER_KEY]):
-        for dir in dirs:
-            if dir in my_genome:
-                shutil.copytree(os.path.join(rgc[CFG_FOLDER_KEY], dir),
-                                os.path.join(rgc[CFG_FOLDER_KEY], DATA_DIR, dir))
-        del dirs[:]
-    
-    _LOGGER.info(f"Use genome digests as identifiers in '{DATA_DIR}' directory.  " \
-                 f"Create symbolic links in '{ALIAS_DIR}' directory.")
-    for root, dirs, files in os.walk(os.path.join(rgc[CFG_FOLDER_KEY], DATA_DIR)):
-        for dir in dirs:
-            _swap_names_in_tree(os.path.join(
-                root, dir), my_genome[dir], dir)
-            os.mkdir(os.path.join(rgc[CFG_FOLDER_KEY], ALIAS_DIR, dir))
-            # create symlink for alias folder
-            for genome, assets, files in os.walk(os.path.join(root, my_genome[dir])):
-                for asset in assets:
-                    old_path = os.path.join(genome, asset)
-                    new_path = old_path.replace(
-                        my_genome[dir], dir).replace(DATA_DIR, ALIAS_DIR)
-                    os.mkdir(new_path)
-                for file in files:
-                    old_path = os.path.join(genome, file)
-                    new_path = old_path.replace(
-                        my_genome[dir], dir).replace(DATA_DIR, ALIAS_DIR)
-                    link_fun(old_path, new_path)
-        del dirs[:]
-
-    _LOGGER.info(f"Remove genome assets that have been copied to '{DATA_DIR}' directory.")
-    for genome, genome_v in rgc[CFG_GENOMES_KEY].items():
-        d = os.path.join(rgc[CFG_FOLDER_KEY], genome_v[CFG_ALIASES_KEY][0])
-        shutil.rmtree(d)
-
-def _swap_names_in_tree(top, new_name, old_name):
-    """
-    Rename all files and directories within a directory tree and the
-    directory itself
-
-    :param str top: path to the top of the tree to be renamed
-    :param str new_name: new name
-    :param str old_name: old name
-    :return bool: whether the renaming has been carried out
-    """
-
-    def _rename(x, rt):
-        os.rename(os.path.join(rt, x), os.path.join(
-            rt, x.replace(old_name, new_name)))
-
-    if not os.path.isdir(top):
-        return False
-    for root, dirs, files in os.walk(top):
-        for dir in dirs:
-            _rename(dir, root)
-        for file in files:
-            _rename(file, root)
-    os.rename(top, os.path.join(os.path.join(top, os.pardir), new_name))
-    return True
-
-
-def _download_json(url, params=None):
-    """
-    Safely connect to the provided API endpoint and download JSON data.
-
-    :param str url: server API endpoint
-    :param dict params: query parameters
-    :return dict: served data
-    """
-
-    _LOGGER.debug("Downloading JSON data; querying URL: '{}'".format(url))
-    resp = requests.get(url, params=params)
-    if resp.ok:
-        return resp.json()
-    elif resp.status_code == 404:
-        resp = None
-    raise DownloadJsonError(resp)
 
 
 def _download_url_progress(url, output_path, name, params=None):
@@ -2728,7 +2554,7 @@ def _get_server_endpoints_mapping(url):
     :param str url: server URL
     :return dict: endpoints mapped by their operationIds
     """
-    json = _download_json(url + "/openapi.json")
+    json = download_json(url + "/openapi.json")
     return map_paths_by_id(asciify_json_dict(json) if sys.version_info[0] == 2 else json)
 
 

@@ -2,10 +2,17 @@
 
 import os
 from yacman import select_config
-from .const import CFG_ENV_VARS, BUILD_STATS_DIR
-from re import sub
-from ubiquerg import is_command_callable
+from .const import *
+from .exceptions import DownloadJsonError, MissingAssetError
+from .seqcol import SeqColClient
 
+from re import sub
+from requests import get
+from ubiquerg import is_command_callable
+import logging
+import shutil
+
+_LOGGER = logging.getLogger(__name__)
 
 __all__ = ["select_genome_config", "get_dir_digest"]
 
@@ -69,3 +76,191 @@ def get_dir_digest(path, pm=None):
 
             return
     return str(sub(r'\W+', '', x))  # strips non-alphanumeric
+
+
+def format_config_03_04(rgc, get_json_url):
+    """
+    upgrade the v0.3 config file format to v0.4 format:
+    get genome digests from the server or local fasta assets,
+    use the genome digests as primary key,
+    add 'aliases' section to the config,
+    remove 'genome_digests' section from the config
+    replace all aliases in keys/asset names with genome digests
+
+    :param obj rgc: RefGenConfV03 obj
+    :param function(str, str) -> str get_json_url: how to build URL from
+            genome server URL base, genome, and asset
+    """
+
+    _LOGGER.info("Upgrade the v0.3 config file format to v0.4 format.")
+
+    missing_digest = []
+
+    # check if any genome lack of local fasta asset and not on server
+    for genome, genome_v in rgc[CFG_GENOMES_KEY].items():
+        digest = ""
+        # get genome digest from the server
+        cnt = 0
+        servers = rgc[CFG_SERVERS_KEY]
+        for server in servers:
+            cnt += 1
+            url_alias = get_json_url(server=server).format(alias=genome)
+            try:
+                digest = download_json(url_alias)
+                _LOGGER.info(
+                    f"Retrieve {genome} digest from the server.")
+            except DownloadJsonError:
+                if cnt == len(servers):
+                    try:
+                        tag = rgc.get_default_tag(genome, "fasta")
+                        asset_path = rgc.seek(genome, "fasta", tag, "fasta")
+                        ssc = SeqColClient({})
+                        digest, _ = ssc.load_fasta(asset_path)
+                        _LOGGER.info(
+                            f"Generate {genome} digest from local fasta file.")
+                    except MissingAssetError:
+                        _LOGGER.info(
+                            f"Fail to retrieve the digest for {genome}.")
+                        continue
+                continue
+
+        if digest:
+            # create "aliases" section
+            genome_v[CFG_ALIASES_KEY] = [genome]
+            # convert seek keys, children/parent asset keys from aliases to
+            # genome digests
+            for asset, asset_v in genome_v[CFG_ASSETS_KEY].items():
+                for tag, tag_v in asset_v[CFG_ASSET_TAGS_KEY].items():
+                    for seek, seek_v in tag_v[CFG_SEEK_KEYS_KEY].items():
+                        tag_v[CFG_SEEK_KEYS_KEY][seek] = seek_v.replace(genome,
+                                                                        digest)
+
+                    if CFG_ASSET_CHILDREN_KEY in tag_v:
+                        for i in range(len(asset_v[CFG_ASSET_TAGS_KEY][tag][
+                                               CFG_ASSET_CHILDREN_KEY])):
+                            tag_v[CFG_ASSET_CHILDREN_KEY][i] = \
+                            tag_v[CFG_ASSET_CHILDREN_KEY][i].replace(genome, digest)
+
+                    if CFG_ASSET_PARENTS_KEY in tag_v:
+                        for i in range(len(asset_v[CFG_ASSET_TAGS_KEY][tag][
+                                               CFG_ASSET_PARENTS_KEY])):
+                            tag_v[CFG_ASSET_PARENTS_KEY][i] = \
+                            tag_v[CFG_ASSET_PARENTS_KEY][i].replace(genome, digest)
+
+            # use the genome digest as primary keys
+            rgc[CFG_GENOMES_KEY][digest] = rgc[CFG_GENOMES_KEY].pop(genome)
+            # remove old "genome_digest" section
+            del rgc[CFG_GENOMES_KEY][digest][CFG_CHECKSUM_KEY]
+        else:
+            missing_digest.append(genome)
+            del rgc[CFG_GENOMES_KEY][genome]
+
+    return missing_digest
+
+
+def alter_file_tree_03_04(rgc, link_fun):
+    """
+    update file structure inside genome_folder:
+    Drop genomes for which genome_digest is not available
+    on any of the servers and do not have a fasta asset locally.
+    contents inside genome_folder will be replaced by 'alias' and 'data' dir
+
+    :param obj rgc: RefGenConfV03 obj
+    :param callable link_fun: function to use to link files, e.g os.symlink
+        or os.link
+    """
+
+    _LOGGER.info(f"Upgrade '{rgc[CFG_FOLDER_KEY]}' structure.")
+
+    my_genome = {}
+    for k, v in rgc[CFG_GENOMES_KEY].items():
+        my_genome.update([(v[CFG_ALIASES_KEY][0], k)])
+
+    _LOGGER.info(
+        f"Create '{DATA_DIR}' and '{ALIAS_DIR}' directories inside '"
+        f"{rgc[CFG_FOLDER_KEY]}'.")
+    os.mkdir(os.path.abspath(os.path.join(rgc[CFG_FOLDER_KEY], DATA_DIR)))
+    os.mkdir(os.path.abspath(os.path.join(rgc[CFG_FOLDER_KEY], ALIAS_DIR)))
+
+    _LOGGER.info(f"Copy genome assets to '{DATA_DIR}' "
+                 f"Genomes failed to retrieve genome digest will be ignored.")
+    for root, dirs, files in os.walk(rgc[CFG_FOLDER_KEY]):
+        for dir in dirs:
+            if dir in my_genome:
+                shutil.copytree(os.path.join(rgc[CFG_FOLDER_KEY], dir),
+                                os.path.join(rgc[CFG_FOLDER_KEY], DATA_DIR,
+                                             dir))
+        del dirs[:]
+
+    _LOGGER.info(
+        f"Use genome digests as identifiers in '{DATA_DIR}' directory. "
+        f"Create symbolic links in '{ALIAS_DIR}' directory.")
+    for root, dirs, files in os.walk(
+            os.path.join(rgc[CFG_FOLDER_KEY], DATA_DIR)):
+        for dir in dirs:
+            swap_names_in_tree(os.path.join(root, dir), my_genome[dir], dir)
+            os.mkdir(os.path.join(rgc[CFG_FOLDER_KEY], ALIAS_DIR, dir))
+            # create symlink for alias folder
+            for genome, assets, files in os.walk(
+                    os.path.join(root, my_genome[dir])):
+                for asset in assets:
+                    old_path = os.path.join(genome, asset)
+                    new_path = old_path.replace(my_genome[dir], dir).replace(
+                        DATA_DIR, ALIAS_DIR)
+                    os.mkdir(new_path)
+                for file in files:
+                    old_path = os.path.join(genome, file)
+                    new_path = old_path.replace(my_genome[dir], dir).replace(
+                        DATA_DIR, ALIAS_DIR)
+                    link_fun(old_path, new_path)
+        del dirs[:]
+
+    _LOGGER.info(f"Remove genome assets that have been copied "
+                 f"to '{DATA_DIR}' directory.")
+    for genome, genome_v in rgc[CFG_GENOMES_KEY].items():
+        d = os.path.join(rgc[CFG_FOLDER_KEY], genome_v[CFG_ALIASES_KEY][0])
+        shutil.rmtree(d)
+
+
+def swap_names_in_tree(top, new_name, old_name):
+    """
+    Rename all files and directories within a directory tree and the
+    directory itself
+
+    :param str top: path to the top of the tree to be renamed
+    :param str new_name: new name
+    :param str old_name: old name
+    :return bool: whether the renaming has been carried out
+    """
+
+    def _rename(x, rt):
+        os.rename(os.path.join(rt, x),
+                  os.path.join(rt, x.replace(old_name, new_name)))
+
+    if not os.path.isdir(top):
+        return False
+    for root, dirs, files in os.walk(top):
+        for dir in dirs:
+            _rename(dir, root)
+        for file in files:
+            _rename(file, root)
+    os.rename(top, os.path.join(os.path.join(top, os.pardir), new_name))
+    return True
+
+
+def download_json(url, params=None):
+    """
+    Safely connect to the provided API endpoint and download JSON data.
+
+    :param str url: server API endpoint
+    :param dict params: query parameters
+    :return dict: served data
+    """
+
+    _LOGGER.debug("Downloading JSON data; querying URL: '{}'".format(url))
+    resp = get(url, params=params)
+    if resp.ok:
+        return resp.json()
+    elif resp.status_code == 404:
+        resp = None
+    raise DownloadJsonError(resp)

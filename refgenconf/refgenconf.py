@@ -2183,9 +2183,6 @@ def upgrade_config(target_version, filepath, force=False):
     :param str target_version: the version updated to
     :param str filepath: path to config file
     :param bool: whether the upgrade should be confirmed upfront
-    :param function(str, str) -> str get_json_url: how to build URL from
-            genome server URL base, genome, and asset
-    :param callable link_fun: function to use to link files, e.g os.symlink or os.link
     """
 
 
@@ -2244,6 +2241,8 @@ def _format_config_03_04(rgc, get_json_url=lambda server: construct_request_url(
     replace all aliases in keys/asset names with genome digests 
 
     :param obj rgc: RefGenConfV03 obj 
+    :param function(str, str) -> str get_json_url: how to build URL from
+            genome server URL base, genome, and asset
     :return list: a list of genomes that will not be included in the upgraded config
                   due to lack of genome digest
     """
@@ -2318,6 +2317,7 @@ def _alter_file_tree_03_04(rgc, link_fun=lambda s, t: os.symlink(s, t)):
     contents inside genome_folder will be replaced by 'alias' and 'data' dir
 
     :param obj rgc: RefGenConfV03 obj
+    :param callable link_fun: function to use to link files, e.g os.symlink or os.link
     """
 
     from refgenconf import _swap_names_in_tree

@@ -35,8 +35,7 @@ from ubiquerg import checksum, is_url, query_yes_no, untar, is_writable, \
     parse_registry_path as prp
 
 from .const import *
-from .helpers import asciify_json_dict, select_genome_config, get_dir_digest, \
-    format_config_03_04, alter_file_tree_03_04, download_json
+from .helpers import asciify_json_dict, select_genome_config, get_dir_digest, download_json
 from .exceptions import *
 
 _LOGGER = logging.getLogger(__name__)
@@ -2194,6 +2193,10 @@ def upgrade_config(target_version, filepath, force=False,
     # init rgc obj with provided config
     current_version = yacman.YacAttMap(filepath=filepath)[CFG_VERSION_KEY]
 
+    if current_version == 0.3 and target_version == "0.4":
+        from .helpers import format_config_03_04 as format_config
+        from .helpers import alter_file_tree_03_04 as alter_file_tree
+
     if current_version == 0.3:
         rgc = _RefGenConfV03(filepath=filepath, writable=True)
     else:
@@ -2220,7 +2223,7 @@ def upgrade_config(target_version, filepath, force=False,
         return
 
     # reformat config file
-    missing_digest = format_config_03_04(rgc, get_json_url=get_json_url)
+    missing_digest = format_config(rgc, get_json_url=get_json_url)
     if not force and missing_digest and not query_yes_no(
         f"The following genomes will be lost due to the lack of local fasta "\
         f"assets and remote genome digests: {', '.join(missing_digest)}. "\
@@ -2229,8 +2232,7 @@ def upgrade_config(target_version, filepath, force=False,
         return
 
     # alter genome_folder structure
-    alter_file_tree_03_04(rgc, link_fun=link_fun)
-
+    alter_file_tree(rgc, link_fun=link_fun)
     # change the config_version
     rgc[CFG_VERSION_KEY] = target_version
     # write over the config file

@@ -7,7 +7,7 @@ import os
 import signal
 import warnings
 import shutil
-from shutil import copytree, ignore_patterns
+from shutil import copytree
 import json
 import requests
 
@@ -35,7 +35,7 @@ from ubiquerg import checksum, is_url, query_yes_no, untar, is_writable, \
     parse_registry_path as prp
 
 from .const import *
-from .helpers import asciify_json_dict, select_genome_config, get_dir_digest, unbound_env_vars
+from .helpers import asciify_json_dict, select_genome_config, get_dir_digest
 from .exceptions import *
 
 _LOGGER = logging.getLogger(__name__)

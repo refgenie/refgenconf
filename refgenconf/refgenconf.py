@@ -40,7 +40,7 @@ from .exceptions import *
 
 _LOGGER = logging.getLogger(__name__)
 
-__all__ = ["RefGenConf", "config_upgrade"]
+__all__ = ["RefGenConf", "upgrade_config"]
 
 
 def _handle_sigint(filepath):
@@ -100,7 +100,7 @@ class RefGenConf(yacman.YacAttMap):
                 if version < REQ_CFG_VERSION:
                     msg = \
                         "This genome config (v{}) is not compliant with v{} standards. \n" \
-                        "To use current refgenconf, please use config_upgrade function to upgrade, or" \
+                        "To use current refgenconf, please use upgrade_config function to upgrade, or" \
                         "downgrade refgenconf: 'pip install \"refgenconf>={},<{}\"'. \n"\
                         "If refgenie is installed, you can use 'refgenie upgrade --target-version {}'".\
                         format(self[CFG_VERSION_KEY], str(REQ_CFG_VERSION),
@@ -2172,7 +2172,7 @@ class RefGenConf(yacman.YacAttMap):
         return genomes if not all(x in genomes for x in genome) else genome
 
 
-def config_upgrade(target_version, filepath, force=False,
+def upgrade_config(target_version, filepath, force=False,
                    get_json_url=lambda server: construct_request_url(
                        server, API_ID_ALIAS_DIGEST),
                    link_fun=lambda s, t: os.symlink(s, t)):
@@ -2302,7 +2302,7 @@ def config_upgrade(target_version, filepath, force=False,
                      f"Available target version(s) for v{str(rgc[CFG_VERSION_KEY])}: {CFG_UPGRADE[str(rgc[CFG_VERSION_KEY])]}")
         return
 
-    # prompt the user
+    # prompt the user  
     # TODO: add upgrade-specific docs page
     url = "http://refgenie.databio.org/"
     if not force and not query_yes_no(

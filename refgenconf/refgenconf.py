@@ -25,7 +25,6 @@ from rich.table import Table
 from rich.console import Console
 from rich.progress import Progress, TextColumn, BarColumn
 
-from .refgenconf_v03 import _RefGenConfV03
 from .progress_bar import _DownloadColumn, _TimeRemainingColumn, \
     _TransferSpeedColumn
 
@@ -2193,12 +2192,14 @@ def upgrade_config(target_version, filepath, force=False,
     # init rgc obj with provided config
     current_version = yacman.YacAttMap(filepath=filepath)[CFG_VERSION_KEY]
 
-    if current_version == 0.3 and target_version == "0.4":
-        from .helpers import format_config_03_04 as format_config
-        from .helpers import alter_file_tree_03_04 as alter_file_tree
-
     if current_version == 0.3:
-        rgc = _RefGenConfV03(filepath=filepath, writable=True)
+        from .refgenconf_v03 import _RefGenConfV03 as OldRefGenConf
+
+        rgc = OldRefGenConf(filepath=filepath, writable=True)
+
+        if target_version == "0.4":
+            from .helpers import format_config_03_04 as format_config
+            from .helpers import alter_file_tree_03_04 as alter_file_tree    
     else:
         _LOGGER.info(
             f"Action aborted: Upgrade from v{current_version} config is not available.")

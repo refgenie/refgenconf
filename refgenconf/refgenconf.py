@@ -2172,10 +2172,7 @@ class RefGenConf(yacman.YacAttMap):
         return genomes if not all(x in genomes for x in genome) else genome
 
 
-def upgrade_config(target_version, filepath, force=False,
-                   get_json_url=lambda server: construct_request_url(
-                       server, API_ID_ALIAS_DIGEST),
-                   link_fun=lambda s, t: os.symlink(s, t)):
+def upgrade_config(target_version, filepath, force=False):
     """
     Upgrade the config to a selected target version.
 
@@ -2186,109 +2183,15 @@ def upgrade_config(target_version, filepath, force=False,
     :param str target_version: the version updated to
     :param str filepath: path to config file
     :param bool: whether the upgrade should be confirmed upfront
+    :param function(str, str) -> str get_json_url: how to build URL from
+            genome server URL base, genome, and asset
+    :param callable link_fun: function to use to link files, e.g os.symlink or os.link
     """
 
-    # reformat config file
-
-    def format_config(target_version):
-        missing_digest = []
-        # check if any genome lack of local fasta asset and not on server
-        for genome, genome_v in rgc[CFG_GENOMES_KEY].items():
-            digest = ""
-            # get genome digest from the server
-            cnt = 0
-            servers = rgc[CFG_SERVERS_KEY]
-            for server in servers:
-                cnt += 1
-                url_alias = get_json_url(
-                    server=server).format(alias=genome)
-                try:
-                    digest = _download_json(url_alias)
-                except DownloadJsonError:
-                    if cnt == len(servers):
-                        try:
-                            tag = rgc.get_default_tag(genome, "fasta")
-                            asset_path = rgc.seek(
-                                genome, "fasta", tag, "fasta")
-                            ssc = SeqColClient({})
-                            digest, _ = ssc.load_fasta(asset_path)
-                        except MissingAssetError:
-                            continue
-                    continue
-
-            if digest:
-                # create "aliases" section
-                genome_v[CFG_ALIASES_KEY] = [genome]
-                # convert seek keys, childran/parent asset keys from aliases to genome digests
-                for asset, asset_v in genome_v[CFG_ASSETS_KEY].items():
-                    for tag, tag_v in asset_v[CFG_ASSET_TAGS_KEY].items():
-                        for seek, seek_v in tag_v[CFG_SEEK_KEYS_KEY].items():
-                            tag_v[CFG_SEEK_KEYS_KEY][seek] = seek_v.replace(genome, digest)
-
-                        if CFG_ASSET_CHILDREN_KEY in tag_v:
-                            for i in range(len(asset_v[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_CHILDREN_KEY])):
-                                tag_v[CFG_ASSET_CHILDREN_KEY][i] = tag_v[CFG_ASSET_CHILDREN_KEY][i].replace(
-                                    genome, digest)
-
-                        if CFG_ASSET_PARENTS_KEY in tag_v:
-                            for i in range(len(asset_v[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_PARENTS_KEY])):
-                                tag_v[CFG_ASSET_PARENTS_KEY][i] = tag_v[CFG_ASSET_PARENTS_KEY][i].replace(
-                                    genome, digest)
-
-                # use the genome digest as primary keys
-                rgc[CFG_GENOMES_KEY][digest] = rgc[CFG_GENOMES_KEY].pop(
-                    genome)
-                # remove old "genome_digest" section
-                del rgc[CFG_GENOMES_KEY][digest][CFG_CHECKSUM_KEY]
-            else:
-                missing_digest.append(genome)
-                del rgc[CFG_GENOMES_KEY][genome]
-
-        return missing_digest
-
-    # restructure the genome_folder
-
-    def alter_file_tree():
-        my_genome = {}
-        for k, v in rgc[CFG_GENOMES_KEY].items():
-            my_genome.update([(v[CFG_ALIASES_KEY][0], k)])
-
-        os.mkdir(os.path.abspath(os.path.join(rgc[CFG_FOLDER_KEY], DATA_DIR)))
-        os.mkdir(os.path.abspath(os.path.join(rgc[CFG_FOLDER_KEY], ALIAS_DIR)))
-
-        # copy folder
-        for root, dirs, files in os.walk(rgc[CFG_FOLDER_KEY]):
-            for dir in dirs:
-                if dir in my_genome:
-                    shutil.copytree(os.path.join(rgc[CFG_FOLDER_KEY], dir),
-                                    os.path.join(rgc[CFG_FOLDER_KEY], DATA_DIR, dir))
-            del dirs[:]
-
-        for root, dirs, files in os.walk(os.path.join(rgc[CFG_FOLDER_KEY], DATA_DIR)):
-            for dir in dirs:
-                _swap_names_in_tree(os.path.join(
-                    root, dir), my_genome[dir], dir)
-                os.mkdir(os.path.join(rgc[CFG_FOLDER_KEY], ALIAS_DIR, dir))
-                # create symlink for alias folder
-                for genome, assets, files in os.walk(os.path.join(root, my_genome[dir])):
-                    for asset in assets:
-                        old_path = os.path.join(genome, asset)
-                        new_path = old_path.replace(
-                            my_genome[dir], dir).replace(DATA_DIR, ALIAS_DIR)
-                        os.mkdir(new_path)
-                    for file in files:
-                        old_path = os.path.join(genome, file)
-                        new_path = old_path.replace(
-                            my_genome[dir], dir).replace(DATA_DIR, ALIAS_DIR)
-                        link_fun(old_path, new_path)
-            del dirs[:]
-
-        for genome, genome_v in rgc[CFG_GENOMES_KEY].items():
-            d = os.path.join(rgc[CFG_FOLDER_KEY], genome_v[CFG_ALIASES_KEY][0])
-            shutil.rmtree(d)
 
     # init rgc obj with provided config
     current_version = yacman.YacAttMap(filepath=filepath)[CFG_VERSION_KEY]
+
     if current_version == 0.3:
         rgc = _RefGenConfV03(filepath=filepath, writable=True)
     else:
@@ -2308,13 +2211,13 @@ def upgrade_config(target_version, filepath, force=False,
     if not force and not query_yes_no(
             f"Upgrading config to v{target_version}. Current genome identifiers "\
             f"will be replaced with sequence-derived digests and contents "\
-            f"inside {rgc[CFG_FOLDER_KEY]}' will be replaced by '{DATA_DIR}' "\
+            f"inside '{rgc[CFG_FOLDER_KEY]}' will be replaced by '{DATA_DIR}' "\
             f"and '{ALIAS_DIR}' directories. For more info visit: {url}. "\
             f"Would you like to proceed?"):
         _LOGGER.info("Action aborted by the user.")
         return
 
-    missing_digest = format_config(target_version)  # reformat config file
+    missing_digest = _format_config_03_04(rgc)  # reformat config file
     if not force and missing_digest and not query_yes_no(
         f"The following genomes will be lost due to the lack of local fasta "\
         f"assets and remote genome digests: {', '.join(missing_digest)}. "\
@@ -2323,13 +2226,146 @@ def upgrade_config(target_version, filepath, force=False,
         return
 
     # alter genome_folder structure
-    alter_file_tree()
+    _alter_file_tree_03_04(rgc)
 
     # change the config_version
     rgc[CFG_VERSION_KEY] = target_version
     # write over the config file
     rgc.write()
 
+def _format_config_03_04(rgc, get_json_url=lambda server: construct_request_url(
+                       server, API_ID_ALIAS_DIGEST)):
+    """
+    upgrade the v0.3 config file format to v0.4 format:
+    get genome digests from the server or local fasta assets,
+    use the genome digests as primary key, 
+    add 'aliases' section to the config,
+    remove 'genome_digests' section from the config
+    replace all aliases in keys/asset names with genome digests 
+
+    :param obj rgc: RefGenConfV03 obj 
+    :return list: a list of genomes that will not be included in the upgraded config
+                  due to lack of genome digest
+    """
+    
+    _LOGGER.info("Upgrade the v0.3 config file format to v0.4 format.")
+    
+    missing_digest = []
+    
+    # check if any genome lack of local fasta asset and not on server
+    for genome, genome_v in rgc[CFG_GENOMES_KEY].items():
+        digest = ""
+        # get genome digest from the server
+        cnt = 0
+        servers = rgc[CFG_SERVERS_KEY]
+        for server in servers:
+            cnt += 1
+            url_alias = get_json_url(
+                server=server).format(alias=genome)
+            try:
+                digest = _download_json(url_alias)
+                _LOGGER.info(f"Retrieve {genome} genome digest from the server.")
+            except DownloadJsonError:
+                if cnt == len(servers):
+                    try:
+                        tag = rgc.get_default_tag(genome, "fasta")
+                        asset_path = rgc.seek(
+                            genome, "fasta", tag, "fasta")
+                        ssc = SeqColClient({})
+                        digest, _ = ssc.load_fasta(asset_path)
+                        _LOGGER.info(f"Generate {genome} genome digest from local fasta file.")
+                    except MissingAssetError:
+                        _LOGGER.info(f"Fail to retrieve the genome digest for {genome}.")
+                        continue
+                continue
+
+        if digest:
+            # create "aliases" section
+            genome_v[CFG_ALIASES_KEY] = [genome]
+            # convert seek keys, childran/parent asset keys from aliases to genome digests
+            for asset, asset_v in genome_v[CFG_ASSETS_KEY].items():
+                for tag, tag_v in asset_v[CFG_ASSET_TAGS_KEY].items():
+                    for seek, seek_v in tag_v[CFG_SEEK_KEYS_KEY].items():
+                        tag_v[CFG_SEEK_KEYS_KEY][seek] = seek_v.replace(genome, digest)
+
+                    if CFG_ASSET_CHILDREN_KEY in tag_v:
+                        for i in range(len(asset_v[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_CHILDREN_KEY])):
+                            tag_v[CFG_ASSET_CHILDREN_KEY][i] = tag_v[CFG_ASSET_CHILDREN_KEY][i].replace(
+                                genome, digest)
+
+                    if CFG_ASSET_PARENTS_KEY in tag_v:
+                        for i in range(len(asset_v[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_PARENTS_KEY])):
+                            tag_v[CFG_ASSET_PARENTS_KEY][i] = tag_v[CFG_ASSET_PARENTS_KEY][i].replace(
+                                genome, digest)
+
+            # use the genome digest as primary keys
+            rgc[CFG_GENOMES_KEY][digest] = rgc[CFG_GENOMES_KEY].pop(
+                genome)
+            # remove old "genome_digest" section
+            del rgc[CFG_GENOMES_KEY][digest][CFG_CHECKSUM_KEY]
+        else:
+            missing_digest.append(genome)
+            del rgc[CFG_GENOMES_KEY][genome]
+
+    return missing_digest
+
+
+def _alter_file_tree_03_04(rgc, link_fun=lambda s, t: os.symlink(s, t)):
+    """
+    update file structure inside genome_folder:
+    Drop genomes for which genome_digest is not available
+    on any of the servers and do not have a fasta asset locally.
+    contents inside genome_folder will be replaced by 'alias' and 'data' dir
+
+    :param obj rgc: RefGenConfV03 obj
+    """
+
+    from refgenconf import _swap_names_in_tree
+
+    _LOGGER.info(f"Upgrade '{rgc[CFG_FOLDER_KEY]}' structure.")
+
+    my_genome = {}
+    for k, v in rgc[CFG_GENOMES_KEY].items():
+        my_genome.update([(v[CFG_ALIASES_KEY][0], k)])
+
+    _LOGGER.info(f"Create '{DATA_DIR}' and '{ALIAS_DIR}' directories inside '{rgc[CFG_FOLDER_KEY]}'.")
+    os.mkdir(os.path.abspath(os.path.join(rgc[CFG_FOLDER_KEY], DATA_DIR)))
+    os.mkdir(os.path.abspath(os.path.join(rgc[CFG_FOLDER_KEY], ALIAS_DIR)))
+
+    _LOGGER.info(f"Copy genome assets to '{DATA_DIR}'. " \
+                 f"Genomes failed to retrieve genome digest will be ignored.")
+    for root, dirs, files in os.walk(rgc[CFG_FOLDER_KEY]):
+        for dir in dirs:
+            if dir in my_genome:
+                shutil.copytree(os.path.join(rgc[CFG_FOLDER_KEY], dir),
+                                os.path.join(rgc[CFG_FOLDER_KEY], DATA_DIR, dir))
+        del dirs[:]
+    
+    _LOGGER.info(f"Use genome digests as identifiers in '{DATA_DIR}' directory.  " \
+                 f"Create symbolic links in '{ALIAS_DIR}' directory.")
+    for root, dirs, files in os.walk(os.path.join(rgc[CFG_FOLDER_KEY], DATA_DIR)):
+        for dir in dirs:
+            _swap_names_in_tree(os.path.join(
+                root, dir), my_genome[dir], dir)
+            os.mkdir(os.path.join(rgc[CFG_FOLDER_KEY], ALIAS_DIR, dir))
+            # create symlink for alias folder
+            for genome, assets, files in os.walk(os.path.join(root, my_genome[dir])):
+                for asset in assets:
+                    old_path = os.path.join(genome, asset)
+                    new_path = old_path.replace(
+                        my_genome[dir], dir).replace(DATA_DIR, ALIAS_DIR)
+                    os.mkdir(new_path)
+                for file in files:
+                    old_path = os.path.join(genome, file)
+                    new_path = old_path.replace(
+                        my_genome[dir], dir).replace(DATA_DIR, ALIAS_DIR)
+                    link_fun(old_path, new_path)
+        del dirs[:]
+
+    _LOGGER.info(f"Remove genome assets that have been copied to '{DATA_DIR}' directory.")
+    for genome, genome_v in rgc[CFG_GENOMES_KEY].items():
+        d = os.path.join(rgc[CFG_FOLDER_KEY], genome_v[CFG_ALIASES_KEY][0])
+        shutil.rmtree(d)
 
 def _swap_names_in_tree(top, new_name, old_name):
     """

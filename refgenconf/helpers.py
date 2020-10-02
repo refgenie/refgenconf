@@ -11,6 +11,8 @@ from requests import get
 from ubiquerg import is_command_callable
 import logging
 import shutil
+from copy import copy
+from functools import partial
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -110,7 +112,6 @@ def format_config_03_04(rgc, get_json_url):
                 _LOGGER.info(
                     f"Retrieve {genome} digest from the server.")
             except (KeyError,DownloadJsonError) as e:
-                print (e)
                 if cnt == len(servers):
                     try:
                         tag = rgc.get_default_tag(genome, "fasta")
@@ -130,24 +131,7 @@ def format_config_03_04(rgc, get_json_url):
             genome_v[CFG_ALIASES_KEY] = [genome]
             # convert seek keys, children/parent asset keys from aliases to
             # genome digests
-            for asset, asset_v in genome_v[CFG_ASSETS_KEY].items():
-                for tag, tag_v in asset_v[CFG_ASSET_TAGS_KEY].items():
-                    for seek, seek_v in tag_v[CFG_SEEK_KEYS_KEY].items():
-                        tag_v[CFG_SEEK_KEYS_KEY][seek] = seek_v.replace(genome,
-                                                                        digest)
-
-                    if CFG_ASSET_CHILDREN_KEY in tag_v:
-                        for i in range(len(asset_v[CFG_ASSET_TAGS_KEY][tag][
-                                               CFG_ASSET_CHILDREN_KEY])):
-                            tag_v[CFG_ASSET_CHILDREN_KEY][i] = \
-                            tag_v[CFG_ASSET_CHILDREN_KEY][i].replace(genome, digest)
-
-                    if CFG_ASSET_PARENTS_KEY in tag_v:
-                        for i in range(len(asset_v[CFG_ASSET_TAGS_KEY][tag][
-                                               CFG_ASSET_PARENTS_KEY])):
-                            tag_v[CFG_ASSET_PARENTS_KEY][i] = \
-                            tag_v[CFG_ASSET_PARENTS_KEY][i].replace(genome, digest)
-
+            rgc[CFG_GENOMES_KEY][genome] = replace_str_in_obj(genome_v, genome, digest)
             # use the genome digest as primary keys
             rgc[CFG_GENOMES_KEY][digest] = rgc[CFG_GENOMES_KEY].pop(genome)
             # remove old "genome_digest" section
@@ -267,8 +251,7 @@ def download_json(url, params=None):
     raise DownloadJsonError(resp)
 
 
-from copy import copy
-from functools import partial
+
 def replace_str_in_obj(object, x, y):
     """
     Replace strings in an object

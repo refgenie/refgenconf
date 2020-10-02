@@ -265,3 +265,26 @@ def download_json(url, params=None):
     elif resp.status_code == 404:
         resp = None
     raise DownloadJsonError(resp)
+
+
+from copy import copy
+from functools import partial
+def replace_str_in_obj(object, x, y):
+    """
+    Replace strings in an object
+
+    :param any object: object to replace strings in
+    :param str x: string to replace
+    :param str y: replacement
+    :return any: object with strings replaced
+    """
+    _replace = partial(replace_str_in_obj, x=x, y=y)
+    obj = copy(object)
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            obj[k] = _replace(v)
+    if isinstance(obj, list):
+        obj = [_replace(i) for i in obj]
+    if isinstance(object, str):
+        obj = object.replace(x, y)
+    return obj

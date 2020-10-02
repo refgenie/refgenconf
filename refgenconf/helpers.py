@@ -127,13 +127,13 @@ def format_config_03_04(rgc, get_json_url):
                 continue
 
         if digest:
-            # create "aliases" section
-            genome_v[CFG_ALIASES_KEY] = [genome]
             # convert seek keys, children/parent asset keys from aliases to
             # genome digests
             rgc[CFG_GENOMES_KEY][genome] = replace_str_in_obj(genome_v, genome, digest)
             # use the genome digest as primary keys
             rgc[CFG_GENOMES_KEY][digest] = rgc[CFG_GENOMES_KEY].pop(genome)
+            # create "aliases" section
+            rgc[CFG_GENOMES_KEY][digest][CFG_ALIASES_KEY] = [genome]
             # remove old "genome_digest" section
             del rgc[CFG_GENOMES_KEY][digest][CFG_CHECKSUM_KEY]
         else:

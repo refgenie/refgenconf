@@ -104,12 +104,13 @@ def format_config_03_04(rgc, get_json_url):
         servers = rgc[CFG_SERVERS_KEY]
         for server in servers:
             cnt += 1
-            url_alias = get_json_url(server=server).format(alias=genome)
             try:
+                url_alias = get_json_url(s=server, i=API_VERSION+API_ID_ALIAS_DIGEST).format(alias=genome)
                 digest = download_json(url_alias)
                 _LOGGER.info(
                     f"Retrieve {genome} digest from the server.")
-            except DownloadJsonError:
+            except (KeyError,DownloadJsonError) as e:
+                print (e)
                 if cnt == len(servers):
                     try:
                         tag = rgc.get_default_tag(genome, "fasta")

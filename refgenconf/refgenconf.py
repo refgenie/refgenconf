@@ -2172,8 +2172,7 @@ class RefGenConf(yacman.YacAttMap):
 
 
 def upgrade_config(target_version, filepath, force=False,
-                   get_json_url=lambda server: construct_request_url(
-                       server, API_ID_ALIAS_DIGEST),
+                   get_json_url=lambda s, i: s + _get_server_endpoints_mapping(s)[i],
                    link_fun=lambda s, t: os.symlink(s, t)):
     """
     Upgrade the config to a selected target version.
@@ -2189,6 +2188,7 @@ def upgrade_config(target_version, filepath, force=False,
             genome server URL base, genome, and asset
     :param callable link_fun: function to use to link files, e.g os.symlink or os.link
     """
+
     # init rgc obj with provided config
     current_version = yacman.YacAttMap(filepath=filepath)[CFG_VERSION_KEY]
 
@@ -2210,7 +2210,7 @@ def upgrade_config(target_version, filepath, force=False,
         _LOGGER.info(f"Action aborted: The requested target_version, v{target_version}, is unavailable."\
                      f"Available target version(s) for v{str(rgc[CFG_VERSION_KEY])}: {CFG_UPGRADE[str(rgc[CFG_VERSION_KEY])]}")
         return
-
+    
     # prompt the user  
     # TODO: add upgrade-specific docs page
     url = "http://refgenie.databio.org/"
@@ -2222,6 +2222,21 @@ def upgrade_config(target_version, filepath, force=False,
             f"Would you like to proceed?"):
         _LOGGER.info("Action aborted by the user.")
         return
+    
+    # test server(s) and prompt
+    cnt = 0
+    compatible_server = []
+    for server in rgc[CFG_SERVERS_KEY]: 
+        cnt += 1
+        try:
+            get_json_url(server, 'index_v3__get')
+            compatible_server.append(server)
+        except KeyError:
+            if cnt == len(rgc[CFG_SERVERS_KEY]):
+                if not compatible_server:
+                    _LOGGER.info("No compatible refgenieserver instance subscribed.")
+            continue
+        continue
 
     # reformat config file
     missing_digest = format_config(rgc, get_json_url=get_json_url)

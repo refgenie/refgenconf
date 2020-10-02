@@ -1783,28 +1783,3 @@ def _raise_not_mapping(mapping, prefix=""):
                  "a previous error".format(type(mapping).__name__)
     )
 
-
-def _swap_names_in_tree(top, new_name, old_name):
-    """
-    Rename all files and directories within a directory tree and the
-    directory itself
-
-    :param str top: path to the top of the tree to be renamed
-    :param str new_name: new name
-    :param str old_name: old name
-    :return bool: whether the renaming has been carried out
-    """
-
-    def _rename(x, rt):
-        os.rename(os.path.join(rt, x), os.path.join(
-            rt, x.replace(old_name, new_name)))
-
-    if not os.path.isdir(top):
-        return False
-    for root, dirs, files in os.walk(top):
-        for dir in dirs:
-            _rename(dir, root)
-        for file in files:
-            _rename(file, root)
-    os.rename(top, os.path.join(os.path.join(top, os.pardir), new_name))
-    return True

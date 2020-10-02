@@ -2225,18 +2225,15 @@ def upgrade_config(target_version, filepath, force=False,
     
     # test server(s) and prompt
     cnt = 0
-    compatible_server = []
+    outdated_servers = []
     for server in rgc[CFG_SERVERS_KEY]: 
         cnt += 1
         try:
             get_json_url(server, 'index_v3__get')
-            compatible_server.append(server)
         except KeyError:
-            if cnt == len(rgc[CFG_SERVERS_KEY]):
-                if not compatible_server:
-                    _LOGGER.info("No compatible refgenieserver instance subscribed.")
-            continue
-        continue
+            outdated_servers.append(server)
+    if outdated_servers:
+        _LOGGER.info(f"The following subscribed refgenieserver instance(s) are no longer compatible: {outdated_servers}")
 
     # reformat config file
     missing_digest = format_config(rgc, get_json_url=get_json_url)

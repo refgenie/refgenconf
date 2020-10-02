@@ -229,7 +229,9 @@ def swap_names_in_tree(top, new_name, old_name):
             _rename(dir, root)
         for file in files:
             _rename(file, root)
-    os.rename(top, os.path.join(os.path.join(top, os.pardir), new_name))
+    if os.path.split(top)[1] == old_name:
+        # rename the top of the tree only if it is named as old_name
+        os.rename(top, os.path.join(os.path.join(top, os.pardir), new_name))
     return True
 
 

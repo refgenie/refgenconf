@@ -7,12 +7,14 @@ from .exceptions import DownloadJsonError, MissingAssetError
 from .seqcol import SeqColClient
 
 from re import sub
+import requests
 from requests import get
 from ubiquerg import is_command_callable
 import logging
 import shutil
 from copy import copy
 from functools import partial
+from requests import ConnectionError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -111,7 +113,7 @@ def format_config_03_04(rgc, get_json_url):
                 digest = download_json(url_alias)
                 _LOGGER.info(
                     f"Retrieve {genome} digest from the server.")
-            except (KeyError,DownloadJsonError) as e:
+            except (KeyError, ConnectionError, DownloadJsonError) as e:
                 if cnt == len(servers):
                     try:
                         tag = rgc.get_default_tag(genome, "fasta")

@@ -24,6 +24,7 @@ from tempfile import TemporaryDirectory
 from rich.table import Table
 from rich.console import Console
 from rich.progress import Progress, TextColumn, BarColumn
+from requests import ConnectionError
 
 from .progress_bar import _DownloadColumn, _TimeRemainingColumn, \
     _TransferSpeedColumn
@@ -2188,7 +2189,6 @@ def upgrade_config(target_version, filepath, force=False,
             genome server URL base, genome, and asset
     :param callable link_fun: function to use to link files, e.g os.symlink or os.link
     """
-
     # init rgc obj with provided config
     current_version = yacman.YacAttMap(filepath=filepath)[CFG_VERSION_KEY]
 
@@ -2230,10 +2230,10 @@ def upgrade_config(target_version, filepath, force=False,
         cnt += 1
         try:
             get_json_url(server, 'index_v3__get')
-        except KeyError:
+        except (KeyError, ConnectionError, DownloadJsonError):
             outdated_servers.append(server)
     if outdated_servers:
-        _LOGGER.info(f"The following subscribed refgenieserver instance(s) are no longer compatible: {outdated_servers}")
+        _LOGGER.info(f"The following subscribed refgenieserver instance(s) are no longer compatible or do not exist: {outdated_servers}")
 
     # reformat config file
     missing_digest = format_config(rgc, get_json_url=get_json_url)
@@ -2245,7 +2245,7 @@ def upgrade_config(target_version, filepath, force=False,
         return
 
     # alter genome_folder structure
-    alter_file_tree(rgc, link_fun=link_fun)
+    # alter_file_tree(rgc, link_fun=link_fun)
     # change the config_version
     rgc[CFG_VERSION_KEY] = target_version
     # write over the config file

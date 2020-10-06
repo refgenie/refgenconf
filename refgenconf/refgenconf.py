@@ -2229,7 +2229,7 @@ def upgrade_config(target_version, filepath, force=False,
     for server in rgc[CFG_SERVERS_KEY]: 
         cnt += 1
         try:
-            get_json_url(server, 'index_v3__get')
+            get_json_url(server, API_VERSION+API_ID_ASSETS)
         except (KeyError, ConnectionError, DownloadJsonError):
             outdated_servers.append(server)
     if outdated_servers:
@@ -2245,7 +2245,7 @@ def upgrade_config(target_version, filepath, force=False,
         return
 
     # alter genome_folder structure
-    # alter_file_tree(rgc, link_fun=link_fun)
+    alter_file_tree(rgc, link_fun=link_fun)
     # change the config_version
     rgc[CFG_VERSION_KEY] = target_version
     # write over the config file

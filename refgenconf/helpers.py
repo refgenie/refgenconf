@@ -108,25 +108,26 @@ def format_config_03_04(rgc, get_json_url):
         servers = rgc[CFG_SERVERS_KEY]
         for server in servers:
             cnt += 1
-            try:
-                url_alias = get_json_url(s=server, i=API_VERSION+API_ID_ALIAS_DIGEST).format(alias=genome)
-                digest = download_json(url_alias)
-                _LOGGER.info(
-                    f"Retrieve {genome} digest from the server.")
-            except (KeyError, ConnectionError, DownloadJsonError) as e:
-                if cnt == len(servers):
-                    try:
-                        tag = rgc.get_default_tag(genome, "fasta")
-                        asset_path = rgc.seek(genome, "fasta", tag, "fasta")
-                        ssc = SeqColClient({})
-                        digest, _ = ssc.load_fasta(asset_path)
-                        _LOGGER.info(
-                            f"Generate {genome} digest from local fasta file.")
-                    except MissingAssetError:
-                        _LOGGER.info(
-                            f"Fail to retrieve the digest for {genome}.")
-                        continue
-                continue
+            if not digest:
+                try:
+                    url_alias = get_json_url(s=server, i=API_VERSION+API_ID_ALIAS_DIGEST).format(alias=genome)
+                    digest = download_json(url_alias)
+                    _LOGGER.info(
+                        f"Retrieve {genome} digest from the server.")
+                except (KeyError, ConnectionError, DownloadJsonError) as e:
+                    if cnt == len(servers):
+                        try:
+                            tag = rgc.get_default_tag(genome, "fasta")
+                            asset_path = rgc.seek(genome, "fasta", tag, "fasta")
+                            ssc = SeqColClient({})
+                            digest, _ = ssc.load_fasta(asset_path)
+                            _LOGGER.info(
+                                f"Generate {genome} digest from local fasta file.")
+                        except MissingAssetError:
+                            _LOGGER.info(
+                                f"Fail to retrieve the digest for {genome}.")
+                            continue
+                    continue
 
         if digest:
             # convert seek keys, children/parent asset keys from aliases to

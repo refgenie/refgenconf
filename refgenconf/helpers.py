@@ -96,10 +96,8 @@ def format_config_03_04(rgc, get_json_url):
             genome server URL base, genome, and asset
     """
 
-    _LOGGER.info("Upgrade the v0.3 config file format to v0.4 format.")
-
+    _LOGGER.info("Upgrading v0.3 config file format to v0.4")
     missing_digest = []
-
     # check if any genome lack of local fasta asset and not on server
     for genome, genome_v in rgc[CFG_GENOMES_KEY].items():
         digest = ""
@@ -113,19 +111,21 @@ def format_config_03_04(rgc, get_json_url):
                     url_alias = get_json_url(s=server, i=API_VERSION+API_ID_ALIAS_DIGEST).format(alias=genome)
                     digest = download_json(url_alias)
                     _LOGGER.info(
-                        f"Retrieve {genome} digest from the server.")
+                        f"Retrieved {genome} digest from the server ({digest})")
                 except (KeyError, ConnectionError, DownloadJsonError) as e:
                     if cnt == len(servers):
                         try:
+                            _LOGGER.info(
+                                f"Genome digest for {genome} is not available "
+                                f"on any of the servers. Generating the digest "
+                                f"from a local fasta file")
                             tag = rgc.get_default_tag(genome, "fasta")
                             asset_path = rgc.seek(genome, "fasta", tag, "fasta")
                             ssc = SeqColClient({})
                             digest, _ = ssc.load_fasta(asset_path)
-                            _LOGGER.info(
-                                f"Generate {genome} digest from local fasta file.")
                         except MissingAssetError:
                             _LOGGER.info(
-                                f"Fail to retrieve the digest for {genome}.")
+                                f"Failed to generate the digest for {genome}")
                             continue
                     continue
 
@@ -157,21 +157,19 @@ def alter_file_tree_03_04(rgc, link_fun):
     :param callable link_fun: function to use to link files, e.g os.symlink
         or os.link
     """
-
-    _LOGGER.info(f"Upgrade '{rgc[CFG_FOLDER_KEY]}' structure.")
-
     my_genome = {}
     for k, v in rgc[CFG_GENOMES_KEY].items():
         my_genome.update([(v[CFG_ALIASES_KEY][0], k)])
 
-    _LOGGER.info(
-        f"Create '{DATA_DIR}' and '{ALIAS_DIR}' directories inside '"
-        f"{rgc[CFG_FOLDER_KEY]}'.")
+    _LOGGER.info(f"Creating '{DATA_DIR}' and '{ALIAS_DIR}' directories in "
+                 f"'{rgc[CFG_FOLDER_KEY]}'.")
     os.mkdir(os.path.abspath(os.path.join(rgc[CFG_FOLDER_KEY], DATA_DIR)))
     os.mkdir(os.path.abspath(os.path.join(rgc[CFG_FOLDER_KEY], ALIAS_DIR)))
 
-    _LOGGER.info(f"Copy genome assets to '{DATA_DIR}' "
-                 f"Genomes failed to retrieve genome digest will be ignored.")
+    _LOGGER.info(
+        f"Copying assets to '{DATA_DIR}' and creating alias symlinks in "
+        f"'{ALIAS_DIR}'. Genomes that the digest could not be determined for "
+        f"'will be ignored.")
     for root, dirs, files in os.walk(rgc[CFG_FOLDER_KEY]):
         for dir in dirs:
             if dir in my_genome:
@@ -180,9 +178,6 @@ def alter_file_tree_03_04(rgc, link_fun):
                                              dir))
         del dirs[:]
 
-    _LOGGER.info(
-        f"Use genome digests as identifiers in '{DATA_DIR}' directory. "
-        f"Create symbolic links in '{ALIAS_DIR}' directory.")
     for root, dirs, files in os.walk(
             os.path.join(rgc[CFG_FOLDER_KEY], DATA_DIR)):
         for dir in dirs:
@@ -203,7 +198,7 @@ def alter_file_tree_03_04(rgc, link_fun):
                     link_fun(old_path, new_path)
         del dirs[:]
 
-    _LOGGER.info(f"Remove genome assets that have been copied "
+    _LOGGER.info(f"Removing genome assets that have been copied "
                  f"to '{DATA_DIR}' directory.")
     for genome, genome_v in rgc[CFG_GENOMES_KEY].items():
         d = os.path.join(rgc[CFG_FOLDER_KEY], genome_v[CFG_ALIASES_KEY][0])

@@ -2201,48 +2201,49 @@ def upgrade_config(target_version, filepath, force=False,
             from .helpers import format_config_03_04 as format_config
             from .helpers import alter_file_tree_03_04 as alter_file_tree    
     else:
-        _LOGGER.info(
-            f"Action aborted: Upgrade from v{current_version} config is not available.")
-        return
+        raise NotImplementedError(
+            f"Did not upgrade. Upgrade from v{current_version} config is not "
+            f"implemented.")
 
-    if not target_version in CFG_UPGRADE[str(rgc[CFG_VERSION_KEY])]:
-        # print(CFG_UPGRADE[str(rgc[CFG_VERSION_KEY])])
-        _LOGGER.info(f"Action aborted: The requested target_version, v{target_version}, is unavailable."\
-                     f"Available target version(s) for v{str(rgc[CFG_VERSION_KEY])}: {CFG_UPGRADE[str(rgc[CFG_VERSION_KEY])]}")
-        return
-    
+    if target_version not in CFG_UPGRADE[str(rgc[CFG_VERSION_KEY])]:
+        raise NotImplementedError(
+            f"Did not upgrade. Can't upgrade to the requested target "
+            f"version ({target_version}). Available target versions for "
+            f"{str(rgc[CFG_VERSION_KEY])} are "
+            f"{CFG_UPGRADE[str(rgc[CFG_VERSION_KEY])]}")
+
     # prompt the user  
-    # TODO: add upgrade-specific docs page
-    url = "http://refgenie.databio.org/"
+    url = "http://refgenie.databio.org/en/latest/upgrade_config/"
     if not force and not query_yes_no(
-            f"Upgrading config to v{target_version}. Current genome identifiers "\
-            f"will be replaced with sequence-derived digests and contents "\
-            f"inside '{rgc[CFG_FOLDER_KEY]}' will be replaced by '{DATA_DIR}' "\
-            f"and '{ALIAS_DIR}' directories. For more info visit: {url}. "\
-            f"Would you like to proceed?"):
+            f"Upgrading config to v{target_version}. Current genome identifiers"
+            f" will be replaced with sequence-derived digests and contents of "
+            f"'{rgc[CFG_FOLDER_KEY]}' will be moved to '{DATA_DIR}' and "
+            f"'{ALIAS_DIR}' directories. For more info visit: {url}. Would you "
+            f"like to proceed?"):
         _LOGGER.info("Action aborted by the user.")
-        return
+        return False
     
     # test server(s) and prompt
     cnt = 0
-    outdated_servers = []
+    incompat_servers = []
     for server in rgc[CFG_SERVERS_KEY]: 
         cnt += 1
         try:
             get_json_url(server, API_VERSION+API_ID_ASSETS)
         except (KeyError, ConnectionError, DownloadJsonError):
-            outdated_servers.append(server)
-    if outdated_servers:
-        _LOGGER.info(f"The following subscribed refgenieserver instance(s) are no longer compatible or do not exist: {outdated_servers}")
+            incompat_servers.append(server)
+    if incompat_servers:
+        _LOGGER.info(f"The following refgenieserver instances are not "
+                     f"compatible or do not exist: {incompat_servers}")
 
     # reformat config file
     missing_digest = format_config(rgc, get_json_url=get_json_url)
     if not force and missing_digest and not query_yes_no(
-        f"The following genomes will be lost due to the lack of local fasta "\
-        f"assets and remote genome digests: {', '.join(missing_digest)}. "\
-            f"Would you like to proceed?"):
+        f"The following genomes will be lost due to the lack of local fasta "
+        f"assets and remote genome digests: {', '.join(missing_digest)}. "
+        f"Would you like to proceed?"):
         _LOGGER.info("Action aborted by the user.")
-        return
+        return False
 
     # alter genome_folder structure
     alter_file_tree(rgc, link_fun=link_fun)
@@ -2250,6 +2251,7 @@ def upgrade_config(target_version, filepath, force=False,
     rgc[CFG_VERSION_KEY] = target_version
     # write over the config file
     rgc.write()
+    return True
 
 
 def _download_url_progress(url, output_path, name, params=None):

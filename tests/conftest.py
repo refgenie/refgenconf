@@ -14,6 +14,8 @@ from refgenconf.exceptions import *
 __author__ = "Vince Reuter"
 __email__ = "vreuter@virginia.edu"
 
+TEST_SERVER = "http://rg.databio.org:82"
+
 
 IDX_BT2_VAL = "indexed_bowtie2"
 HG38_DATA = [
@@ -75,7 +77,7 @@ def cfg_file(data_path):
 
 @pytest.fixture
 def cfg_file_old(data_path):
-    return os.path.join(data_path, "genomes_v2.yaml")
+    return os.path.join(data_path, "genomes_v3.yaml")
 
 
 @pytest.fixture

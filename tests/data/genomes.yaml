@@ -1,7 +1,7 @@
 config_version: 0.4
 genome_folder: /tmp
 genome_servers: 
- - http://rg.databio.org:82
+ - "http://rg.databio.org:82"
 genomes:
   ebf26d2f064462bea7029e6b4d2298967d7435bff82ed224:
     aliases: 

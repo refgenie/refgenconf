@@ -1,0 +1,5 @@
+config_version: 0.3
+genome_folder: /tmp/old
+genome_servers:
+ - http://rg.databio.org:82
+genomes: null

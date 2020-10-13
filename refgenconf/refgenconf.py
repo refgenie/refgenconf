@@ -737,12 +737,17 @@ class RefGenConf(yacman.YacAttMap):
         :param bool force: whether the default tag change should be forced (even if it exists)
         """
         self._assert_gat_exists(genome, asset, tag)
-        if CFG_ASSET_DEFAULT_TAG_KEY not in self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset] or \
-                len(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_DEFAULT_TAG_KEY]) == 0 or force:
-            self.update_assets(
-                genome, asset, {CFG_ASSET_DEFAULT_TAG_KEY: tag}, force_digest=force_digest)
-            _LOGGER.info(
-                "Default tag for '{}/{}' set to: {}".format(genome, asset, tag))
+        asset_dict = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]
+        if CFG_ASSET_DEFAULT_TAG_KEY in asset_dict and len(asset_dict[CFG_ASSET_DEFAULT_TAG_KEY]) > 0:
+            if not force:
+                return
+            if asset == "fasta":
+                raise NotImplementedError(
+                    "Can't change the default tag for fasta assets, "
+                    "this would lead to genome identity issues")
+        self.update_assets(genome, asset, {CFG_ASSET_DEFAULT_TAG_KEY: tag},
+                           force_digest=force_digest)
+        _LOGGER.info(f"Default tag for '{genome}/{asset}' set to: {tag}")
 
     def list_assets_by_genome(self, genome=None, order=None, include_tags=False):
         """

@@ -123,7 +123,7 @@ def format_config_03_04(rgc, get_json_url):
                             asset_path = rgc.seek(genome, "fasta", tag, "fasta")
                             ssc = SeqColClient({})
                             digest, _ = ssc.load_fasta(asset_path)
-                        except MissingAssetError:
+                        except (MissingAssetError, FileNotFoundError):
                             _LOGGER.info(
                                 f"Failed to generate the digest for {genome}")
                             continue

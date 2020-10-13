@@ -758,7 +758,8 @@ class RefGenConf(yacman.YacAttMap):
             one is provided, else the full mapping between assembly ID and
             collection available asset type names
         """
-        genome = self.get_genome_alias(digest=genome, fallback=True)
+        if genome:
+            genome = self.get_genome_alias(digest=genome, fallback=True)
         return self.list(genome, order, include_tags=include_tags)[genome] if genome is not None \
             else self.list(order, include_tags=include_tags)
 

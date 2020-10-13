@@ -39,26 +39,12 @@ genomes:
     aliases: 
      - mouse_chrM2x
     assets:
-      fasta:
-        tags:
-          default:
-            seek_keys:
-              fasta: 194f8681e3d9e35b9eca2d17ec5e36bbf5e8c2beea486496.fa
-              fai: 194f8681e3d9e35b9eca2d17ec5e36bbf5e8c2beea486496.fa.fai
-              chrom_sizes: 194f8681e3d9e35b9eca2d17ec5e36bbf5e8c2beea486496.chrom.sizes
-            asset_parents: []
-            asset_path: fasta
-            asset_digest: 8dfe402f7d29d5b036dd8937119e4404
-            asset_children: 
-             - 194f8681e3d9e35b9eca2d17ec5e36bbf5e8c2beea486496/bwa_index:default
-        default_tag: default
       bwa_index:
         tags:
           default:
             seek_keys:
               bwa_index: 194f8681e3d9e35b9eca2d17ec5e36bbf5e8c2beea486496.fa
-            asset_parents: 
-             - 194f8681e3d9e35b9eca2d17ec5e36bbf5e8c2beea486496/fasta:default
+            asset_parents: []
             asset_path: bwa_index
             asset_digest: 914dec83dcfab73e056717d33ecfd465
         default_tag: default
@@ -67,26 +53,12 @@ genomes:
     aliases: 
      - rCRSd
     assets:
-      fasta:
-        tags:
-          default:
-            seek_keys:
-              fasta: 511fb1178275e7d529560d53b949dba40815f195623bce8e.fa
-              fai: 511fb1178275e7d529560d53b949dba40815f195623bce8e.fa.fai
-              chrom_sizes: 511fb1178275e7d529560d53b949dba40815f195623bce8e.chrom.sizes
-            asset_parents: []
-            asset_path: fasta
-            asset_digest: 4eb430296bc02ed7e4006624f1d5ac53
-            asset_children: 
-             - 511fb1178275e7d529560d53b949dba40815f195623bce8e/bowtie2_index:default
-        default_tag: default
       bowtie2_index:
         tags:
           default:
             seek_keys:
               bowtie2_index: 511fb1178275e7d529560d53b949dba40815f195623bce8e
-            asset_parents: 
-             - 511fb1178275e7d529560d53b949dba40815f195623bce8e/fasta:default
+            asset_parents: []
             asset_path: bowtie2_index
             asset_digest: 1262e30d4a87db9365d501de8559b3b4
         default_tag: default
@@ -105,5 +77,16 @@ genomes:
             asset_digest: d41d8cd98f00b204e9800998ecf8427e
             seek_keys:
               file: b
+        default_tag: default
+      fasta:
+        tags:
+          default:
+            seek_keys:
+              fasta: 511fb1178275e7d529560d53b949dba40815f195623bce8e.fa
+              fai: 511fb1178275e7d529560d53b949dba40815f195623bce8e.fa.fai
+              chrom_sizes: 511fb1178275e7d529560d53b949dba40815f195623bce8e.chrom.sizes
+            asset_parents: []
+            asset_path: fasta
+            asset_digest: 4eb430296bc02ed7e4006624f1d5ac53
         default_tag: default
     genome_description: test

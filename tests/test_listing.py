@@ -2,6 +2,8 @@
 
 from collections import OrderedDict
 import pytest
+from refgenconf.const import CFG_GENOMES_KEY
+from yacman.exceptions import UndefinedAliasError
 __author__ = "Michal Stolarczyk"
 __email__ = "michal@virginia.edu"
 
@@ -26,10 +28,10 @@ class ListByGenomeTest:
         assert my_rgc.list_assets_by_genome() == my_rgc.list()
 
     def test_returns_list(self, my_rgc):
-        for g in genomes:
-            assert isinstance(my_rgc.list_assets_by_genome(g), list)
+        for g in my_rgc[CFG_GENOMES_KEY].keys():
+            assert isinstance(my_rgc.list_assets_by_genome(genome=g), list)
 
     @pytest.mark.parametrize("gname", ["nonexistent", "genome"])
     def test_exception_on_nonexistent_genome(self, ro_rgc, gname):
-        with pytest.raises(KeyError):
+        with pytest.raises(UndefinedAliasError):
             ro_rgc.list_assets_by_genome(genome=gname)

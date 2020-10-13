@@ -25,13 +25,13 @@ def base_rgc_data(tmpdir):
 def rgc(base_rgc_data):
     return RefGenConf(base_rgc_data)
 
-
-@pytest.mark.parametrize(
-    ["msg", "exp"], [(".", ". "), ("?", "? "), ("a", "a; ")])
-@pytest.mark.parametrize(
-    "check", [lambda m, e: m.startswith(e), lambda m, _: m.endswith(DOC_URL)])
-def test_config_format_error_message_formatting(msg, exp, check):
-    """ Check config format error message formatting and docs URL inclusion. """
-    msg = str(GenomeConfigFormatError(msg))
-    assert check(msg, exp)
+#
+# @pytest.mark.parametrize(
+#     ["msg", "exp"], [(".", ". "), ("?", "? "), ("a", "a; ")])
+# @pytest.mark.parametrize(
+#     "check", [lambda m, e: m.startswith(e), lambda m, _: m.endswith(DOC_URL)])
+# def test_config_format_error_message_formatting(msg, exp, check):
+#     """ Check config format error message formatting and docs URL inclusion. """
+#     msg = str(GenomeConfigFormatError(msg))
+#     assert check(msg, exp)
 

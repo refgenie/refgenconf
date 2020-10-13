@@ -361,7 +361,7 @@ class RefGenConf(yacman.YacAttMap):
         :param bool force: whether to force existing asset overwrite
         """
         try:
-            genome = self.get_genome_alias_digest(genome)
+            genome = self.get_genome_alias_digest(alias=genome, fallback=True)
         except yacman.UndefinedAliasError:
             _LOGGER.error("No digest defined for '{}'. Set an alias or pull an"
                           " asset to initialize.".format(genome))
@@ -579,7 +579,12 @@ class RefGenConf(yacman.YacAttMap):
             else:
                 seek_val = ""
         else:
-            seek_val = asset_tag_data[CFG_SEEK_KEYS_KEY][seek_key]
+            try:
+                seek_val = asset_tag_data[CFG_SEEK_KEYS_KEY][seek_key]
+            except KeyError:
+                raise MissingSeekKeyError(
+                    f"Seek key '{seek_key}' not defined for: "
+                    f"'{genome_name}.{asset_name}:{tag_name}'")
         if enclosing_dir:
             seek_val = ""
         fullpath = os.path.join(
@@ -591,7 +596,7 @@ class RefGenConf(yacman.YacAttMap):
             return fullpaths if all_aliases else fullpaths[0]
         nonexistent_pths = [fullpaths[p] for p in
                             [i for i, x in enumerate(paths_existence) if not x]]
-        msg = "For genome '{}' alias to the asset '{}.{}:{}' doesn't exist: {}"\
+        msg = "For genome '{}' alias to the asset '{}/{}:{}' doesn't exist: {}"\
             .format(genome_name, asset_name, seek_key, tag_name, ", ".join(nonexistent_pths))
         if strict_exists is None:
             _LOGGER.debug(msg)
@@ -753,6 +758,7 @@ class RefGenConf(yacman.YacAttMap):
             one is provided, else the full mapping between assembly ID and
             collection available asset type names
         """
+        genome = self.get_genome_alias(digest=genome, fallback=True)
         return self.list(genome, order, include_tags=include_tags)[genome] if genome is not None \
             else self.list(order, include_tags=include_tags)
 
@@ -2150,9 +2156,12 @@ class RefGenConf(yacman.YacAttMap):
         :raise TypeError: if genome argument type is not a list or str
         :return list: selected subset of genomes
         """
-        genomes = [self.get_genome_alias(x, fallback=True)
-                   for x in sorted(external_genomes or
-                                   self[CFG_GENOMES_KEY].keys(), key=order)]
+        if external_genomes:
+            # expects remote genomes to be supplied as aliases; no conversion
+            genomes = sorted(external_genomes, key=order)
+        else:
+            genomes = [self.get_genome_alias(x, fallback=True)
+                       for x in sorted(self[CFG_GENOMES_KEY].keys(), key=order)]
         if not genome:
             return genomes
         genome = [self.get_genome_alias(digest=x, fallback=True)

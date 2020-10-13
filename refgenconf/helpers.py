@@ -97,8 +97,7 @@ def format_config_03_04(rgc, get_json_url):
     """
 
     _LOGGER.info("Upgrading v0.3 config file format to v0.4")
-    missing_digest = []
-    # check if any genome lack of local fasta asset and not on server
+   
     for genome, genome_v in rgc[CFG_GENOMES_KEY].items():
         digest = ""
         # get genome digest from the server
@@ -142,8 +141,6 @@ def format_config_03_04(rgc, get_json_url):
         else:
             missing_digest.append(genome)
             del rgc[CFG_GENOMES_KEY][genome]
-
-    return missing_digest
 
 
 def alter_file_tree_03_04(rgc, link_fun):

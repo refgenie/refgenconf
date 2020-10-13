@@ -2245,9 +2245,17 @@ def upgrade_config(target_version, filepath, force=False,
     if incompat_servers:
         _LOGGER.info(f"The following refgenieserver instances are not "
                      f"compatible or do not exist: {incompat_servers}")
-
-    # reformat config file
-    missing_digest = format_config(rgc, get_json_url=get_json_url)
+    
+    # check digest availability (fasta asset/file exist)
+    missing_digest = []
+    for genome, genome_v in rgc[CFG_GENOMES_KEY].items():
+        try:
+            tag = rgc.get_default_tag(genome, "fasta")
+            asset_path = rgc.seek(genome, "fasta", tag, "fasta")
+            if not os.path.exists(asset_path):
+                missing_digest.append(genome)
+        except MissingAssetError:
+                missing_digest.append(genome)
     if not force and missing_digest and not query_yes_no(
         f"The following genomes will be lost due to the lack of local fasta "
         f"assets and remote genome digests: {', '.join(missing_digest)}. "
@@ -2255,6 +2263,8 @@ def upgrade_config(target_version, filepath, force=False,
         _LOGGER.info("Action aborted by the user.")
         return False
 
+    # reformat config file
+    format_config(rgc, get_json_url=get_json_url)
     # alter genome_folder structure
     alter_file_tree(rgc, link_fun=link_fun)
     # change the config_version

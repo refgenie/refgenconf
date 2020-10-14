@@ -139,7 +139,6 @@ def format_config_03_04(rgc, get_json_url):
             # remove old "genome_digest" section
             del rgc[CFG_GENOMES_KEY][digest][CFG_CHECKSUM_KEY]
         else:
-            missing_digest.append(genome)
             del rgc[CFG_GENOMES_KEY][genome]
 
 

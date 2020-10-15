@@ -222,8 +222,8 @@ class RefGenConf(yacman.YacAttMap):
 
         filepath = select_genome_config(filepath, check_exist=False)
         if not isinstance(filepath, str):
-            raise TypeError("Could not determine a valid path to "
-                            "initialize a configuration file: {}".format(str(filepath)))
+            raise TypeError(f"Could not determine a valid path to initialize a "
+                            f"configuration file: {filepath}")
         if os.path.exists(filepath):
             _write_fail_err("file exists")
         if not is_writable(filepath, check_exist=False):
@@ -231,7 +231,11 @@ class RefGenConf(yacman.YacAttMap):
         self.make_writable(filepath)
         self.write()
         self.make_readonly()
-        _LOGGER.info("Initialized genome configuration file: {}".format(filepath))
+        _LOGGER.info(f"Initialized genome configuration file: {filepath}")
+        os.makedirs(self.data_dir, exist_ok=True)
+        os.makedirs(self.alias_dir, exist_ok=True)
+        _LOGGER.info(f"Created directories:\n - {self.data_dir}"
+                     f"\n - {self.alias_dir}")
         return filepath
 
     def list(self, genome=None, order=None, include_tags=False):

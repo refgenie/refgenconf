@@ -40,7 +40,7 @@ class _TransferSpeedColumn(ProgressColumn):
 class _TimeRemainingColumn(ProgressColumn):
     """Renders estimated time remaining."""
     # Only refresh twice a second to prevent jitter
-    max_refresh = 0.5
+    max_refresh = 1
 
     @staticmethod
     def render(task):

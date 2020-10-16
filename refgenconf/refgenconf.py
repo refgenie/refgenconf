@@ -285,11 +285,11 @@ class RefGenConf(yacman.YacAttMap):
         :return rich.table.Table: table of assets available locally
         """
         def _fill_table_with_genomes_data(rgc, genomes_data, table, genomes=None):
-            table.add_column("genome")
             if genomes:
                 it = "([italic]{}[/italic])"
                 genomes = [rgc.get_genome_alias_digest(
                     alias=g, fallback=True) for g in genomes]
+                table.add_column("genome")
                 table.add_column("asset " + it.format("seek_keys"))
                 table.add_column("tags")
                 for genome in genomes:
@@ -305,7 +305,10 @@ class RefGenConf(yacman.YacAttMap):
                             ", ".join(tags)
                         )
             else:
-                table.add_column("assets")
+                x = 0 if any([len(gd["assets"]) > 2 for g, gd in genomes_data.items()]) \
+                    else 30
+                table.add_column(f"genome{' ' * 15}")
+                table.add_column(f"assets{' ' * x}")
                 for genome in list(genomes_data.keys()):
                     genome_dict = genomes_data[genome]
                     table.add_row(
@@ -2310,7 +2313,7 @@ def _download_url_progress(url, output_path, name, params=None):
         return int(content_len)
 
     progress = _HookProgress(
-        TextColumn("[bright_white]{task.fields[n]}", justify="right"),
+        TextColumn("{task.fields[n]}", justify="right"),
         BarColumn(bar_width=None),
         "[magenta]{task.percentage:>3.1f}%",
         "•",

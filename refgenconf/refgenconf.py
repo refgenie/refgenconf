@@ -306,9 +306,9 @@ class RefGenConf(yacman.YacAttMap):
                         )
             else:
                 x = 0 if any([len(gd["assets"]) > 2 for g, gd in genomes_data.items()]) \
-                    else 20
-                table.add_column(f"genome{' ' * 10}")
-                table.add_column("assets{x}".format(x=' ' * x))
+                    else 30
+                table.add_column(f"genome{' ' * 15}")
+                table.add_column(f"assets{' ' * x}")
                 for genome in list(genomes_data.keys()):
                     genome_dict = genomes_data[genome]
                     table.add_row(

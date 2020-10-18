@@ -1202,8 +1202,8 @@ class RefGenConf(yacman.YacAttMap):
                         _LOGGER.info(
                             "Removed existing directory: {}".format(tag_dir))
                     shutil.move(os.path.join(tmpdir, asset), tag_dir)
-                if os.path.isfile(filepath):
-                    os.remove(filepath)
+                if os.path.exists(genome_dir_path):
+                    shutil.rmtree(genome_dir_path)
 
             if self.file_path:
                 with self as rgc:

@@ -987,14 +987,15 @@ class RefGenConf(yacman.YacAttMap):
             if relative_key in \
                     self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][r_data["item"]][CFG_ASSET_TAGS_KEY][r_data["tag"]]:
                 relatives = \
-                    self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][r_data["item"]
-                                                                  ][CFG_ASSET_TAGS_KEY][r_data["tag"]][relative_key]
+                    self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][r_data["item"]][CFG_ASSET_TAGS_KEY][r_data["tag"]][relative_key]
                 for relative in relatives:
                     ori_relative_data = prp(relative)
+                    ori_relative_data["namespace"] = self.get_genome_alias_digest(
+                        alias=ori_relative_data["namespace"], fallback=True)
                     if ori_relative_data["item"] == asset and ori_relative_data["tag"] == tag:
                         ori_relative_data["tag"] = new_tag
                         updated_relatives.append(
-                            "{}/{}:{}".format(genome, asset, new_tag))
+                            "{}/{}:{}".format(ori_relative_data["namespace"], asset, new_tag))
                     else:
                         updated_relatives.append("{}/{}:{}".format(ori_relative_data["namespace"],
                                                                    ori_relative_data["item"], ori_relative_data["tag"]))

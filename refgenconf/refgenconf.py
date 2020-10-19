@@ -305,10 +305,8 @@ class RefGenConf(yacman.YacAttMap):
                             ", ".join(tags)
                         )
             else:
-                x = 0 if any([len(gd["assets"]) > 2 for g, gd in genomes_data.items()]) \
-                    else 30
-                table.add_column(f"genome{' ' * 15}")
-                table.add_column(f"assets{' ' * x}")
+                table.add_column("genome")
+                table.add_column("assets")
                 for genome in list(genomes_data.keys()):
                     genome_dict = genomes_data[genome]
                     table.add_row(
@@ -325,7 +323,8 @@ class RefGenConf(yacman.YacAttMap):
             genomes_data = download_json(
                 get_json_url(server_url, API_ID_GENOMES_DICT))
             title = "Remote refgenie assets\nServer URL: {}".format(server_url)
-        return _fill_table_with_genomes_data(self, genomes_data, Table(title=title), genomes)
+        return _fill_table_with_genomes_data(
+            self, genomes_data, Table(title=title, min_width=70), genomes)
 
     def assets_str(self, offset_text="  ", asset_sep=", ",
                    genome_assets_delim="/ ", genome=None, order=None):

@@ -561,7 +561,7 @@ class RefGenConf(yacman.YacAttMap):
             seek_keys pointing to 3 files in an asset dir, that asset dir
             is returned
         :param bool all_aliases: whether to return paths to all asset aliases or
-            just the first one
+            just the one for the specified 'genome_name` argument
         :return str: path to the asset
         :raise TypeError: if the existence check is not a one-arg function
         :raise refgenconf.MissingGenomeError: if the named assembly isn't known
@@ -573,7 +573,10 @@ class RefGenConf(yacman.YacAttMap):
         genome_digest = self.get_genome_alias_digest(
             genome_name, fallback=True)
         genome_ids = _make_list_of_str(self.get_genome_alias(
-            genome_digest, fallback=True, all_aliases=all_aliases))
+            genome_digest, fallback=True, all_aliases=True))
+        idx = 0
+        if genome_name in genome_ids:
+            idx = genome_ids.index(genome_name)
         self._assert_gat_exists(genome_name, asset_name, tag_name)
         asset_tag_data = self[CFG_GENOMES_KEY][genome_name][CFG_ASSETS_KEY][asset_name][CFG_ASSET_TAGS_KEY][tag_name]
         if not seek_key:
@@ -596,7 +599,7 @@ class RefGenConf(yacman.YacAttMap):
                      for gid in genome_ids]
         paths_existence = [check_exist(fp) for fp in fullpaths]
         if all(paths_existence):
-            return fullpaths if all_aliases else fullpaths[0]
+            return fullpaths if all_aliases else fullpaths[idx]
         nonexistent_pths = [fullpaths[p] for p in
                             [i for i, x in enumerate(paths_existence) if not x]]
         msg = "For genome '{}' alias to the asset '{}/{}:{}' doesn't exist: {}"\
@@ -607,7 +610,7 @@ class RefGenConf(yacman.YacAttMap):
             raise OSError(msg)
         else:
             warnings.warn(msg, RuntimeWarning)
-        return fullpaths if all_aliases else fullpaths[0]
+        return fullpaths if all_aliases else fullpaths[idx]
 
     def seek_src(self, genome_name, asset_name, tag_name=None, seek_key=None,
                  strict_exists=None, enclosing_dir=False,

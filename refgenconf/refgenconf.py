@@ -1062,9 +1062,9 @@ class RefGenConf(yacman.YacAttMap):
             try:
                 genome = self.get_genome_alias_digest(alias=alias)
             except yacman.UndefinedAliasError:
-                _LOGGER.info(
-                    "No local digest for genome alias: {}".format(genome))
-                if not self.set_genome_alias(genome=alias, servers=[server_url], create_genome=True):
+                _LOGGER.info(f"No local digest for genome alias: {genome}")
+                if not self.set_genome_alias(genome=alias, servers=[server_url],
+                                             create_genome=True):
                     return _null_return()
                 genome = self.get_genome_alias_digest(alias=alias)
             num_servers += 1
@@ -1072,8 +1072,7 @@ class RefGenConf(yacman.YacAttMap):
                 determined_tag = download_json(get_json_url(server_url, API_ID_DEFAULT_TAG).format(genome=genome, asset=asset)) \
                     if tag is None else tag
             except DownloadJsonError:
-                _LOGGER.warning(
-                    "Could not retrieve JSON from: {}".format(server_url))
+                _LOGGER.warning(f"Could not retrieve JSON from: {server_url}")
                 bad_servers.append(server_url)
                 continue
             else:
@@ -1094,8 +1093,9 @@ class RefGenConf(yacman.YacAttMap):
             except DownloadJsonError:
                 no_asset_json.append(server_url)
                 if num_servers == len(self[CFG_SERVERS_KEY]):
-                    _LOGGER.error("Asset '{}/{}:{}' not available on any of the following servers: {}".
-                                  format(alias, asset, determined_tag, ", ".join(self[CFG_SERVERS_KEY])))
+                    _LOGGER.error(f"'{alias}/{asset}:{determined_tag}' not "
+                                  f"available on any of the following servers: "
+                                  f"{', '.join(self[CFG_SERVERS_KEY])}")
                     return _null_return()
                 continue
             else:
@@ -1107,25 +1107,23 @@ class RefGenConf(yacman.YacAttMap):
 
             # local directory that the asset data will be stored in
             tag_dir = os.path.dirname(self.filepath(*gat))
-            # local directory the downloaded archive will be temporarily saved in
-            genome_dir_path = os.path.join(self.data_dir, genome, DATA_DIR)
-            # local path to the temporarily saved archive
-            filepath = os.path.join(
-                genome_dir_path, asset + "__" + determined_tag + ".tgz")
+            # local target path for the saved archive
+            tardir = os.path.join(self.data_dir, genome, asset)
+            tarpath = os.path.join(tardir, asset + "__" + determined_tag + ".tgz")
             # check if the genome/asset:tag exists and get request user decision
             if os.path.exists(tag_dir):
                 def preserve():
-                    _LOGGER.info("Preserving existing: {}".format(tag_dir))
+                    _LOGGER.info(f"Preserving existing: {tag_dir}")
                     return _null_return()
                 if force is False:
                     return preserve()
                 elif force is None:
-                    if not query_yes_no("Replace existing ({})?".format(tag_dir), "no"):
+                    if not query_yes_no(f"Replace existing ({tag_dir})?", "no"):
                         return preserve()
                     else:
-                        _LOGGER.debug("Overwriting: {}".format(tag_dir))
+                        _LOGGER.debug(f"Overwriting: {tag_dir}")
                 else:
-                    _LOGGER.debug("Overwriting: {}".format(tag_dir))
+                    _LOGGER.debug(f"Overwriting: {tag_dir}")
 
             # check asset digests local-server match for each parent
             [self._chk_digest_if_avail(genome, x, server_url)
@@ -1133,33 +1131,33 @@ class RefGenConf(yacman.YacAttMap):
 
             bundle_name = '{}/{}:{}'.format(*gat)
             archsize = archive_data[CFG_ARCHIVE_SIZE_KEY]
-            _LOGGER.debug("'{}' archive size: {}".format(
-                bundle_name, archsize))
+            _LOGGER.debug(f"'{bundle_name}' archive size: {archsize}")
 
             if not force_large and _is_large_archive(archsize, size_cutoff):
                 if force_large is False:
                     _LOGGER.info("Skipping pull of {}/{}:{}; size: {}".
                                  format(*gat, archsize))
                     return _null_return()
-                if not query_yes_no("This archive exceeds the size cutoff ({} > {:.1f}GB) "
-                                    "Do you want to proceed?".format(archsize, size_cutoff)):
+                if not query_yes_no(
+                        "This archive exceeds the size cutoff ({} > {:.1f}GB). "
+                        "Do you want to proceed?".format(archsize, size_cutoff)):
                     _LOGGER.info("Skipping pull of {}/{}:{}; size: {}".
                                  format(*gat, archsize))
                     return _null_return()
 
-            if not os.path.exists(genome_dir_path):
-                _LOGGER.debug("Creating directory: {}".format(genome_dir_path))
-                os.makedirs(genome_dir_path)
+            if not os.path.exists(tardir):
+                _LOGGER.debug(f"Creating directory: {tardir}")
+                os.makedirs(tardir)
 
             # Download the file from `url` and save it locally under `filepath`:
-            _LOGGER.info("Downloading URL: {}".format(url_archive))
+            _LOGGER.info(f"Downloading URL: {url_archive}")
             try:
-                signal.signal(signal.SIGINT, build_signal_handler(filepath))
-                _download_url_progress(url_archive, filepath, bundle_name, params={
-                                       "tag": determined_tag})
+                signal.signal(signal.SIGINT, build_signal_handler(tarpath))
+                _download_url_progress(url_archive, tarpath, bundle_name,
+                                       params={"tag": determined_tag})
             except HTTPError:
-                _LOGGER.error(
-                    "Asset archive '{}/{}:{}' is missing on the server: {s}".format(*gat, s=server_url))
+                _LOGGER.error("Asset archive '{}/{}:{}' is missing on the "
+                              "server: {s}".format(*gat, s=server_url))
                 if server_url == self[CFG_SERVERS_KEY][-1]:
                     # it this was the last server on the list, return
                     return _null_return()
@@ -1170,42 +1168,30 @@ class RefGenConf(yacman.YacAttMap):
                     continue
             except ConnectionRefusedError as e:
                 _LOGGER.error(str(e))
-                _LOGGER.error("Server {}/{} refused download. "
-                              "Check your internet settings".
-                              format(server_url, API_VERSION))
+                _LOGGER.error(f"Server {server_url}/{API_VERSION} refused "
+                              f"download. Check your internet settings")
                 return _null_return()
             except ContentTooShortError as e:
                 _LOGGER.error(str(e))
-                _LOGGER.error("'{}' download incomplete".format(bundle_name))
+                _LOGGER.error(f"'{bundle_name}' download incomplete")
                 return _null_return()
             else:
-                _LOGGER.info("Download complete: {}".format(filepath))
+                _LOGGER.info(f"Download complete: {tarpath}")
 
-            new_checksum = checksum(filepath)
+            new_checksum = checksum(tarpath)
             old_checksum = archive_data and archive_data.get(
                 CFG_ARCHIVE_CHECKSUM_KEY)
             if old_checksum and new_checksum != old_checksum:
-                _LOGGER.error("Downloaded archive ('{}') checksum mismatch: ({}, {})".
-                              format(filepath, new_checksum, old_checksum))
+                _LOGGER.error(f"Downloaded archive ('{tarpath}') checksum "
+                              f"mismatch: ({new_checksum}, {old_checksum})")
                 return _null_return()
             else:
-                _LOGGER.debug("Matched checksum: '{}'".format(old_checksum))
-            # successfully downloaded and moved tarball; untar it
-            if unpack and filepath.endswith(".tgz"):
-                _LOGGER.info(
-                    "Extracting asset tarball and saving to: {}".format(tag_dir))
-                with TemporaryDirectory(dir=genome_dir_path) as tmpdir:
-                    # here we suspect the unarchived asset to be an asset-named
-                    # directory with the asset data inside and we transfer it
-                    # to the tag-named subdirectory
-                    untar(filepath, tmpdir)
-                    if os.path.isdir(tag_dir):
-                        shutil.rmtree(tag_dir)
-                        _LOGGER.info(
-                            "Removed existing directory: {}".format(tag_dir))
-                    shutil.move(os.path.join(tmpdir, asset), tag_dir)
-                if os.path.exists(genome_dir_path):
-                    shutil.rmtree(genome_dir_path)
+                _LOGGER.debug(f"Matched checksum: '{old_checksum}'")
+            # successfully downloaded tarball; untar it
+            if unpack and tarpath.endswith(".tgz"):
+                _LOGGER.info(f"Extracting asset tarball: {tarpath}")
+                untar(tarpath, tardir)
+                os.remove(tarpath)
 
             if self.file_path:
                 with self as rgc:

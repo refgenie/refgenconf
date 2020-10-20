@@ -1,7 +1,7 @@
 config_version: 0.4
 genome_folder: /tmp
 genome_servers: 
- - "http://rg.databio.org:82"
+ - http://rg.databio.org:82
 genomes:
   ebf26d2f064462bea7029e6b4d2298967d7435bff82ed224:
     aliases: 
@@ -34,7 +34,7 @@ genomes:
             seek_keys:
               file: b
         default_tag: default
-    genome_description: test
+    genome_description: Manually curated collection of human repeat sequences from GenBank
   194f8681e3d9e35b9eca2d17ec5e36bbf5e8c2beea486496:
     aliases: 
      - mouse_chrM2x
@@ -48,7 +48,7 @@ genomes:
             asset_path: bwa_index
             asset_digest: 914dec83dcfab73e056717d33ecfd465
         default_tag: default
-    genome_description: test
+    genome_description: The mouse mitochondrial genome, doubled
   511fb1178275e7d529560d53b949dba40815f195623bce8e:
     aliases: 
      - rCRSd
@@ -78,15 +78,4 @@ genomes:
             seek_keys:
               file: b
         default_tag: default
-      fasta:
-        tags:
-          default:
-            seek_keys:
-              fasta: 511fb1178275e7d529560d53b949dba40815f195623bce8e.fa
-              fai: 511fb1178275e7d529560d53b949dba40815f195623bce8e.fa.fai
-              chrom_sizes: 511fb1178275e7d529560d53b949dba40815f195623bce8e.chrom.sizes
-            asset_parents: []
-            asset_path: fasta
-            asset_digest: 4eb430296bc02ed7e4006624f1d5ac53
-        default_tag: default
-    genome_description: test
+    genome_description: The revised cambridge reference sequence. This is the human mitochondrial reference genome

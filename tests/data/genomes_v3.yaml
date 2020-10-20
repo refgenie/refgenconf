@@ -1,5 +1,43 @@
 config_version: 0.3
 genome_folder: /tmp/old
-genome_servers:
+genome_servers: 
  - http://rg.databio.org:82
-genomes: null
+genomes:
+  human_repeats:
+    assets:
+      fasta:
+        tags:
+          default:
+            seek_keys:
+              fasta: human_repeats.fa
+              fai: human_repeats.fa.fai
+              chrom_sizes: human_repeats.chrom.sizes
+            asset_parents: []
+            asset_path: fasta
+            asset_digest: 4a749d4e74b057d0efa0c8398ebcb871
+        default_tag: default
+    genome_description: Manually curated collection of human repeat sequences from GenBank
+  rCRSd:
+    assets:
+      fasta:
+        tags:
+          default:
+            seek_keys:
+              fasta: rCRSd.fa
+              fai: rCRSd.fa.fai
+              chrom_sizes: rCRSd.chrom.sizes
+            asset_parents: []
+            asset_path: fasta
+            asset_digest: 4eb430296bc02ed7e4006624f1d5ac53
+        default_tag: default
+    genome_description: The revised cambridge reference sequence. This is the human mitochondrial reference genome
+  human_alu:
+    assets:
+      fasta:
+        tags:
+          default:
+            asset_path: /tmp/old/human_alu/default
+            asset_digest: 6d74fb9f68e546348ec825b2e0cc10f6
+            seek_keys:
+              fasta: human_alu.fa
+        default_tag: default

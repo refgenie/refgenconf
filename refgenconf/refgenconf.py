@@ -7,9 +7,7 @@ import os
 import signal
 import warnings
 import shutil
-from shutil import copytree
 import json
-import requests
 
 import yacman
 
@@ -20,9 +18,7 @@ from collections import Iterable, Mapping, OrderedDict
 from functools import partial
 from inspect import getfullargspec as finspect
 from pkg_resources import iter_entry_points
-from tempfile import TemporaryDirectory
 from rich.table import Table
-from rich.console import Console
 from rich.progress import Progress, TextColumn, BarColumn
 from requests import ConnectionError
 

@@ -5,3 +5,4 @@ yacman>=0.7.0
 future
 jsonschema
 rich>=9.0.1
+pyfaidx

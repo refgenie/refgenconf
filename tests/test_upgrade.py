@@ -41,7 +41,7 @@ class TestUpgrade03to04:
     def test_all_server_local_mix(self, cfg_file_old):
         """
         Test config upgrade from v0.3 to v0.4 when a mix of genomes in terms of
-        remote digest availablity is in defined the old config
+        remote digest availability is in defined the old config
         """
         old_rgc = _RefGenConfV03(cfg_file_old)
         # get some old asset data on disk
@@ -52,7 +52,7 @@ class TestUpgrade03to04:
             src_url = f'http://big.databio.org/refgenie_raw/files.{g}.{a}.{a}'
             target_archive = f'/tmp/old/{g}.fa.gz'
             target_file = f'/tmp/old/{g}.fa'
-            target_dir = f"/tmp/old/{g}/{t}"
+            target_dir = f"/tmp/old/{g}/{a}/{t}"
             os.makedirs(target_dir,  exist_ok=True)
             urllib.request.urlretrieve(src_url, target_archive)
             from subprocess import run

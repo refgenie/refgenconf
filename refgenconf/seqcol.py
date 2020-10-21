@@ -178,11 +178,11 @@ class SeqColClient(Henge):
         bina = [x in _xp(SEQ_KEY, asdA) for x in _xp(SEQ_KEY, asdB)]
 
         return_flag = 0  # initialize
-        if sum(ainb) > 1:
+        if any(ainb):
             ordA = _get_common_content(asdA, asdB)
             if ordA == sorted(ordA):
                 return_flag += CONTENT_A_ORDER
-        if sum(bina) > 1:
+        if any(bina):
             ordB = _get_common_content(asdB, asdA)
             if ordB == sorted(ordB):
                 return_flag += CONTENT_B_ORDER
@@ -196,6 +196,8 @@ class SeqColClient(Henge):
         ainb_topo = [x in _xp(TOPO_KEY, asdB) for x in _xp(TOPO_KEY, asdA)]
         bina_topo = [x in _xp(TOPO_KEY, asdA) for x in _xp(TOPO_KEY, asdB)]
 
+        if any(ainb):
+            return_flag += CONTENT_ANY_SHARED
         if all(ainb):
             return_flag += CONTENT_ALL_A_IN_B
         if all(bina):

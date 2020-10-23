@@ -165,13 +165,13 @@ def alter_file_tree_03_04(rgc, link_fun):
     _LOGGER.info(
         f"Copying assets to '{DATA_DIR}' and creating alias symlinks in "
         f"'{ALIAS_DIR}'. Genomes that the digest could not be determined for "
-        f"'will be ignored.")
+        f"will be ignored.")
     for root, dirs, files in os.walk(rgc[CFG_FOLDER_KEY]):
         for dir in dirs:
             if dir in my_genome:
                 shutil.copytree(os.path.join(rgc[CFG_FOLDER_KEY], dir),
                                 os.path.join(rgc[CFG_FOLDER_KEY], DATA_DIR,
-                                             dir))
+                                             dir), symlinks=True)
         del dirs[:]
 
     for root, dirs, files in os.walk(
@@ -188,6 +188,14 @@ def alter_file_tree_03_04(rgc, link_fun):
                         DATA_DIR, ALIAS_DIR)
                     os.mkdir(new_path)
                 for file in files:
+                    des_path = os.path.join(genome, file)
+                    src_path = os.path.realpath(des_path).replace(rgc[CFG_FOLDER_KEY], 
+                                os.path.join(rgc[CFG_FOLDER_KEY], DATA_DIR)).replace(dir, my_genome[dir])
+                    
+                    if os.path.islink(des_path):
+                        os.remove(des_path)
+                        link_fun(src_path, des_path)
+                    
                     old_path = os.path.join(genome, file)
                     new_path = old_path.replace(my_genome[dir], dir).replace(
                         DATA_DIR, ALIAS_DIR)

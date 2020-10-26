@@ -2239,7 +2239,7 @@ def upgrade_config(target_version, filepath, force=False,
         _LOGGER.info(f"The following refgenieserver instances are not "
                      f"compatible or do not exist: {incompat_servers}")
     
-    # check digest availability (fasta asset/file exist)
+    # check digest availability 
     missing_digest = []
     for genome, genome_v in rgc[CFG_GENOMES_KEY].items():
         try:

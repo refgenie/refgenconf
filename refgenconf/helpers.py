@@ -188,18 +188,23 @@ def alter_file_tree_03_04(rgc, link_fun):
                         DATA_DIR, ALIAS_DIR)
                     os.mkdir(new_path)
                 for file in files:
-                    des_path = os.path.join(genome, file)
-                    src_path = os.path.realpath(des_path).replace(rgc[CFG_FOLDER_KEY], 
-                                os.path.join(rgc[CFG_FOLDER_KEY], DATA_DIR)).replace(dir, my_genome[dir])
+                    des_path = os.path.join(genome, file) # current file
+                    src_path = os.path.realpath(des_path).replace(os.path.join(rgc[CFG_FOLDER_KEY], dir), # get the current src file path
+                                os.path.join("..", "..")).replace(dir, my_genome[dir]) # replace /genome_folder with /genome_folder/data
+                                                                                                          # replace alias in the file name with genome digest
                     
-                    if os.path.islink(des_path):
-                        os.remove(des_path)
-                        link_fun(src_path, des_path)
+                    if os.path.islink(des_path): # if the current file is a link 
+                        os.remove(des_path) # remove the link that would not work after deleting old genome assest
+                        link_fun(src_path, des_path) # create the link with correct src
                     
                     old_path = os.path.join(genome, file)
                     new_path = old_path.replace(my_genome[dir], dir).replace(
                         DATA_DIR, ALIAS_DIR)
-                    link_fun(old_path, new_path)
+                    
+                    rel_old_path = os.path.join(os.path.relpath(os.path.dirname(old_path),
+                                        os.path.dirname(new_path)),
+                                        os.path.basename(old_path))
+                    link_fun(rel_old_path , new_path)
         del dirs[:]
 
     _LOGGER.info(f"Removing genome assets that have been copied "

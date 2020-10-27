@@ -433,7 +433,7 @@ class RefGenConf(yacman.YacAttMap):
                 os.path.join(self.alias_dir, a) for a in alias}
 
     def _symlink_alias(self, genome, asset=None, tag=None,
-                       link_fun=lambda s, t: os.symlink(s, t)):
+                       link_fun=lambda t, s: os.symlink(t, s)):
         """
         Go through the files in the asset directory and recreate the asset
         directory tree, but instead of copying files, create symbolic links
@@ -441,7 +441,8 @@ class RefGenConf(yacman.YacAttMap):
         :param str genome: reference genome ID
         :param str asset: asset name
         :param str tag: tag name
-        :param callable link_fun: function to use to link files, e.g os.symlink or os.link
+        :param callable link_fun: function to use to link files, e.g os.symlink
+            or os.link
         """
         def _rpl(str):
             """
@@ -450,8 +451,8 @@ class RefGenConf(yacman.YacAttMap):
             return str.replace(genome_digest, alias)
 
         if not callable(link_fun) or len(finspect(link_fun).args) != 2:
-            raise TypeError(
-                "Linking function must be a two-arg function (src, target)")
+            raise TypeError("Linking function must be a two-arg function "
+                            "(target, destination)")
         created = []
         genome_digest = self.get_genome_alias_digest(genome, fallback=True)
         if asset:
@@ -468,15 +469,20 @@ class RefGenConf(yacman.YacAttMap):
                     appendix = os.path.relpath(root, src_path)
                     for dir in dirs:
                         try:
-                            os.makedirs(os.path.join(
-                                path, appendix, _rpl(dir)))
+                            os.makedirs(os.path.join(path, appendix, _rpl(dir)))
                         except FileExistsError:
                             continue
                     for file in files:
                         try:
-                            link_fun(os.path.join(root, file),
-                                     os.path.join(path, appendix, _rpl(file)))
+                            rel = os.path.relpath(
+                                os.path.join(root, file),
+                                os.path.join(path)
+                            )
+                            link_fun(rel, os.path.join(path, appendix, _rpl(file)))
                         except FileExistsError:
+                            _LOGGER.warning(
+                                f"Could not create link, file exists: "
+                                f"{os.path.join(path, appendix, _rpl(file))}")
                             continue
                 created.append(path)
         if created:

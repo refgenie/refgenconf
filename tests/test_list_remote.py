@@ -2,17 +2,26 @@
 
 from collections import OrderedDict
 from refgenconf import RefGenConf, CFG_FOLDER_KEY, CFG_GENOMES_KEY, \
-    CFG_SERVERS_KEY, DEFAULT_SERVER
-from refgenconf.refgenconf import _download_json
+    CFG_SERVERS_KEY, API_VERSION
+from refgenconf.helpers import download_json
+import pytest
 
 
-def test_list_remote(rgc, tmpdir):
+@pytest.mark.parametrize("genome", [["human_repeats"], ["human_repeats", "rCRSd"], None])
+def test_list_remote(my_rgc, genome):
     """ Verify expected behavior of remote genome/asset listing. """
-    new_rgc = RefGenConf(entries={CFG_FOLDER_KEY: tmpdir.strpath,
-                          CFG_SERVERS_KEY: [DEFAULT_SERVER],
-                          CFG_GENOMES_KEY: rgc[CFG_GENOMES_KEY]})
-    result = new_rgc.listr()
-    assert list(result.keys())[0].startswith(DEFAULT_SERVER)
-    for server_url, asset_dict in result.items():
-        assert isinstance(asset_dict, OrderedDict)
-        assert len(asset_dict) == len(_download_json(DEFAULT_SERVER + "/genomes"))
+    assert len(my_rgc[CFG_SERVERS_KEY]) == 1, "Expected only one test server"
+    server = my_rgc[CFG_SERVERS_KEY][0]
+    result = my_rgc.listr(genome=genome)
+    assert len(result.keys()) == 1, "More servers in list remote result " \
+                                    "than subscribed to"
+    server_key = list(result.keys())[0]
+    assert server_key.startswith(server)
+    json_genomes = download_json(server_key)
+    if not genome:
+        assert len(json_genomes) == len(result[server_key])
+        for g, assets in json_genomes.items():
+            assert len(assets) == len(result[server_key][g])
+    else:
+        assert len(genome) == len(result[server_key])
+

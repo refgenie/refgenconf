@@ -14,6 +14,8 @@ from refgenconf.exceptions import *
 __author__ = "Vince Reuter"
 __email__ = "vreuter@virginia.edu"
 
+TEST_SERVER = "http://rg.databio.org:82"
+
 
 IDX_BT2_VAL = "indexed_bowtie2"
 HG38_DATA = [
@@ -75,7 +77,7 @@ def cfg_file(data_path):
 
 @pytest.fixture
 def cfg_file_old(data_path):
-    return os.path.join(data_path, "genomes_v2.yaml")
+    return os.path.join(data_path, "genomes_v3.yaml")
 
 
 @pytest.fixture
@@ -127,8 +129,8 @@ def made_genome_config_file(temp_genome_config_file):
     """ Make the test session's genome config file. """
     genome_folder = os.path.dirname(temp_genome_config_file)
     extra_kv_lines = ["{}: {}".format(CFG_FOLDER_KEY, genome_folder),
-                      "{}: {}".format(CFG_SERVERS_KEY, "https://refgenomes.databio.org/"),
-                      "{}: {}".format(CFG_VERSION_KEY, package_version),
+                      "{}: {}".format(CFG_SERVERS_KEY, "http://rg.databio.org"),
+                      "{}: {}".format(CFG_VERSION_KEY, REQ_CFG_VERSION),
                       "{}:".format(CFG_GENOMES_KEY)]
     gen_data_lines = PathExAttMap(CONF_DATA).get_yaml_lines()
     fp = temp_genome_config_file
@@ -156,7 +158,8 @@ def ro_rgc(cfg_file):
 
 @pytest.fixture
 def all_genomes(ro_rgc):
-    return ro_rgc[CFG_GENOMES_KEY].keys()
+    gs = ro_rgc[CFG_GENOMES_KEY].keys()
+    return gs
 
 
 @pytest.fixture
@@ -174,3 +177,10 @@ def remove_genome_folder(request):
 def temp_genome_config_file(tmpdir_factory):
     """ The genome configuration file for the test suite. """
     return tmpdir_factory.mktemp("data").join("refgenie.yaml").strpath
+
+
+# seqcol configuration - to be removed when we split the projects
+
+@pytest.fixture
+def fasta_path(data_path):
+    return os.path.join(data_path, "demo_fasta")

@@ -49,6 +49,7 @@ setup(
     license="BSD2",
     keywords="bioinformatics, sequencing, ngs",
     test_suite="tests",
+    include_package_data=True,
     tests_require=(["pytest"]),
     setup_requires=(["pytest-runner"] if {"test", "pytest", "ptr"} & set(sys.argv) else []),
     url='https://refgenie.databio.org',

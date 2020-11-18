@@ -4,5 +4,5 @@ requests
 yacman>=0.7.0
 future
 jsonschema
-rich
+rich>=9.0.1
 pyfaidx

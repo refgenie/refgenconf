@@ -24,14 +24,14 @@ DOWNLOAD_FUNCTION = "refgenconf.refgenconf.{}".format(_download_url_progress.__n
 
 
 @pytest.mark.parametrize(["gname", "aname"], [("human_repeats", 1), ("mouse_chrM2x", None)])
-def test_pull_asset_illegal_asset_name(rgc, gname, aname):
+def test_pull_asset_illegal_asset_name(my_rgc, gname, aname):
     """ TypeError occurs if asset argument is not iterable. """
     with pytest.raises(TypeError):
-        rgc.pull(gname, aname)
+        my_rgc.pull(gname, aname)
 
 
 @pytest.mark.parametrize(["gname", "aname", "tname"],
-                         [("human_repeats", "bowtie2_index", "default"), ("mouse_chrM2x", "bwa_index", "default")])
+                         [("human_repeats", "bwa_index", "default"), ("mouse_chrM2x", "bwa_index", "default")])
 def test_download_interruption(my_rgc, gname, aname, tname, caplog):
     """ Download interruption provides appropriate warning message and halts. """
     import signal

@@ -6,6 +6,7 @@ from .const import *
 from .exceptions import DownloadJsonError, MissingAssetError
 from .seqcol import SeqColClient
 
+import json
 from re import sub
 import requests
 from requests import get
@@ -122,6 +123,13 @@ def format_config_03_04(rgc, get_json_url):
                             asset_path = rgc.seek(genome, "fasta", tag, "fasta")
                             ssc = SeqColClient({})
                             digest, _ = ssc.load_fasta(asset_path)
+                            # retrieve annotated sequence digests list to save in a JSON file
+                            asdl = ssc.retrieve(druid=digest)
+                            pth = os.path.join(rgc[CFG_FOLDER_KEY], genome, genome + "__ASDs.json")
+                            os.makedirs(os.path.dirname(pth), exist_ok=True)
+                            with open(pth, "w") as jfp:
+                                json.dump(asdl, jfp)
+                            _LOGGER.debug("Saved ASDs to JSON: {}".format(pth))
                         except (MissingAssetError, FileNotFoundError):
                             _LOGGER.info(
                                 f"Failed to generate the digest for {genome}")
@@ -187,6 +195,7 @@ def alter_file_tree_03_04(rgc, link_fun):
                     new_path = old_path.replace(my_genome[dir], dir).replace(
                         DATA_DIR, ALIAS_DIR)
                     os.mkdir(new_path)
+
                 for file in files:
                     des_path = os.path.join(genome, file) # current file
                     src_path = os.path.realpath(des_path).replace(rgc[CFG_FOLDER_KEY], 
@@ -197,8 +206,8 @@ def alter_file_tree_03_04(rgc, link_fun):
                         os.remove(des_path) # remove the link that would not work after deleting old genome assest
                         link_fun(src_path, des_path) # create the link with correct src
                     
-                    old_path = os.path.join(genome, file)
-                    new_path = old_path.replace(my_genome[dir], dir).replace(
+                    old_path = os.path.join(genome, file) # path of the file in data dir
+                    new_path = old_path.replace(my_genome[dir], dir).replace(   # path of the file in alias
                         DATA_DIR, ALIAS_DIR)
                     
                     rel_old_path = os.path.join(os.path.relpath(os.path.dirname(old_path),

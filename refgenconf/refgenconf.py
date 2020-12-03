@@ -2269,7 +2269,7 @@ def upgrade_config(target_version, filepath, force=False,
     # change the config_version
     rgc[CFG_VERSION_KEY] = target_version
     # write over the config file
-    rgc.write()
+    #rgc.write()
     return True
 
 

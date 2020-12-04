@@ -123,13 +123,13 @@ def format_config_03_04(rgc, get_json_url):
                             asset_path = rgc.seek(genome, "fasta", tag, "fasta")
                             ssc = SeqColClient({})
                             digest, _ = ssc.load_fasta(asset_path)
-                            # retrieve annotated sequence digests list to save in a JSON file
-                            asdl = ssc.retrieve(druid=digest)
-                            pth = os.path.join(rgc[CFG_FOLDER_KEY], genome, genome + "__ASDs.json")
-                            os.makedirs(os.path.dirname(pth), exist_ok=True)
-                            with open(pth, "w") as jfp:
-                                json.dump(asdl, jfp)
-                            _LOGGER.debug("Saved ASDs to JSON: {}".format(pth))
+                            # # retrieve annotated sequence digests list to save in a JSON file
+                            # asdl = ssc.retrieve(druid=digest)
+                            # pth = os.path.join(rgc[CFG_FOLDER_KEY], genome, genome + "__ASDs.json")
+                            # os.makedirs(os.path.dirname(pth), exist_ok=True)
+                            # with open(pth, "w") as jfp:
+                            #     json.dump(asdl, jfp)
+                            # _LOGGER.debug("Saved ASDs to JSON: {}".format(pth))
                         except (MissingAssetError, FileNotFoundError):
                             _LOGGER.info(
                                 f"Failed to generate the digest for {genome}")
@@ -164,6 +164,17 @@ def alter_file_tree_03_04(rgc, link_fun):
     my_genome = {}
     for k, v in rgc[CFG_GENOMES_KEY].items():
         my_genome.update([(v[CFG_ALIASES_KEY][0], k)])
+
+        tag = rgc.get_default_tag(v[CFG_ALIASES_KEY][0], "fasta")
+        asset_path = rgc.seek(v[CFG_ALIASES_KEY][0], "fasta", tag, "fasta")
+        ssc = SeqColClient({})
+        digest, asdl = ssc.load_fasta(asset_path)
+        # retrieve annotated sequence digests list to save in a JSON file
+        pth = os.path.join(rgc[CFG_FOLDER_KEY], v[CFG_ALIASES_KEY][0], v[CFG_ALIASES_KEY][0] + "__ASDs.json")
+        os.makedirs(os.path.dirname(pth), exist_ok=True)
+        with open(pth, "w") as jfp:
+            json.dump(asdl, jfp)
+        _LOGGER.debug("Saved ASDs to JSON: {}".format(pth))
 
     _LOGGER.info(f"Creating '{DATA_DIR}' and '{ALIAS_DIR}' directories in "
                  f"'{rgc[CFG_FOLDER_KEY]}'.")

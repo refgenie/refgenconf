@@ -165,10 +165,11 @@ def alter_file_tree_03_04(rgc, link_fun):
     for k, v in rgc[CFG_GENOMES_KEY].items():
         my_genome.update([(v[CFG_ALIASES_KEY][0], k)])
 
-        tag = rgc.get_default_tag(v[CFG_ALIASES_KEY][0], "fasta")
-        asset_path = rgc.seek(v[CFG_ALIASES_KEY][0], "fasta", tag, "fasta")
+        tag = rgc.get_default_tag(k, "fasta")
+        asset_path = rgc.seek(k, "fasta", tag, "fasta")
         ssc = SeqColClient({})
-        digest, asdl = ssc.load_fasta(asset_path)
+        digest, asdl = ssc.load_fasta(asset_path.replace(
+                        k,v[CFG_ALIASES_KEY][0]))
         # retrieve annotated sequence digests list to save in a JSON file
         pth = os.path.join(rgc[CFG_FOLDER_KEY], v[CFG_ALIASES_KEY][0], v[CFG_ALIASES_KEY][0] + "__ASDs.json")
         os.makedirs(os.path.dirname(pth), exist_ok=True)

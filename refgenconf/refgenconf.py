@@ -2252,9 +2252,21 @@ def upgrade_config(target_version, filepath, force=False,
             tag = rgc.get_default_tag(genome, "fasta")
             asset_path = rgc.seek(genome, "fasta", tag, "fasta")
             if not os.path.exists(asset_path):
-                missing_digest.append(genome)
-        except MissingAssetError:
-                missing_digest.append(genome)
+                raise FileNotFoundError
+        except (MissingAssetError, FileNotFoundError):
+            cnt = 0
+            servers = rgc[CFG_SERVERS_KEY]
+            for server in servers:
+                cnt += 1
+                try:
+                    url_alias = get_json_url(s=server, i=API_VERSION+API_ID_ALIAS_DIGEST).format(alias=genome)
+                    break
+                except (KeyError, ConnectionError, DownloadJsonError) as e:
+                    print (cnt, genome)
+                    if cnt == len(servers):
+                        missing_digest.append(genome)
+                    continue
+            
     if not force and missing_digest and not query_yes_no(
         f"The following genomes will be lost due to the lack of local fasta "
         f"assets and remote genome digests: {', '.join(missing_digest)}. "
@@ -2269,7 +2281,7 @@ def upgrade_config(target_version, filepath, force=False,
     # change the config_version
     rgc[CFG_VERSION_KEY] = target_version
     # write over the config file
-    #rgc.write()
+    rgc.write()
     return True
 
 

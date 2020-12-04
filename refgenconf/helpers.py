@@ -97,37 +97,51 @@ def format_config_03_04(rgc, get_json_url):
             genome server URL base, genome, and asset
     """
 
-    _LOGGER.info("Upgrading v0.3 config file format to v0.4")
+    _LOGGER.info("Upgrading v0.3 config file format to v0.4.")
    
     for genome, genome_v in rgc[CFG_GENOMES_KEY].items():
         digest = ""
-        # get genome digest from the server
-        cnt = 0
-        servers = rgc[CFG_SERVERS_KEY]
-        for server in servers:
-            cnt += 1
-            if not digest:
-                try:
-                    url_alias = get_json_url(s=server, i=API_VERSION+API_ID_ALIAS_DIGEST).format(alias=genome)
-                    digest = download_json(url_alias)
-                    _LOGGER.info(
-                        f"Retrieved {genome} digest from the server ({digest})")
-                except (KeyError, ConnectionError, DownloadJsonError) as e:
-                    if cnt == len(servers):
-                        try:
+        try:
+            _LOGGER.info(
+                f"Generating the digest from a local fasta file, "
+                f"and createing the ASDs for {genome}."
+                )
+            tag = rgc.get_default_tag(genome, "fasta")
+            asset_path = rgc.seek(genome, "fasta", tag, "fasta")
+            ssc = SeqColClient({})
+            digest, asdl = ssc.load_fasta(asset_path)
+            _LOGGER.info(
+                f"Generated {genome} digest from local fasta file: {digest}"
+                )
+            # retrieve annotated sequence digests list to save in a JSON file
+            pth = os.path.join(rgc[CFG_FOLDER_KEY], genome, genome + "__ASDs.json")
+            os.makedirs(os.path.dirname(pth), exist_ok=True)
+            with open(pth, "w") as jfp:
+                json.dump(asdl, jfp)
+            _LOGGER.info(
+                f"Saved ASDs to JSON: {pth}"
+                )
+        except (MissingAssetError, FileNotFoundError):
+            _LOGGER.info(
+                f"No local fasta asset found for {genome}. Retrieving digest from the server."
+                )
+            # get genome digest from the server
+            cnt = 0
+            servers = rgc[CFG_SERVERS_KEY]
+            for server in servers:
+                cnt += 1
+                if not digest:
+                    try:
+                        url_alias = get_json_url(s=server, i=API_VERSION+API_ID_ALIAS_DIGEST).format(alias=genome)
+                        digest = download_json(url_alias)
+                        _LOGGER.info(
+                            f"Retrieved {genome} digest from the server: {digest}")
+                    except (KeyError, ConnectionError, DownloadJsonError) as e:
+                        if cnt == len(servers):
                             _LOGGER.info(
-                                f"Genome digest for {genome} is not available "
-                                f"on any of the servers. Generating the digest "
-                                f"from a local fasta file")
-                            tag = rgc.get_default_tag(genome, "fasta")
-                            asset_path = rgc.seek(genome, "fasta", tag, "fasta")
-                            ssc = SeqColClient({})
-                            digest, _ = ssc.load_fasta(asset_path)
-                        except (MissingAssetError, FileNotFoundError):
-                            _LOGGER.info(
-                                f"Failed to generate the digest for {genome}")
-                            continue
-                    continue
+                                f"Failed to retrieve the digest for {genome}. ")
+                        continue
+                continue
 
         if digest:
             # convert seek keys, children/parent asset keys from aliases to
@@ -157,22 +171,6 @@ def alter_file_tree_03_04(rgc, link_fun):
     my_genome = {}
     for k, v in rgc[CFG_GENOMES_KEY].items():
         my_genome.update([(v[CFG_ALIASES_KEY][0], k)])
-        try:
-            tag = rgc.get_default_tag(k, "fasta")
-            asset_path = rgc.seek(k, "fasta", tag, "fasta")
-            ssc = SeqColClient({})
-            digest, asdl = ssc.load_fasta(asset_path.replace(
-                            k,v[CFG_ALIASES_KEY][0]))
-            # retrieve annotated sequence digests list to save in a JSON file
-            pth = os.path.join(rgc[CFG_FOLDER_KEY], v[CFG_ALIASES_KEY][0], v[CFG_ALIASES_KEY][0] + "__ASDs.json")
-            os.makedirs(os.path.dirname(pth), exist_ok=True)
-            with open(pth, "w") as jfp:
-                json.dump(asdl, jfp)
-            _LOGGER.info("Saved ASDs to JSON: {}".format(pth))
-        except (MissingAssetError, FileNotFoundError):
-            _LOGGER.info(
-                f"Failed to generate the ASDs for {genome}")
-            continue
 
     _LOGGER.info(f"Creating '{DATA_DIR}' and '{ALIAS_DIR}' directories in "
                  f"'{rgc[CFG_FOLDER_KEY]}'.")

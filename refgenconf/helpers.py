@@ -174,7 +174,7 @@ def alter_file_tree_03_04(rgc, link_fun):
         os.makedirs(os.path.dirname(pth), exist_ok=True)
         with open(pth, "w") as jfp:
             json.dump(asdl, jfp)
-        _LOGGER.debug("Saved ASDs to JSON: {}".format(pth))
+        _LOGGER.info("Saved ASDs to JSON: {}".format(pth))
 
     _LOGGER.info(f"Creating '{DATA_DIR}' and '{ALIAS_DIR}' directories in "
                  f"'{rgc[CFG_FOLDER_KEY]}'.")

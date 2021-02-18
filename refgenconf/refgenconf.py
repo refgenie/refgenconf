@@ -852,7 +852,7 @@ class RefGenConf(yacman.YacAttMap):
                 url, genome, order, as_str=as_str)
         return data_by_server
 
-    def tag(self, genome, asset, tag, new_tag, files=True):
+    def tag(self, genome, asset, tag, new_tag, files=True, force=False):
         """
         Retags the asset selected by the tag with the new_tag.
         Prompts if default already exists and overrides upon confirmation.
@@ -880,10 +880,10 @@ class RefGenConf(yacman.YacAttMap):
         new_path = os.path.abspath(os.path.join(ori_path, os.pardir, new_tag))
         if self.file_path:
             with self as r:
-                if not r.cfg_tag_asset(genome, asset, tag, new_tag):
+                if not r.cfg_tag_asset(genome, asset, tag, new_tag, force):
                     sys.exit(0)
         else:
-            if not self.cfg_tag_asset(genome, asset, tag, new_tag):
+            if not self.cfg_tag_asset(genome, asset, tag, new_tag, force):
                 sys.exit(0)
         if not files:
             self.run_plugins(POST_TAG_HOOK)
@@ -911,15 +911,15 @@ class RefGenConf(yacman.YacAttMap):
                           format(ori_path, new_path))
         self.run_plugins(POST_TAG_HOOK)
 
-    def cfg_tag_asset(self, genome, asset, tag, new_tag):
+    def cfg_tag_asset(self, genome, asset, tag, new_tag, force=False):
         """
         Retags the asset selected by the tag with the new_tag.
         Prompts if default already exists and overrides upon confirmation.
 
-        This method does not override the original asset entry in the RefGenConf object. It creates its copy and tags
-        it with the new_tag.
-        Additionally, if the retagged asset has any children their parent will be retagged as new_tag that was
-        introduced upon this method execution.
+        This method does not override the original asset entry in the
+        RefGenConf object. It creates its copy and tags it with the new_tag.
+        Additionally, if the retagged asset has any children their parent will
+         be retagged as new_tag that was introduced upon this method execution.
 
         :param str genome: name of a reference genome assembly of interest
         :param str asset: name of particular asset of interest
@@ -931,12 +931,14 @@ class RefGenConf(yacman.YacAttMap):
         self._assert_gat_exists(genome, asset, tag)
         asset_mapping = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]
         if tag is None:
-            raise ValueError("You must explicitly specify the tag of the asset "
-                             "you want to reassign. Currently defined "
-                             "tags for '{}/{}' are: {}".format(genome, asset, ", ".join(get_asset_tags(asset_mapping))))
+            ts = ", ".join(get_asset_tags(asset_mapping))
+            raise ValueError(f"You must explicitly specify the tag of the asset"
+                             f" you want to reassign. Currently defined tags "
+                             f"for '{genome}/{asset}' are: {ts}")
         if new_tag in asset_mapping[CFG_ASSET_TAGS_KEY]:
-            if not query_yes_no("You already have a '{}' asset tagged as '{}', do you wish to override?".
-                                format(asset, new_tag)):
+            if not force and not query_yes_no(
+                    f"You already have a '{asset}' asset tagged as "
+                    f"'{new_tag}', do you wish to override?"):
                 _LOGGER.info("Tag action aborted by the user")
                 return
         children = []
@@ -946,9 +948,11 @@ class RefGenConf(yacman.YacAttMap):
         if CFG_ASSET_PARENTS_KEY in asset_mapping[CFG_ASSET_TAGS_KEY][tag]:
             parents = asset_mapping[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_PARENTS_KEY]
         if len(children) > 0 or len(parents) > 0:
-            if not query_yes_no("The asset '{}/{}:{}' has {} children and {} parents. Refgenie will update the "
-                                "relationship data. Do you want to proceed?".format(genome, asset, tag, len(children),
-                                                                                    len(parents))):
+            if not force \
+                    and not query_yes_no(
+                f"The asset '{genome}/{asset}:{tag}' has {len(children)} "
+                f"children and {len(parents)} parents. Refgenie will update "
+                f"the relationship data. Do you want to proceed?"):
                 _LOGGER.info("Tag action aborted by the user")
                 return False
             # updates children's parents

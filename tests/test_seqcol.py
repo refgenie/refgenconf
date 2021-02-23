@@ -36,7 +36,14 @@ CMP_SETUP = [
         DEMO_FILES[1],
     ),
     (
-        (LENGTHS_ALL_A_IN_B + LENGTHS_ALL_B_IN_A + LENGTHS_ANY_SHARED),
+        (
+            LENGTHS_ALL_B_IN_A
+            + CONTENT_ALL_B_IN_A
+            + CONTENT_ANY_SHARED
+            + LENGTHS_ANY_SHARED
+            + CONTENT_A_ORDER
+            + CONTENT_B_ORDER
+        ),
         DEMO_FILES[2],
         DEMO_FILES[4],
     ),

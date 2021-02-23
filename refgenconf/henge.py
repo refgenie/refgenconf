@@ -10,8 +10,9 @@ import yaml
 
 
 # module constants
-DELIM_ATTR = "\x1e"  # chr(30); separating attributes in an item
-DELIM_ITEM = "\t"  # separating items in a collection
+# seqcol separators definition, e.g. chr1>2342>k34m6vlksb35nb,chr2>234>8h4m6vlaaab31ng
+DELIM_ATTR = ">"  # separating attributes in an item (internal separator)
+DELIM_ITEM = ","  # separating items in a collection (external separator)
 ITEM_TYPE = "_item_type"
 
 

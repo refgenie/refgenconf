@@ -26,13 +26,11 @@ LENGTHS_ALL_A_IN_B = 2 ** 2
 LENGTHS_ALL_B_IN_A = 2 ** 3
 NAMES_ALL_A_IN_B = 2 ** 4
 NAMES_ALL_B_IN_A = 2 ** 5
-TOPO_ALL_A_IN_B = 2 ** 6
-TOPO_ALL_B_IN_A = 2 ** 7
+CONTENT_A_ORDER = 2 ** 6
+CONTENT_B_ORDER = 2 ** 7
 CONTENT_ANY_SHARED = 2 ** 8
 LENGTHS_ANY_SHARED = 2 ** 9
 NAMES_ANY_SHARED = 2 ** 10
-CONTENT_A_ORDER = 2 ** 11
-CONTENT_B_ORDER = 2 ** 12
 
 FLAGS = {
     CONTENT_ALL_A_IN_B: "CONTENT_ALL_A_IN_B",
@@ -41,8 +39,6 @@ FLAGS = {
     LENGTHS_ALL_B_IN_A: "LENGTHS_ALL_B_IN_A",
     NAMES_ALL_A_IN_B: "NAMES_ALL_A_IN_B",
     NAMES_ALL_B_IN_A: "NAMES_ALL_B_IN_A",
-    TOPO_ALL_A_IN_B: "TOPO_ALL_A_IN_B",
-    TOPO_ALL_B_IN_A: "TOPO_ALL_B_IN_A",
     CONTENT_ANY_SHARED: "CONTENT_ANY_SHARED",
     LENGTHS_ANY_SHARED: "LENGTHS_ANY_SHARED",
     NAMES_ANY_SHARED: "NAMES_ANY_SHARED",
@@ -50,10 +46,8 @@ FLAGS = {
     CONTENT_B_ORDER: "CONTENT_B_ORDER",
 }
 
-KNOWN_TOPOS = ["linear", "circular"]
 NAME_KEY = "name"
 SEQ_KEY = "sequence"
-TOPO_KEY = "topology"
 LEN_KEY = "length"
 
 # internal schemas paths determination
@@ -61,7 +55,7 @@ ASL_NAME = "AnnotatedSequenceList"
 ASDL_NAME = "AnnotatedSequenceDigestList"
 SCHEMA_NAMES = [ASL_NAME, ASDL_NAME]
 SCHEMA_FILEPATH = os.path.join(os.path.dirname(__file__), "schemas")
-INTERNAL_SCHEMAS = [_schema_path("{}.yaml".format(s)) for s in SCHEMA_NAMES]
+INTERNAL_SCHEMAS = [_schema_path(f"{s}.yaml") for s in SCHEMA_NAMES]
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -87,7 +81,7 @@ class SeqColClient(Henge):
             serialized items stored in this henge.
         """
         assert all([os.path.exists(s) for s in INTERNAL_SCHEMAS]), RefgenconfError(
-            "Missing schema files: {}".format(INTERNAL_SCHEMAS)
+            f"Missing schema files: {INTERNAL_SCHEMAS}"
         )
         super(SeqColClient, self).__init__(
             database=database,
@@ -96,27 +90,16 @@ class SeqColClient(Henge):
             checksum_function=checksum_function,
         )
 
-    def load_fasta(
-        self, fa_file, skip_seq=False, topology_default="linear", gzipped=False
-    ):
+    def load_fasta(self, fa_file, skip_seq=False, gzipped=False):
         """
         Load a sequence collection into the database
 
         :param str fa_file: path to the FASTA file to parse and load
         :param bool skip_seq: whether to disregard the actual sequences,
-            load just the names and lengths and topology
+            load just the names and lengths
         :param bool skip_seq: whether to disregard the actual sequences,
-            load just the names and lengths and topology
-        :param str topology_default: the default topology assigned to
-            every sequence
+            load just the names and lengths
         """
-        # TODO: any systematic way infer topology from a FASTA file?
-        if topology_default not in KNOWN_TOPOS:
-            raise ValueError(
-                f"Invalid topology ({topology_default}). "
-                f"Choose from: {','.join(KNOWN_TOPOS)}"
-            )
-
         seq = ""
         name = ""
         init = False
@@ -133,7 +116,6 @@ class SeqColClient(Henge):
                             {
                                 NAME_KEY: name,
                                 LEN_KEY: len(seq),
-                                TOPO_KEY: topology_default,
                                 SEQ_KEY: "" if skip_seq else trunc512_digest(seq),
                             }
                         )
@@ -146,7 +128,6 @@ class SeqColClient(Henge):
                 {
                     NAME_KEY: name,
                     LEN_KEY: len(seq),
-                    TOPO_KEY: topology_default,
                     SEQ_KEY: "" if skip_seq else trunc512_digest(seq),
                 }
             )
@@ -210,9 +191,6 @@ class SeqColClient(Henge):
         ainb_name = [x in _xp(NAME_KEY, asdB) for x in _xp(NAME_KEY, asdA)]
         bina_name = [x in _xp(NAME_KEY, asdA) for x in _xp(NAME_KEY, asdB)]
 
-        ainb_topo = [x in _xp(TOPO_KEY, asdB) for x in _xp(TOPO_KEY, asdA)]
-        bina_topo = [x in _xp(TOPO_KEY, asdA) for x in _xp(TOPO_KEY, asdB)]
-
         if any(ainb):
             return_flag += CONTENT_ANY_SHARED
         if all(ainb):
@@ -220,16 +198,15 @@ class SeqColClient(Henge):
         if all(bina):
             return_flag += CONTENT_ALL_B_IN_A
 
+        if any(ainb_name):
+            return_flag += NAMES_ANY_SHARED
         if all(ainb_name):
             return_flag += NAMES_ALL_A_IN_B
         if all(bina_name):
             return_flag += NAMES_ALL_B_IN_A
 
-        if all(ainb_topo):
-            return_flag += TOPO_ALL_A_IN_B
-        if all(bina_topo):
-            return_flag += TOPO_ALL_B_IN_A
-
+        if any(ainb_len):
+            return_flag += LENGTHS_ANY_SHARED
         if all(ainb_len):
             return_flag += LENGTHS_ALL_A_IN_B
         if all(bina_len):

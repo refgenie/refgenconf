@@ -12,11 +12,11 @@ CMP_SETUP = [
             + LENGTHS_ALL_B_IN_A
             + NAMES_ALL_A_IN_B
             + NAMES_ALL_B_IN_A
-            + TOPO_ALL_B_IN_A
-            + TOPO_ALL_A_IN_B
             + CONTENT_A_ORDER
             + CONTENT_B_ORDER
             + CONTENT_ANY_SHARED
+            + NAMES_ANY_SHARED
+            + LENGTHS_ANY_SHARED
         ),
         DEMO_FILES[1],
         DEMO_FILES[1],
@@ -26,17 +26,17 @@ CMP_SETUP = [
             CONTENT_ALL_A_IN_B
             + LENGTHS_ALL_A_IN_B
             + NAMES_ALL_A_IN_B
-            + TOPO_ALL_A_IN_B
-            + TOPO_ALL_B_IN_A
             + CONTENT_A_ORDER
             + CONTENT_B_ORDER
             + CONTENT_ANY_SHARED
+            + LENGTHS_ANY_SHARED
+            + NAMES_ANY_SHARED
         ),
         DEMO_FILES[0],
         DEMO_FILES[1],
     ),
     (
-        (LENGTHS_ALL_A_IN_B + LENGTHS_ALL_B_IN_A + TOPO_ALL_A_IN_B + TOPO_ALL_B_IN_A),
+        (LENGTHS_ALL_A_IN_B + LENGTHS_ALL_B_IN_A + LENGTHS_ANY_SHARED),
         DEMO_FILES[2],
         DEMO_FILES[4],
     ),

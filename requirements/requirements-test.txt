@@ -4,4 +4,3 @@ pytest-remotedata
 mock
 veracitools
 git+git://github.com/databio/refgenie_myplugin@master#egg=refgenie_myplugin
-tqdm

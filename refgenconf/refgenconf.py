@@ -10,7 +10,8 @@ import warnings
 import shutil
 import json
 
-from collections import Iterable, Mapping, OrderedDict
+from collections import OrderedDict
+from collections.abc import Iterable, Mapping
 from functools import partial
 from inspect import getfullargspec as finspect
 from urllib.error import HTTPError, ContentTooShortError

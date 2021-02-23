@@ -8,8 +8,7 @@ DEMO_FILES = ["demo.fa.gz", "demo2.fa", "demo3.fa", "demo4.fa", "demo5.fa.gz"]
 
 
 class TestAliasSetting:
-    @pytest.mark.parametrize(["alias", "digest"],
-                             [(["human_repeats", "rCRSd"], None)])
+    @pytest.mark.parametrize(["alias", "digest"], [(["human_repeats", "rCRSd"], None)])
     def test_set_genome_alias_server_more_than_1(self, my_rgc, alias, digest):
         """ Multi digest lookup is not implemented """
         with pytest.raises(NotImplementedError):
@@ -22,20 +21,35 @@ class TestAliasSetting:
         my_rgc.set_genome_alias(genome=alias, digest=digest)
         assert alias in my_rgc.get_genome_alias(digest=digest, all_aliases=True)
 
-    @pytest.mark.parametrize(["alias", "digest"], [(["hr"], "ebf26d2f064462bea7029e6b4d2298967d7435bff82ed224"),
-                                                    (["hr", "h_r"], "ebf26d2f064462bea7029e6b4d2298967d7435bff82ed224")])
+    @pytest.mark.parametrize(
+        ["alias", "digest"],
+        [
+            (["hr"], "ebf26d2f064462bea7029e6b4d2298967d7435bff82ed224"),
+            (["hr", "h_r"], "ebf26d2f064462bea7029e6b4d2298967d7435bff82ed224"),
+        ],
+    )
     def test_set_genome_alias(self, my_rgc, alias, digest):
         """
         Set aliases, check whether all exist in the object and as
         directories on disk and remove
         """
         my_rgc.set_genome_alias(genome=alias, digest=digest)
-        assert all([a in my_rgc.get_genome_alias(digest=digest, all_aliases=True) for a in alias])
+        assert all(
+            [
+                a in my_rgc.get_genome_alias(digest=digest, all_aliases=True)
+                for a in alias
+            ]
+        )
         assert all([os.path.exists(os.path.join(my_rgc.alias_dir, a)) for a in alias])
         my_rgc.remove_genome_aliases(digest=digest, aliases=alias)
 
-    @pytest.mark.parametrize(["alias", "digest"], [(["hr"], "ebf26d2f064462bea7029e6b4d2298967d7435bff82ed224"),
-                                                    (["hr", "h_r"], "ebf26d2f064462bea7029e6b4d2298967d7435bff82ed224")])
+    @pytest.mark.parametrize(
+        ["alias", "digest"],
+        [
+            (["hr"], "ebf26d2f064462bea7029e6b4d2298967d7435bff82ed224"),
+            (["hr", "h_r"], "ebf26d2f064462bea7029e6b4d2298967d7435bff82ed224"),
+        ],
+    )
     def test_set_genome_alias_reset(self, my_rgc, alias, digest):
         """
         Get original aliases, wipe out all current aliases and set new ones,
@@ -44,14 +58,23 @@ class TestAliasSetting:
         """
         ori_state = my_rgc.get_genome_alias(digest=digest, all_aliases=True)
         my_rgc.set_genome_alias(genome=alias, digest=digest, reset_digest=True)
-        assert all([a in my_rgc.get_genome_alias(digest=digest, all_aliases=True) for a in alias])
+        assert all(
+            [
+                a in my_rgc.get_genome_alias(digest=digest, all_aliases=True)
+                for a in alias
+            ]
+        )
         assert all([os.path.exists(os.path.join(my_rgc.alias_dir, a)) for a in alias])
-        assert len(my_rgc.get_genome_alias(digest=digest, all_aliases=True)) == len(alias)
+        assert len(my_rgc.get_genome_alias(digest=digest, all_aliases=True)) == len(
+            alias
+        )
         my_rgc.set_genome_alias(genome=ori_state, digest=digest, reset_digest=True)
 
 
 class TestAliasGetting:
-    @pytest.mark.parametrize("digest", ["ebf26d2f064462bea7029e6b4d2298967d7435bff82ed224"])
+    @pytest.mark.parametrize(
+        "digest", ["ebf26d2f064462bea7029e6b4d2298967d7435bff82ed224"]
+    )
     def test_get_genome_alias_basic(self, my_rgc, digest):
         """
         Get a single alias, first from the list, if multiple and then use
@@ -63,10 +86,14 @@ class TestAliasGetting:
         # test fallback
         assert my_rgc.get_genome_alias_digest(alias=digest, fallback=True) == digest
 
-    @pytest.mark.parametrize("digest", ["ebf26d2f064462bea7029e6b4d2298967d7435bff82ed224"])
+    @pytest.mark.parametrize(
+        "digest", ["ebf26d2f064462bea7029e6b4d2298967d7435bff82ed224"]
+    )
     def test_get_genome_alias_multi(self, my_rgc, digest):
         """ Get muliple single aliases, result is always a list """
-        assert isinstance(my_rgc.get_genome_alias(digest=digest, all_aliases=True), list)
+        assert isinstance(
+            my_rgc.get_genome_alias(digest=digest, all_aliases=True), list
+        )
 
     @pytest.mark.parametrize("digest", ["human_repeats"])
     def test_get_genome_alias_no_fallback(self, my_rgc, digest):
@@ -96,8 +123,9 @@ class TestAliasGetting:
 
 
 class TestAliasRemoval:
-    @pytest.mark.parametrize("digest",
-                             ["ebf26d2f064462bea7029e6b4d2298967d7435bff82ed224"])
+    @pytest.mark.parametrize(
+        "digest", ["ebf26d2f064462bea7029e6b4d2298967d7435bff82ed224"]
+    )
     def test_remove_genome_alias_all(self, my_rgc, digest):
         """
         Save original aliases state, remove all, check that aliases have
@@ -108,12 +136,21 @@ class TestAliasRemoval:
         my_rgc.remove_genome_aliases(digest=digest)
         with pytest.raises(UndefinedAliasError):
             my_rgc.get_genome_alias(digest=digest)
-        assert all([not os.path.exists(os.path.join(my_rgc.alias_dir, a)) for a in ori_state])
+        assert all(
+            [not os.path.exists(os.path.join(my_rgc.alias_dir, a)) for a in ori_state]
+        )
         my_rgc.set_genome_alias(digest=digest, genome=ori_state)
-        assert isinstance(my_rgc.get_genome_alias(digest=digest, all_aliases=True), list)
+        assert isinstance(
+            my_rgc.get_genome_alias(digest=digest, all_aliases=True), list
+        )
 
-    @pytest.mark.parametrize(["alias", "digest"], [(["hr"], "ebf26d2f064462bea7029e6b4d2298967d7435bff82ed224"),
-                                                   (["hr", "h_r"], "ebf26d2f064462bea7029e6b4d2298967d7435bff82ed224")])
+    @pytest.mark.parametrize(
+        ["alias", "digest"],
+        [
+            (["hr"], "ebf26d2f064462bea7029e6b4d2298967d7435bff82ed224"),
+            (["hr", "h_r"], "ebf26d2f064462bea7029e6b4d2298967d7435bff82ed224"),
+        ],
+    )
     def test_remove_genome_alias_specific(self, my_rgc, digest, alias):
         """
         Set selected aliases and an additional one remove the selected ones,
@@ -121,7 +158,9 @@ class TestAliasRemoval:
         """
         my_rgc.set_genome_alias(digest=digest, genome=alias + ["human_repeats"])
         my_rgc.remove_genome_aliases(digest=digest, aliases=alias)
-        assert "human_repeats" in my_rgc.get_genome_alias(digest=digest, all_aliases=True)
+        assert "human_repeats" in my_rgc.get_genome_alias(
+            digest=digest, all_aliases=True
+        )
 
 
 class TestInitializeGenome:
@@ -131,7 +170,11 @@ class TestInitializeGenome:
         Save original aliases state, remove all, check that aliases have
         been removed from the object and disk, bring back the original state
         """
-        d, asds = my_rgc.initialize_genome(fasta_path=os.path.join(fasta_path, fasta_name), alias=fasta_name, fasta_unzipped=not fasta_name.endswith(".gz"))
+        d, asds = my_rgc.initialize_genome(
+            fasta_path=os.path.join(fasta_path, fasta_name),
+            alias=fasta_name,
+            fasta_unzipped=not fasta_name.endswith(".gz"),
+        )
         assert d in my_rgc[CFG_GENOMES_KEY]
         assert fasta_name in my_rgc[CFG_GENOMES_KEY][d][CFG_ALIASES_KEY]
         with my_rgc as r:

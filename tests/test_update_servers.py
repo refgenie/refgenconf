@@ -19,8 +19,7 @@ class TestUpdateServers:
     @pytest.mark.parametrize("urls", [["www.new_url.com", "www.url.pl"]])
     def test_multiple_urls(self, my_rgc, urls):
         my_rgc.subscribe(urls=urls)
-        assert urls[0] in my_rgc[CFG_SERVERS_KEY] and \
-               urls[1] in my_rgc[CFG_SERVERS_KEY]
+        assert urls[0] in my_rgc[CFG_SERVERS_KEY] and urls[1] in my_rgc[CFG_SERVERS_KEY]
 
     @pytest.mark.parametrize("urls", [["www.new_url.com", "www.new_url.com"]])
     def test_reset(self, my_rgc, urls):

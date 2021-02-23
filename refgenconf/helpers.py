@@ -51,6 +51,7 @@ def unbound_env_vars(path):
 
 def asciify_json_dict(json_dict):
     from ubiquerg.collection import asciify_dict
+
     return asciify_dict(json_dict)
 
 
@@ -65,22 +66,28 @@ def get_dir_digest(path, pm=None):
     :return str: a digest, e.g. a3c46f201a3ce7831d85cf4a125aa334
     """
     if not is_command_callable("md5sum"):
-        raise OSError("md5sum command line tool is required for asset digest "
-                      "calculation. \n"
-                      "Install and try again, e.g on macOS: 'brew install "
-                      "md5sha1sum'")
-    cmd = "cd {}; find . -type f -not -path './" + BUILD_STATS_DIR + \
-          "*' -exec md5sum {{}} \; | sort -k 2 | awk '{{print $1}}' | md5sum"
+        raise OSError(
+            "md5sum command line tool is required for asset digest "
+            "calculation. \n"
+            "Install and try again, e.g on macOS: 'brew install "
+            "md5sha1sum'"
+        )
+    cmd = (
+        "cd {}; find . -type f -not -path './"
+        + BUILD_STATS_DIR
+        + "*' -exec md5sum {{}} \; | sort -k 2 | awk '{{print $1}}' | md5sum"
+    )
     try:
         x = pm.checkprint(cmd.format(path))
     except AttributeError:
         try:
             from subprocess import check_output
+
             x = check_output(cmd.format(path), shell=True).decode("utf-8")
         except Exception as e:
 
             return
-    return str(sub(r'\W+', '', x))  # strips non-alphanumeric
+    return str(sub(r"\W+", "", x))  # strips non-alphanumeric
 
 
 def format_config_03_04(rgc, get_json_url):
@@ -98,33 +105,29 @@ def format_config_03_04(rgc, get_json_url):
     """
 
     _LOGGER.info("Upgrading v0.3 config file format to v0.4.")
-   
+
     for genome, genome_v in rgc[CFG_GENOMES_KEY].items():
         digest = ""
         try:
             _LOGGER.info(
                 f"Generating the digest from a local fasta file, "
                 f"and createing the ASDs for {genome}."
-                )
+            )
             tag = rgc.get_default_tag(genome, "fasta")
             asset_path = rgc.seek(genome, "fasta", tag, "fasta")
             ssc = SeqColClient({})
             digest, asdl = ssc.load_fasta(asset_path)
-            _LOGGER.info(
-                f"Generated {genome} digest from local fasta file: {digest}"
-                )
+            _LOGGER.info(f"Generated {genome} digest from local fasta file: {digest}")
             # retrieve annotated sequence digests list to save in a JSON file
             pth = os.path.join(rgc[CFG_FOLDER_KEY], genome, genome + "__ASDs.json")
             os.makedirs(os.path.dirname(pth), exist_ok=True)
             with open(pth, "w") as jfp:
                 json.dump(asdl, jfp)
-            _LOGGER.info(
-                f"Saved ASDs to JSON: {pth}"
-                )
+            _LOGGER.info(f"Saved ASDs to JSON: {pth}")
         except (MissingAssetError, FileNotFoundError):
             _LOGGER.info(
                 f"No local fasta asset found for {genome}. Retrieving digest from the server."
-                )
+            )
             # get genome digest from the server
             cnt = 0
             servers = rgc[CFG_SERVERS_KEY]
@@ -132,14 +135,18 @@ def format_config_03_04(rgc, get_json_url):
                 cnt += 1
                 if not digest:
                     try:
-                        url_alias = get_json_url(s=server, i=API_VERSION+API_ID_ALIAS_DIGEST).format(alias=genome)
+                        url_alias = get_json_url(
+                            s=server, i=API_VERSION + API_ID_ALIAS_DIGEST
+                        ).format(alias=genome)
                         digest = download_json(url_alias)
                         _LOGGER.info(
-                            f"Retrieved {genome} digest from the server: {digest}")
+                            f"Retrieved {genome} digest from the server: {digest}"
+                        )
                     except (KeyError, ConnectionError, DownloadJsonError) as e:
                         if cnt == len(servers):
                             _LOGGER.info(
-                                f"Failed to retrieve the digest for {genome}. ")
+                                f"Failed to retrieve the digest for {genome}. "
+                            )
                         continue
                 continue
 
@@ -172,59 +179,80 @@ def alter_file_tree_03_04(rgc, link_fun):
     for k, v in rgc[CFG_GENOMES_KEY].items():
         my_genome.update([(v[CFG_ALIASES_KEY][0], k)])
 
-    _LOGGER.info(f"Creating '{DATA_DIR}' and '{ALIAS_DIR}' directories in "
-                 f"'{rgc[CFG_FOLDER_KEY]}'.")
+    _LOGGER.info(
+        f"Creating '{DATA_DIR}' and '{ALIAS_DIR}' directories in "
+        f"'{rgc[CFG_FOLDER_KEY]}'."
+    )
     os.mkdir(os.path.abspath(os.path.join(rgc[CFG_FOLDER_KEY], DATA_DIR)))
     os.mkdir(os.path.abspath(os.path.join(rgc[CFG_FOLDER_KEY], ALIAS_DIR)))
 
     _LOGGER.info(
         f"Copying assets to '{DATA_DIR}' and creating alias symlinks in "
         f"'{ALIAS_DIR}'. Genomes that the digest could not be determined for "
-        f"will be ignored.")
+        f"will be ignored."
+    )
     for root, dirs, files in os.walk(rgc[CFG_FOLDER_KEY]):
         for dir in dirs:
             if dir in my_genome:
-                shutil.copytree(os.path.join(rgc[CFG_FOLDER_KEY], dir),
-                                os.path.join(rgc[CFG_FOLDER_KEY], DATA_DIR,
-                                             dir), symlinks=True)
+                shutil.copytree(
+                    os.path.join(rgc[CFG_FOLDER_KEY], dir),
+                    os.path.join(rgc[CFG_FOLDER_KEY], DATA_DIR, dir),
+                    symlinks=True,
+                )
         del dirs[:]
 
-    for root, dirs, files in os.walk(
-            os.path.join(rgc[CFG_FOLDER_KEY], DATA_DIR)):
+    for root, dirs, files in os.walk(os.path.join(rgc[CFG_FOLDER_KEY], DATA_DIR)):
         for dir in dirs:
             swap_names_in_tree(os.path.join(root, dir), my_genome[dir], dir)
             os.mkdir(os.path.join(rgc[CFG_FOLDER_KEY], ALIAS_DIR, dir))
             # create symlink for alias folder
-            for genome, assets, files in os.walk(
-                    os.path.join(root, my_genome[dir])):
+            for genome, assets, files in os.walk(os.path.join(root, my_genome[dir])):
                 for asset in assets:
                     old_path = os.path.join(genome, asset)
                     new_path = old_path.replace(my_genome[dir], dir).replace(
-                        DATA_DIR, ALIAS_DIR)
+                        DATA_DIR, ALIAS_DIR
+                    )
                     os.mkdir(new_path)
 
                 for file in files:
-                    des_path = os.path.join(genome, file) # current file
-                    src_path = os.path.realpath(des_path).replace(os.path.realpath(rgc[CFG_FOLDER_KEY]), 
-                                os.path.join(rgc[CFG_FOLDER_KEY], DATA_DIR)).replace(dir, my_genome[dir]) # replace /genome_folder with /genome_folder/data
-                                                                                                          # replace alias in the file name with genome digest
-                    
-                    if os.path.islink(des_path): # if the current file is a link 
-                        os.remove(des_path) # remove the link that would not work after deleting old genome assest
-                        link_fun(src_path, des_path) # create the link with correct src
-                    
-                    old_path = os.path.join(genome, file) # path of the file in data dir
-                    new_path = old_path.replace(my_genome[dir], dir).replace(   # path of the file in alias
-                        DATA_DIR, ALIAS_DIR)
-                    
-                    rel_old_path = os.path.join(os.path.relpath(os.path.dirname(old_path),
-                                        os.path.dirname(new_path)),
-                                        os.path.basename(old_path))
-                    link_fun(rel_old_path , new_path)
+                    des_path = os.path.join(genome, file)  # current file
+                    src_path = (
+                        os.path.realpath(des_path)
+                        .replace(
+                            os.path.realpath(rgc[CFG_FOLDER_KEY]),
+                            os.path.join(rgc[CFG_FOLDER_KEY], DATA_DIR),
+                        )
+                        .replace(dir, my_genome[dir])
+                    )  # replace /genome_folder with /genome_folder/data
+                    # replace alias in the file name with genome digest
+
+                    if os.path.islink(des_path):  # if the current file is a link
+                        os.remove(
+                            des_path
+                        )  # remove the link that would not work after deleting old genome assest
+                        link_fun(src_path, des_path)  # create the link with correct src
+
+                    old_path = os.path.join(
+                        genome, file
+                    )  # path of the file in data dir
+                    new_path = old_path.replace(
+                        my_genome[dir], dir
+                    ).replace(  # path of the file in alias
+                        DATA_DIR, ALIAS_DIR
+                    )
+
+                    rel_old_path = os.path.join(
+                        os.path.relpath(
+                            os.path.dirname(old_path), os.path.dirname(new_path)
+                        ),
+                        os.path.basename(old_path),
+                    )
+                    link_fun(rel_old_path, new_path)
         del dirs[:]
 
-    _LOGGER.info(f"Removing genome assets that have been copied "
-                 f"to '{DATA_DIR}' directory.")
+    _LOGGER.info(
+        f"Removing genome assets that have been copied " f"to '{DATA_DIR}' directory."
+    )
     for genome, genome_v in rgc[CFG_GENOMES_KEY].items():
         d = os.path.join(rgc[CFG_FOLDER_KEY], genome_v[CFG_ALIASES_KEY][0])
         shutil.rmtree(d)
@@ -242,8 +270,7 @@ def swap_names_in_tree(top, new_name, old_name):
     """
 
     def _rename(x, rt):
-        os.rename(os.path.join(rt, x),
-                  os.path.join(rt, x.replace(old_name, new_name)))
+        os.rename(os.path.join(rt, x), os.path.join(rt, x.replace(old_name, new_name)))
 
     if not os.path.isdir(top):
         return False
@@ -274,7 +301,6 @@ def download_json(url, params=None):
     elif resp.status_code == 404:
         resp = None
     raise DownloadJsonError(resp)
-
 
 
 def replace_str_in_obj(object, x, y):

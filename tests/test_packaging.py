@@ -14,19 +14,24 @@ def _is_custom_error(obj):
 
 @pytest.mark.parametrize(
     ["obj_name", "typecheck"],
-    [("RefGenConf", isclass), ("select_genome_config", isfunction),
-     ("DownloadJsonError", _is_custom_error),
-     ("GenomeConfigFormatError", _is_custom_error),
-     ("MissingAssetError", _is_custom_error),
-     ("MissingConfigDataError", _is_custom_error),
-     ("MissingGenomeError", _is_custom_error),
-     ("MissingSeekKeyError", _is_custom_error),
-     ("MissingTagError", _is_custom_error),
-     ("ConfigNotCompliantError", _is_custom_error),
-     ("UnboundEnvironmentVariablesError", _is_custom_error)])
+    [
+        ("RefGenConf", isclass),
+        ("select_genome_config", isfunction),
+        ("DownloadJsonError", _is_custom_error),
+        ("GenomeConfigFormatError", _is_custom_error),
+        ("MissingAssetError", _is_custom_error),
+        ("MissingConfigDataError", _is_custom_error),
+        ("MissingGenomeError", _is_custom_error),
+        ("MissingSeekKeyError", _is_custom_error),
+        ("MissingTagError", _is_custom_error),
+        ("ConfigNotCompliantError", _is_custom_error),
+        ("UnboundEnvironmentVariablesError", _is_custom_error),
+    ],
+)
 def test_top_level_exports(obj_name, typecheck):
     """ At package level, validate object availability and type. """
     import refgenconf
+
     try:
         obj = getattr(refgenconf, obj_name)
     except AttributeError:

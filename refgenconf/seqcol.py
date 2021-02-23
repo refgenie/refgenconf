@@ -20,19 +20,19 @@ def _schema_path(name):
     return os.path.join(SCHEMA_FILEPATH, name)
 
 
-CONTENT_ALL_A_IN_B = 2**0
-CONTENT_ALL_B_IN_A = 2**1
-LENGTHS_ALL_A_IN_B = 2**2
-LENGTHS_ALL_B_IN_A = 2**3
-NAMES_ALL_A_IN_B = 2**4
-NAMES_ALL_B_IN_A = 2**5
-TOPO_ALL_A_IN_B = 2**6
-TOPO_ALL_B_IN_A = 2**7
-CONTENT_ANY_SHARED = 2**8
-LENGTHS_ANY_SHARED = 2**9
-NAMES_ANY_SHARED = 2**10
-CONTENT_A_ORDER = 2**11
-CONTENT_B_ORDER = 2**12
+CONTENT_ALL_A_IN_B = 2 ** 0
+CONTENT_ALL_B_IN_A = 2 ** 1
+LENGTHS_ALL_A_IN_B = 2 ** 2
+LENGTHS_ALL_B_IN_A = 2 ** 3
+NAMES_ALL_A_IN_B = 2 ** 4
+NAMES_ALL_B_IN_A = 2 ** 5
+TOPO_ALL_A_IN_B = 2 ** 6
+TOPO_ALL_B_IN_A = 2 ** 7
+CONTENT_ANY_SHARED = 2 ** 8
+LENGTHS_ANY_SHARED = 2 ** 9
+NAMES_ANY_SHARED = 2 ** 10
+CONTENT_A_ORDER = 2 ** 11
+CONTENT_B_ORDER = 2 ** 12
 
 FLAGS = {
     CONTENT_ALL_A_IN_B: "CONTENT_ALL_A_IN_B",
@@ -47,7 +47,7 @@ FLAGS = {
     LENGTHS_ANY_SHARED: "LENGTHS_ANY_SHARED",
     NAMES_ANY_SHARED: "NAMES_ANY_SHARED",
     CONTENT_A_ORDER: "CONTENT_A_ORDER",
-    CONTENT_B_ORDER: "CONTENT_B_ORDER"
+    CONTENT_B_ORDER: "CONTENT_B_ORDER",
 }
 
 KNOWN_TOPOS = ["linear", "circular"]
@@ -71,8 +71,9 @@ class SeqColClient(Henge):
     Extension of henge that accommodates collections of sequences.
     """
 
-    def __init__(self, database, schemas=None, henges=None,
-                 checksum_function=trunc512_digest):
+    def __init__(
+        self, database, schemas=None, henges=None, checksum_function=trunc512_digest
+    ):
         """
         A user interface to insert and retrieve decomposable recursive unique
         identifiers (DRUIDs).
@@ -85,15 +86,19 @@ class SeqColClient(Henge):
             handle the digest of the
             serialized items stored in this henge.
         """
-        assert all([os.path.exists(s) for s in INTERNAL_SCHEMAS]), \
-            RefgenconfError(
-                "Missing schema files: {}".format(INTERNAL_SCHEMAS))
+        assert all([os.path.exists(s) for s in INTERNAL_SCHEMAS]), RefgenconfError(
+            "Missing schema files: {}".format(INTERNAL_SCHEMAS)
+        )
         super(SeqColClient, self).__init__(
-            database=database, schemas=schemas or INTERNAL_SCHEMAS,
-            henges=henges, checksum_function=checksum_function
+            database=database,
+            schemas=schemas or INTERNAL_SCHEMAS,
+            henges=henges,
+            checksum_function=checksum_function,
         )
 
-    def load_fasta(self, fa_file, skip_seq=False, topology_default="linear", gzipped=False):
+    def load_fasta(
+        self, fa_file, skip_seq=False, topology_default="linear", gzipped=False
+    ):
         """
         Load a sequence collection into the database
 
@@ -107,33 +112,44 @@ class SeqColClient(Henge):
         """
         # TODO: any systematic way infer topology from a FASTA file?
         if topology_default not in KNOWN_TOPOS:
-            raise ValueError(f"Invalid topology ({topology_default}). "
-                             f"Choose from: {','.join(KNOWN_TOPOS)}")
+            raise ValueError(
+                f"Invalid topology ({topology_default}). "
+                f"Choose from: {','.join(KNOWN_TOPOS)}"
+            )
 
         seq = ""
         name = ""
         init = False
         aslist = []
         openfun = gzopen if gzipped else open
-        with openfun(fa_file, 'rt') as f:
+        with openfun(fa_file, "rt") as f:
             for line in f:
-                line = line.strip('\n')
+                line = line.strip("\n")
                 if line.startswith(">"):
                     if not init:
                         name = line.replace(">", "")
                     else:
-                        aslist.append({
-                            NAME_KEY: name, LEN_KEY: len(seq),
-                            TOPO_KEY: topology_default,
-                            SEQ_KEY: "" if skip_seq else trunc512_digest(seq)})
+                        aslist.append(
+                            {
+                                NAME_KEY: name,
+                                LEN_KEY: len(seq),
+                                TOPO_KEY: topology_default,
+                                SEQ_KEY: "" if skip_seq else trunc512_digest(seq),
+                            }
+                        )
                         name = line.replace(">", "")
                     seq = ""
                     continue
                 init = True
                 seq = seq + line
             aslist.append(
-                {NAME_KEY: name, LEN_KEY: len(seq), TOPO_KEY: topology_default,
-                 SEQ_KEY: "" if skip_seq else trunc512_digest(seq)})
+                {
+                    NAME_KEY: name,
+                    LEN_KEY: len(seq),
+                    TOPO_KEY: topology_default,
+                    SEQ_KEY: "" if skip_seq else trunc512_digest(seq),
+                }
+            )
 
         collection_checksum = self.insert(aslist, ASDL_NAME)
         _LOGGER.info(f"Loaded {ASDL_NAME} ({len(aslist)} sequences)")
@@ -164,8 +180,9 @@ class SeqColClient(Henge):
             """
             Find the intersection between two list of dicts with sequences
             """
-            return list(filter(None.__ne__,
-                               [_index(x, lstB) for x in _xp(SEQ_KEY, lstA)]))
+            return list(
+                filter(None.__ne__, [_index(x, lstB) for x in _xp(SEQ_KEY, lstA)])
+            )
 
         # Not ideal, but we expect these to return lists, but if the item was
         # singular only a dict is returned
@@ -235,8 +252,9 @@ class SeqColClient(Henge):
         typeB = self.database[digestB + ITEM_TYPE]
 
         if typeA != typeB:
-            _LOGGER.error(f"Can't compare objects of different types: "
-                          f"{typeA} vs {typeB}")
+            _LOGGER.error(
+                f"Can't compare objects of different types: " f"{typeA} vs {typeB}"
+            )
 
         asdA = self.retrieve(digestA, reclimit=1)
         asdB = self.retrieve(digestB, reclimit=1)
@@ -245,9 +263,10 @@ class SeqColClient(Henge):
 
 # Static functions below (these don't require a database)
 
+
 def explain_flag(flag):
     """ Explains a compare flag """
     print(f"Flag: {flag}\nBinary: {bin(flag)}\n")
     for e in range(0, 13):
-        if flag & 2**e:
-            print(FLAGS[2**e])
+        if flag & 2 ** e:
+            print(FLAGS[2 ** e])

@@ -1,20 +1,28 @@
 """ Tests for listing remotely available genomes and assets. """
 
 from collections import OrderedDict
-from refgenconf import RefGenConf, CFG_FOLDER_KEY, CFG_GENOMES_KEY, \
-    CFG_SERVERS_KEY, API_VERSION
+from refgenconf import (
+    RefGenConf,
+    CFG_FOLDER_KEY,
+    CFG_GENOMES_KEY,
+    CFG_SERVERS_KEY,
+    API_VERSION,
+)
 from refgenconf.helpers import download_json
 import pytest
 
 
-@pytest.mark.parametrize("genome", [["human_repeats"], ["human_repeats", "rCRSd"], None])
+@pytest.mark.parametrize(
+    "genome", [["human_repeats"], ["human_repeats", "rCRSd"], None]
+)
 def test_list_remote(my_rgc, genome):
     """ Verify expected behavior of remote genome/asset listing. """
     assert len(my_rgc[CFG_SERVERS_KEY]) == 1, "Expected only one test server"
     server = my_rgc[CFG_SERVERS_KEY][0]
     result = my_rgc.listr(genome=genome)
-    assert len(result.keys()) == 1, "More servers in list remote result " \
-                                    "than subscribed to"
+    assert len(result.keys()) == 1, (
+        "More servers in list remote result " "than subscribed to"
+    )
     server_key = list(result.keys())[0]
     assert server_key.startswith(server)
     json_genomes = download_json(server_key)
@@ -24,4 +32,3 @@ def test_list_remote(my_rgc, genome):
             assert len(assets) == len(result[server_key][g])
     else:
         assert len(genome) == len(result[server_key])
-

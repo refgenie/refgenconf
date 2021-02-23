@@ -22,8 +22,15 @@ BUILD_STATS_DIR = "_refgenie_build"
 ALIAS_DIR = "alias"
 DATA_DIR = "data"
 
-FILE_DIR_NAMES = ["TEMPLATE_RECIPE_JSON", "TEMPLATE_TARGET", "TEMPLATE_LOG",
-                  "ORI_LOG_NAME", "BUILD_STATS_DIR", "ALIAS_DIR", "DATA_DIR"]
+FILE_DIR_NAMES = [
+    "TEMPLATE_RECIPE_JSON",
+    "TEMPLATE_TARGET",
+    "TEMPLATE_LOG",
+    "ORI_LOG_NAME",
+    "BUILD_STATS_DIR",
+    "ALIAS_DIR",
+    "DATA_DIR",
+]
 
 # project-wide definition of the endpoint IDs. They are used to establish the
 # way of communication between the server and the client so that changes of
@@ -47,9 +54,12 @@ API_ID_GENOMES_DICT = CUSTOM_PFX + "_genomes_dict"
 # modules for systematic links generation in the splash pages
 OPERATION_IDS = {
     "asset": {
-        API_ID_ARCHIVE: "archive", API_ID_ASSET_ATTRS: "attributes",
-        API_ID_DIGEST: "asset digest", API_ID_ARCHIVE_DIGEST: "archive digest",
-        API_ID_RECIPE: "build recipe", API_ID_LOG: "build log"
+        API_ID_ARCHIVE: "archive",
+        API_ID_ASSET_ATTRS: "attributes",
+        API_ID_DIGEST: "asset digest",
+        API_ID_ARCHIVE_DIGEST: "archive digest",
+        API_ID_RECIPE: "build recipe",
+        API_ID_LOG: "build log",
     },
     "v3_asset": {
         API_VERSION + API_ID_ARCHIVE: "archive",
@@ -57,15 +67,24 @@ OPERATION_IDS = {
         API_VERSION + API_ID_DIGEST: "asset digest",
         API_VERSION + API_ID_ARCHIVE_DIGEST: "archive digest",
         API_VERSION + API_ID_RECIPE: "build recipe",
-        API_VERSION + API_ID_LOG: "build log"
-    }
+        API_VERSION + API_ID_LOG: "build log",
+    },
 }
 
 API_IDS = [
-    "API_ID_ASSETS", "API_ID_ARCHIVE", "API_ID_DEFAULT_TAG", "API_ID_LOG",
-    "API_ID_DIGEST", "API_ID_RECIPE", "API_ID_ASSET_ATTRS", "API_ID_SPLASH",
-    "API_ID_ARCHIVE_DIGEST", "API_ID_ALIAS_ALIAS", "API_ID_ALIAS_DIGEST",
-    "API_ID_GENOME_ATTRS", "API_ID_GENOMES_DICT"
+    "API_ID_ASSETS",
+    "API_ID_ARCHIVE",
+    "API_ID_DEFAULT_TAG",
+    "API_ID_LOG",
+    "API_ID_DIGEST",
+    "API_ID_RECIPE",
+    "API_ID_ASSET_ATTRS",
+    "API_ID_SPLASH",
+    "API_ID_ARCHIVE_DIGEST",
+    "API_ID_ALIAS_ALIAS",
+    "API_ID_ALIAS_DIGEST",
+    "API_ID_GENOME_ATTRS",
+    "API_ID_GENOMES_DICT",
 ]
 
 CFG_FOLDER_KEY = "genome_folder"
@@ -100,23 +119,57 @@ CFG_TAG_DESC_KEY = "tag_description"
 CFG_ASSET_RELATIVES_KEYS = [CFG_ASSET_CHILDREN_KEY, CFG_ASSET_PARENTS_KEY]
 
 CFG_TOP_LEVEL_KEYS = [
-    CFG_FOLDER_KEY, CFG_SERVER_KEY, CFG_SERVERS_KEY, CFG_ARCHIVE_KEY, CFG_GENOMES_KEY, CFG_ALIASES_KEY,
-    CFG_VERSION_KEY, CFG_ARCHIVE_CONFIG_KEY, CFG_ARCHIVE_KEY_OLD, CFG_REMOTE_URL_BASE_KEY]
-CFG_GENOME_KEYS = [
-    CFG_GENOME_DESC_KEY, CFG_ASSETS_KEY, CFG_CHECKSUM_KEY]
+    CFG_FOLDER_KEY,
+    CFG_SERVER_KEY,
+    CFG_SERVERS_KEY,
+    CFG_ARCHIVE_KEY,
+    CFG_GENOMES_KEY,
+    CFG_ALIASES_KEY,
+    CFG_VERSION_KEY,
+    CFG_ARCHIVE_CONFIG_KEY,
+    CFG_ARCHIVE_KEY_OLD,
+    CFG_REMOTE_URL_BASE_KEY,
+]
+CFG_GENOME_KEYS = [CFG_GENOME_DESC_KEY, CFG_ASSETS_KEY, CFG_CHECKSUM_KEY]
 CFG_GENOME_ATTRS_KEYS = [CFG_GENOME_DESC_KEY, CFG_CHECKSUM_KEY]
-CFG_SINGLE_ASSET_SECTION_KEYS = [CFG_ASSET_PATH_KEY, CFG_ASSET_DESC_KEY, CFG_ASSET_SIZE_KEY, CFG_ARCHIVE_SIZE_KEY,
-                                 CFG_ARCHIVE_CHECKSUM_KEY, CFG_SEEK_KEYS_KEY, CFG_GENOME_MASK_KEY]
+CFG_SINGLE_ASSET_SECTION_KEYS = [
+    CFG_ASSET_PATH_KEY,
+    CFG_ASSET_DESC_KEY,
+    CFG_ASSET_SIZE_KEY,
+    CFG_ARCHIVE_SIZE_KEY,
+    CFG_ARCHIVE_CHECKSUM_KEY,
+    CFG_SEEK_KEYS_KEY,
+    CFG_GENOME_MASK_KEY,
+]
 
-RGC_REQ_KEYS = [CFG_SERVERS_KEY, CFG_FOLDER_KEY,
-                CFG_GENOMES_KEY, CFG_VERSION_KEY]
+RGC_REQ_KEYS = [CFG_SERVERS_KEY, CFG_FOLDER_KEY, CFG_GENOMES_KEY, CFG_VERSION_KEY]
 
 CFG_KEY_NAMES = [
-    "CFG_FOLDER_KEY", "CFG_SERVER_KEY", "CFG_SERVERS_KEY", "CFG_GENOMES_KEY", "CFG_GENOME_MASK_KEY", "CFG_ALIASES_KEY",
-    "CFG_ASSET_PATH_KEY", "CFG_ASSET_DESC_KEY", "CFG_ARCHIVE_KEY", "CFG_ARCHIVE_SIZE_KEY", "CFG_SEEK_KEYS_KEY",
-    "CFG_ASSET_SIZE_KEY", "CFG_CHECKSUM_KEY", "CFG_ARCHIVE_CHECKSUM_KEY", "CFG_VERSION_KEY", "CFG_ASSET_PARENTS_KEY",
-    "CFG_ASSET_CHILDREN_KEY", "CFG_TAG_DESC_KEY", "CFG_ASSET_CHECKSUM_KEY", "CFG_ASSET_TAGS_KEY",
-    "CFG_ASSET_RELATIVES_KEYS", "CFG_ARCHIVE_CONFIG_KEY", "CFG_ARCHIVE_KEY_OLD", "CFG_REMOTE_URL_BASE_KEY"]
+    "CFG_FOLDER_KEY",
+    "CFG_SERVER_KEY",
+    "CFG_SERVERS_KEY",
+    "CFG_GENOMES_KEY",
+    "CFG_GENOME_MASK_KEY",
+    "CFG_ALIASES_KEY",
+    "CFG_ASSET_PATH_KEY",
+    "CFG_ASSET_DESC_KEY",
+    "CFG_ARCHIVE_KEY",
+    "CFG_ARCHIVE_SIZE_KEY",
+    "CFG_SEEK_KEYS_KEY",
+    "CFG_ASSET_SIZE_KEY",
+    "CFG_CHECKSUM_KEY",
+    "CFG_ARCHIVE_CHECKSUM_KEY",
+    "CFG_VERSION_KEY",
+    "CFG_ASSET_PARENTS_KEY",
+    "CFG_ASSET_CHILDREN_KEY",
+    "CFG_TAG_DESC_KEY",
+    "CFG_ASSET_CHECKSUM_KEY",
+    "CFG_ASSET_TAGS_KEY",
+    "CFG_ASSET_RELATIVES_KEYS",
+    "CFG_ARCHIVE_CONFIG_KEY",
+    "CFG_ARCHIVE_KEY_OLD",
+    "CFG_REMOTE_URL_BASE_KEY",
+]
 
 # hook identifiers
 PRE_UPDATE_HOOK = "pre_update"
@@ -129,23 +182,61 @@ PRE_LIST_HOOK = "pre_list"
 POST_LIST_HOOK = "post_list"
 # HOOKS is a list of all available plugin entry points
 HOOK_NAMES = [
-    "PRE_LIST_HOOK", "PRE_PULL_HOOK", "PRE_TAG_HOOK", "PRE_UPDATE_HOOK",
-    "POST_TAG_HOOK", "POST_LIST_HOOK", "POST_PULL_HOOK", "POST_UPDATE_HOOK"]
+    "PRE_LIST_HOOK",
+    "PRE_PULL_HOOK",
+    "PRE_TAG_HOOK",
+    "PRE_UPDATE_HOOK",
+    "POST_TAG_HOOK",
+    "POST_LIST_HOOK",
+    "POST_PULL_HOOK",
+    "POST_UPDATE_HOOK",
+]
 HOOKS = [eval(x) for x in HOOK_NAMES]
 
 # other consts
 REQ_CFG_VERSION = 0.4
 REFGENIE_BY_CFG = {"0.4": "0.10.0", "0.3": "0.7.0", "0.2": "0.6.0"}
 CFG_UPGRADE = {"0.3": ["0.4"]}
-ATTRS_COPY_PULL = [CFG_ASSET_DESC_KEY, CFG_SEEK_KEYS_KEY, CFG_ASSET_PARENTS_KEY, CFG_ASSET_PATH_KEY,
-                   CFG_ASSET_CHECKSUM_KEY, CFG_TAG_DESC_KEY]
+ATTRS_COPY_PULL = [
+    CFG_ASSET_DESC_KEY,
+    CFG_SEEK_KEYS_KEY,
+    CFG_ASSET_PARENTS_KEY,
+    CFG_ASSET_PATH_KEY,
+    CFG_ASSET_CHECKSUM_KEY,
+    CFG_TAG_DESC_KEY,
+]
 REQ_TAG_ATTRS = [CFG_ASSET_PATH_KEY, CFG_SEEK_KEYS_KEY]
 CUSTOM_BAR_FMT = "{desc}{percentage:3.0f}%|{bar}| {n_fmt} [{elapsed}<{remaining} {rate_fmt}{postfix}]"
 
-__all__ = ["DEFAULT_SERVER", "CFG_ASSET_DEFAULT_TAG_KEY", "CFG_KEY_NAMES", "CFG_GENOME_DESC_KEY", "REQ_CFG_VERSION",
-           "CFG_ASSETS_KEY", "CFG_GENOME_ATTRS_KEYS", "REFGENIE_BY_CFG", "CFG_UPGRADE", "DEFAULT_TAG", "ATTRS_COPY_PULL",
-           "RGC_REQ_KEYS", "REQ_TAG_ATTRS", "CUSTOM_BAR_FMT", "API_VERSION", "API_VERSION_2", "CONF_STRUCTURE", "OPERATION_IDS",
-           "CUSTOM_PFX", "HOOKS"] + FILE_DIR_NAMES + CFG_CONST + CFG_KEY_NAMES + API_IDS + HOOK_NAMES
+__all__ = (
+    [
+        "DEFAULT_SERVER",
+        "CFG_ASSET_DEFAULT_TAG_KEY",
+        "CFG_KEY_NAMES",
+        "CFG_GENOME_DESC_KEY",
+        "REQ_CFG_VERSION",
+        "CFG_ASSETS_KEY",
+        "CFG_GENOME_ATTRS_KEYS",
+        "REFGENIE_BY_CFG",
+        "CFG_UPGRADE",
+        "DEFAULT_TAG",
+        "ATTRS_COPY_PULL",
+        "RGC_REQ_KEYS",
+        "REQ_TAG_ATTRS",
+        "CUSTOM_BAR_FMT",
+        "API_VERSION",
+        "API_VERSION_2",
+        "CONF_STRUCTURE",
+        "OPERATION_IDS",
+        "CUSTOM_PFX",
+        "HOOKS",
+    ]
+    + FILE_DIR_NAMES
+    + CFG_CONST
+    + CFG_KEY_NAMES
+    + API_IDS
+    + HOOK_NAMES
+)
 
 CONF_STRUCTURE = """
 # example genome configuration structure
@@ -175,10 +266,27 @@ CONF_STRUCTURE = """
                             fasta: fcdd62cb90e86d03e45dcd05efa70d8bdc9577d5c6259cf5.fa.gz
                             fai: fcdd62cb90e86d03e45dcd05efa70d8bdc9577d5c6259cf5.fa.fai
                             chrom_sizes: fcdd62cb90e86d03e45dcd05efa70d8bdc9577d5c6259cf5.chrom.sizes
-""".format(folder=CFG_FOLDER_KEY, server=CFG_SERVERS_KEY, version=CFG_VERSION_KEY, assets=CFG_ASSETS_KEY,
-           archive=CFG_ARCHIVE_KEY, digest=CFG_CHECKSUM_KEY, genomes=CFG_GENOMES_KEY, aliases=CFG_ALIASES_KEY,
-           desc_genome=CFG_GENOME_DESC_KEY, asset_path=CFG_ASSET_PATH_KEY, desc_asset=CFG_ASSET_DESC_KEY,
-           archive_digest=CFG_ARCHIVE_CHECKSUM_KEY, asset_size=CFG_ASSET_SIZE_KEY, archive_size=CFG_ARCHIVE_SIZE_KEY,
-           seek_keys=CFG_SEEK_KEYS_KEY, asset_parents=CFG_ASSET_PARENTS_KEY, asset_children=CFG_ASSET_CHILDREN_KEY,
-           default=CFG_ASSET_DEFAULT_TAG_KEY, tags=CFG_ASSET_TAGS_KEY, asset_digest=CFG_ASSET_CHECKSUM_KEY,
-           tag_description=CFG_TAG_DESC_KEY, v=REQ_CFG_VERSION)
+""".format(
+    folder=CFG_FOLDER_KEY,
+    server=CFG_SERVERS_KEY,
+    version=CFG_VERSION_KEY,
+    assets=CFG_ASSETS_KEY,
+    archive=CFG_ARCHIVE_KEY,
+    digest=CFG_CHECKSUM_KEY,
+    genomes=CFG_GENOMES_KEY,
+    aliases=CFG_ALIASES_KEY,
+    desc_genome=CFG_GENOME_DESC_KEY,
+    asset_path=CFG_ASSET_PATH_KEY,
+    desc_asset=CFG_ASSET_DESC_KEY,
+    archive_digest=CFG_ARCHIVE_CHECKSUM_KEY,
+    asset_size=CFG_ASSET_SIZE_KEY,
+    archive_size=CFG_ARCHIVE_SIZE_KEY,
+    seek_keys=CFG_SEEK_KEYS_KEY,
+    asset_parents=CFG_ASSET_PARENTS_KEY,
+    asset_children=CFG_ASSET_CHILDREN_KEY,
+    default=CFG_ASSET_DEFAULT_TAG_KEY,
+    tags=CFG_ASSET_TAGS_KEY,
+    asset_digest=CFG_ASSET_CHECKSUM_KEY,
+    tag_description=CFG_TAG_DESC_KEY,
+    v=REQ_CFG_VERSION,
+)

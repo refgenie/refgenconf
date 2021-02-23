@@ -12,8 +12,8 @@ class _DownloadColumn(ProgressColumn):
         completed = int(task.completed)
         total = int(task.total)
         unit, suffix = filesize.pick_unit_and_suffix(
-            total, ["bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"],
-            1024)
+            total, ["bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"], 1024
+        )
         completed_ratio = completed / unit
         total_ratio = total / unit
         precision = 0 if unit == 1 else 1
@@ -39,6 +39,7 @@ class _TransferSpeedColumn(ProgressColumn):
 
 class _TimeRemainingColumn(ProgressColumn):
     """Renders estimated time remaining."""
+
     # Only refresh twice a second to prevent jitter
     max_refresh = 1
 

@@ -5,8 +5,13 @@ import pytest
 from attmap import PathExAttMap
 from yacman import AliasedYacAttMap
 from refgenconf import RefGenConf, ConfigNotCompliantError
-from refgenconf.const import CFG_FOLDER_KEY, CFG_GENOMES_KEY, CFG_SERVERS_KEY, \
-    DEFAULT_SERVER, RGC_REQ_KEYS
+from refgenconf.const import (
+    CFG_FOLDER_KEY,
+    CFG_GENOMES_KEY,
+    CFG_SERVERS_KEY,
+    DEFAULT_SERVER,
+    RGC_REQ_KEYS,
+)
 
 __author__ = "Vince Reuter"
 __email__ = "vreuter@virginia.edu"
@@ -24,13 +29,20 @@ class TestRefGenConf:
         new_rgc = RefGenConf(entries=data)
         assert os.getcwd() == new_rgc[CFG_FOLDER_KEY]
 
-    @pytest.mark.parametrize("genomes", [None, "genomes", 10] + [dt(["mm10", "hg38"]) for dt in [list, set, tuple]])
-    def test_illegal_genomes_mapping_type_gets_converted_to_empty_mapping(self, genomes, tmpdir):
-        rgc = RefGenConf(entries={
-            CFG_FOLDER_KEY: tmpdir.strpath,
-            CFG_GENOMES_KEY: genomes,
-            CFG_SERVERS_KEY: DEFAULT_SERVER
-        })
+    @pytest.mark.parametrize(
+        "genomes",
+        [None, "genomes", 10] + [dt(["mm10", "hg38"]) for dt in [list, set, tuple]],
+    )
+    def test_illegal_genomes_mapping_type_gets_converted_to_empty_mapping(
+        self, genomes, tmpdir
+    ):
+        rgc = RefGenConf(
+            entries={
+                CFG_FOLDER_KEY: tmpdir.strpath,
+                CFG_GENOMES_KEY: genomes,
+                CFG_SERVERS_KEY: DEFAULT_SERVER,
+            }
+        )
         res = rgc[CFG_GENOMES_KEY]
         assert isinstance(res, AliasedYacAttMap)
         assert 0 == len(res)

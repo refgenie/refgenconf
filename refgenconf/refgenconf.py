@@ -1323,13 +1323,22 @@ class RefGenConf(yacman.YacAttMap):
 
         num_servers = 0
         bad_servers = []
+        good_servers = []
         no_asset_json = []
         alias = genome
         gat = [genome, asset, tag]
         if CFG_SERVERS_KEY not in self or self[CFG_SERVERS_KEY] is None:
             _LOGGER.error("You are not subscribed to any asset servers")
             return _null_return()
-        for server_url in self[CFG_SERVERS_KEY]:
+        for server in self[CFG_SERVERS_KEY]:
+            if get_json_url(server, API_ID_GENOMES_DICT):
+                good_servers.append(server)
+            else:
+                continue          
+
+        _LOGGER.info(f"Compatible refgenieserver instances: {good_servers}")
+
+        for server_url in good_servers:
             try:
                 genome = self.get_genome_alias_digest(alias=alias)
             except yacman.UndefinedAliasError:
@@ -1337,8 +1346,9 @@ class RefGenConf(yacman.YacAttMap):
                 if not self.set_genome_alias(
                     genome=alias, servers=[server_url], create_genome=True
                 ):
-                    return _null_return()
+                    continue
                 genome = self.get_genome_alias_digest(alias=alias)
+            
             num_servers += 1
             try:
                 determined_tag = (
@@ -1375,7 +1385,7 @@ class RefGenConf(yacman.YacAttMap):
                 )
             except DownloadJsonError:
                 no_asset_json.append(server_url)
-                if num_servers == len(self[CFG_SERVERS_KEY]):
+                if num_servers == len(good_servers):
                     _LOGGER.error(
                         f"'{alias}/{asset}:{determined_tag}' not "
                         f"available on any of the following servers: "

@@ -24,8 +24,8 @@ class TestAliasSetting:
     @pytest.mark.parametrize(
         ["alias", "digest"],
         [
-            (["hr"], "ebf26d2f064462bea7029e6b4d2298967d7435bff82ed224"),
-            (["hr", "h_r"], "ebf26d2f064462bea7029e6b4d2298967d7435bff82ed224"),
+            (["hr"], "7319f9237651755047bc40d7f7a9770d42a537e840f4e105"),
+            (["hr", "h_r"], "7319f9237651755047bc40d7f7a9770d42a537e840f4e105"),
         ],
     )
     def test_set_genome_alias(self, my_rgc, alias, digest):
@@ -46,8 +46,8 @@ class TestAliasSetting:
     @pytest.mark.parametrize(
         ["alias", "digest"],
         [
-            (["hr"], "ebf26d2f064462bea7029e6b4d2298967d7435bff82ed224"),
-            (["hr", "h_r"], "ebf26d2f064462bea7029e6b4d2298967d7435bff82ed224"),
+            (["hr"], "7319f9237651755047bc40d7f7a9770d42a537e840f4e105"),
+            (["hr", "h_r"], "7319f9237651755047bc40d7f7a9770d42a537e840f4e105"),
         ],
     )
     def test_set_genome_alias_reset(self, my_rgc, alias, digest):
@@ -73,7 +73,7 @@ class TestAliasSetting:
 
 class TestAliasGetting:
     @pytest.mark.parametrize(
-        "digest", ["ebf26d2f064462bea7029e6b4d2298967d7435bff82ed224"]
+        "digest", ["7319f9237651755047bc40d7f7a9770d42a537e840f4e105"]
     )
     def test_get_genome_alias_basic(self, my_rgc, digest):
         """
@@ -87,7 +87,7 @@ class TestAliasGetting:
         assert my_rgc.get_genome_alias_digest(alias=digest, fallback=True) == digest
 
     @pytest.mark.parametrize(
-        "digest", ["ebf26d2f064462bea7029e6b4d2298967d7435bff82ed224"]
+        "digest", ["7319f9237651755047bc40d7f7a9770d42a537e840f4e105"]
     )
     def test_get_genome_alias_multi(self, my_rgc, digest):
         """ Get muliple single aliases, result is always a list """
@@ -124,7 +124,7 @@ class TestAliasGetting:
 
 class TestAliasRemoval:
     @pytest.mark.parametrize(
-        "digest", ["ebf26d2f064462bea7029e6b4d2298967d7435bff82ed224"]
+        "digest", ["7319f9237651755047bc40d7f7a9770d42a537e840f4e105"]
     )
     def test_remove_genome_alias_all(self, my_rgc, digest):
         """
@@ -147,8 +147,8 @@ class TestAliasRemoval:
     @pytest.mark.parametrize(
         ["alias", "digest"],
         [
-            (["hr"], "ebf26d2f064462bea7029e6b4d2298967d7435bff82ed224"),
-            (["hr", "h_r"], "ebf26d2f064462bea7029e6b4d2298967d7435bff82ed224"),
+            (["hr"], "7319f9237651755047bc40d7f7a9770d42a537e840f4e105"),
+            (["hr", "h_r"], "7319f9237651755047bc40d7f7a9770d42a537e840f4e105"),
         ],
     )
     def test_remove_genome_alias_specific(self, my_rgc, digest, alias):

@@ -14,7 +14,7 @@ from refgenconf.exceptions import *
 __author__ = "Vince Reuter"
 __email__ = "vreuter@virginia.edu"
 
-TEST_SERVER = "http://rg.databio.org:82"
+TEST_SERVER = "http://rg.databio.org"
 
 
 IDX_BT2_VAL = "indexed_bowtie2"

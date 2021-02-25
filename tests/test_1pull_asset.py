@@ -44,7 +44,7 @@ def test_download_interruption(my_rgc, gname, aname, tname, caplog):
     """ Download interruption provides appropriate warning message and halts. """
     import signal
 
-    print("filepath: " + my_rgc._file_path)
+    print("filepath: " + my_rgc.__file_path)
 
     def kill_download(*args, **kwargs):
         os.kill(os.getpid(), signal.SIGINT)

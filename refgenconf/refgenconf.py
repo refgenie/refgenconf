@@ -1051,7 +1051,7 @@ class RefGenConf(yacman.YacAttMap):
         
         for url in self[CFG_SERVERS_KEY]:
             url = get_url(url, API_ID_ASSETS)
-            data_by_server[url_] = self._list_remote(url_, genome, order, as_str=as_str)
+            data_by_server[url] = self._list_remote(url, genome, order, as_str=as_str)
 
         return data_by_server
 

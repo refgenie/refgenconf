@@ -1048,7 +1048,7 @@ class RefGenConf(yacman.YacAttMap):
             keyed by genome keyed by source server endpoint
         """
         data_by_server = {}
-        
+
         for url in self[CFG_SERVERS_KEY]:
             url = get_url(url, API_ID_ASSETS)
             data_by_server[url] = self._list_remote(url, genome, order, as_str=as_str)
@@ -1330,8 +1330,10 @@ class RefGenConf(yacman.YacAttMap):
         if CFG_SERVERS_KEY not in self or self[CFG_SERVERS_KEY] is None:
             _LOGGER.error("You are not subscribed to any asset servers")
             return _null_return()
-        
-        good_servers = [s for s in self[CFG_SERVERS_KEY] if get_json_url(s, API_ID_GENOMES_DICT)]          
+
+        good_servers = [
+            s for s in self[CFG_SERVERS_KEY] if get_json_url(s, API_ID_GENOMES_DICT)
+        ]
 
         _LOGGER.info(f"Compatible refgenieserver instances: {good_servers}")
 
@@ -1345,7 +1347,7 @@ class RefGenConf(yacman.YacAttMap):
                 ):
                     continue
                 genome = self.get_genome_alias_digest(alias=alias)
-            
+
             num_servers += 1
             try:
                 determined_tag = (
@@ -3105,7 +3107,6 @@ def construct_request_url(server_url, operation_id):
             f"Could not determine API endpoint defined by ID: {e}"
         )
         # sys.exit(1)
-        
 
 
 def _get_server_endpoints_mapping(url):

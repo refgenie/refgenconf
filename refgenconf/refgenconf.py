@@ -1324,18 +1324,14 @@ class RefGenConf(yacman.YacAttMap):
 
         num_servers = 0
         bad_servers = []
-        good_servers = []
         no_asset_json = []
         alias = genome
         gat = [genome, asset, tag]
         if CFG_SERVERS_KEY not in self or self[CFG_SERVERS_KEY] is None:
             _LOGGER.error("You are not subscribed to any asset servers")
             return _null_return()
-        for server in self[CFG_SERVERS_KEY]:
-            if get_json_url(server, API_ID_GENOMES_DICT):
-                good_servers.append(server)
-            else:
-                continue          
+        
+        good_servers = [s for s in self[CFG_SERVERS_KEY] if get_json_url(s, API_ID_GENOMES_DICT)]          
 
         _LOGGER.info(f"Compatible refgenieserver instances: {good_servers}")
 

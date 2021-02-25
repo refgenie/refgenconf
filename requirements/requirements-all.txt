@@ -1,6 +1,6 @@
 pyyaml
 requests
-yacman>=0.7.1
+# yacman>=0.7.1
 future
 jsonschema
 rich>=9.0.1

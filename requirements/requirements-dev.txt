@@ -1,1 +1,1 @@
-git+git://github.com/databio/yacman@master#egg=yacman
+git+git://github.com/databio/yacman@dev#egg=yacman

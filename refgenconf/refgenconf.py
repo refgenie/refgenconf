@@ -346,15 +346,16 @@ class RefGenConf(yacman.YacAttMap):
         """
 
         def _fill_table_with_genomes_data(rgc, genomes_data, table, genomes=None):
+            it = "([italic]{}[/italic])"
             if genomes:
-                it = "([italic]{}[/italic])"
-                genomes = [
-                    rgc.get_genome_alias_digest(alias=g, fallback=True) for g in genomes
-                ]
                 table.add_column("genome")
                 table.add_column("asset " + it.format("seek_keys"))
                 table.add_column("tags")
-                for genome in genomes:
+                for g in genomes:
+                    genome = rgc.get_genome_alias_digest(alias=g, fallback=True)
+                    if genome not in genomes_data:
+                        _LOGGER.error(f"Genome {g} ({genome}) not found")
+                        continue
                     genome_dict = genomes_data[genome]
                     for asset, asset_dict in genome_dict[CFG_ASSETS_KEY].items():
                         tags = list(asset_dict[CFG_ASSET_TAGS_KEY].keys())
@@ -1683,7 +1684,9 @@ class RefGenConf(yacman.YacAttMap):
                 ].get_aliases(d)
             except KeyError:
                 return [], []
-            _LOGGER.info("Set genome alias ({}: {})".format(d, a))
+            _LOGGER.info(
+                f"Set genome alias ({d}: {', '.join(a) if isinstance(a, list) else a})"
+            )
             return sa, ra
 
         if not digest:

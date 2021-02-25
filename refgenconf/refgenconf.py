@@ -1027,32 +1027,32 @@ class RefGenConf(yacman.YacAttMap):
         )
         return self.listr(genome, order, get_url)
 
-    # def listr(
-    #     self,
-    #     genome=None,
-    #     order=None,
-    #     get_url=lambda server, id: construct_request_url(server, id),
-    #     as_str=False,
-    # ):
-    #     """
-    #     List genomes and assets available remotely on all servers the object
-    #     subscribes to
+    def listr(
+        self,
+        genome=None,
+        order=None,
+        get_url=lambda server, id: construct_request_url(server, id),
+        as_str=False,
+    ):
+        """
+        List genomes and assets available remotely on all servers the object
+        subscribes to
 
-    #     :param function(refgenconf.RefGenConf) -> str get_url: how to determine
-    #         URL request, given RefGenConf instance
-    #     :param list[str] | str genome: genomes that the assets should be found for
-    #     :param function(str) -> object order: how to key genome IDs and asset
-    #         names for sort
-    #     :return dict[OrderedDict[list]]: remotely available genomes and assets
-    #         keyed by genome keyed by source server endpoint
-    #     """
-    #     data_by_server = {}
+        :param function(refgenconf.RefGenConf) -> str get_url: how to determine
+            URL request, given RefGenConf instance
+        :param list[str] | str genome: genomes that the assets should be found for
+        :param function(str) -> object order: how to key genome IDs and asset
+            names for sort
+        :return dict[OrderedDict[list]]: remotely available genomes and assets
+            keyed by genome keyed by source server endpoint
+        """
+        data_by_server = {}
         
-    #     for url in self[CFG_SERVERS_KEY]:
-    #         url = get_url(url, API_ID_ASSETS)
-    #         data_by_server[url_] = self._list_remote(url_, genome, order, as_str=as_str)
+        for url in self[CFG_SERVERS_KEY]:
+            url = get_url(url, API_ID_ASSETS)
+            data_by_server[url_] = self._list_remote(url_, genome, order, as_str=as_str)
 
-    #     return data_by_server
+        return data_by_server
 
     def tag(self, genome, asset, tag, new_tag, files=True, force=False):
         """

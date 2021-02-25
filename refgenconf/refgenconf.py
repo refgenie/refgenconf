@@ -1027,30 +1027,32 @@ class RefGenConf(yacman.YacAttMap):
         )
         return self.listr(genome, order, get_url)
 
-    def listr(
-        self,
-        genome=None,
-        order=None,
-        get_url=lambda server, id: construct_request_url(server, id),
-        as_str=False,
-    ):
-        """
-        List genomes and assets available remotely on all servers the object
-        subscribes to
+    # def listr(
+    #     self,
+    #     genome=None,
+    #     order=None,
+    #     get_url=lambda server, id: construct_request_url(server, id),
+    #     as_str=False,
+    # ):
+    #     """
+    #     List genomes and assets available remotely on all servers the object
+    #     subscribes to
 
-        :param function(refgenconf.RefGenConf) -> str get_url: how to determine
-            URL request, given RefGenConf instance
-        :param list[str] | str genome: genomes that the assets should be found for
-        :param function(str) -> object order: how to key genome IDs and asset
-            names for sort
-        :return dict[OrderedDict[list]]: remotely available genomes and assets
-            keyed by genome keyed by source server endpoint
-        """
-        data_by_server = {}
-        for url in self[CFG_SERVERS_KEY]:
-            url = get_url(url, API_ID_ASSETS)
-            data_by_server[url] = self._list_remote(url, genome, order, as_str=as_str)
-        return data_by_server
+    #     :param function(refgenconf.RefGenConf) -> str get_url: how to determine
+    #         URL request, given RefGenConf instance
+    #     :param list[str] | str genome: genomes that the assets should be found for
+    #     :param function(str) -> object order: how to key genome IDs and asset
+    #         names for sort
+    #     :return dict[OrderedDict[list]]: remotely available genomes and assets
+    #         keyed by genome keyed by source server endpoint
+    #     """
+    #     data_by_server = {}
+        
+    #     for url in self[CFG_SERVERS_KEY]:
+    #         url = get_url(url, API_ID_ASSETS)
+    #         data_by_server[url_] = self._list_remote(url_, genome, order, as_str=as_str)
+
+    #     return data_by_server
 
     def tag(self, genome, asset, tag, new_tag, files=True, force=False):
         """
@@ -2729,7 +2731,6 @@ def upgrade_config(
                     ).format(alias=genome)
                     break
                 except (KeyError, ConnectionError, DownloadJsonError) as e:
-                    print(cnt, genome)
                     if cnt == len(servers):
                         missing_digest.append(genome)
                     continue
@@ -3094,7 +3095,8 @@ def construct_request_url(server_url, operation_id):
             f"'{server_url}' is not a compatible refgenieserver instance. "
             f"Could not determine API endpoint defined by ID: {e}"
         )
-        sys.exit(1)
+        # sys.exit(1)
+        
 
 
 def _get_server_endpoints_mapping(url):

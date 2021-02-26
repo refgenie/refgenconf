@@ -132,6 +132,33 @@ class RefGenConf(yacman.YacAttMap):
 
                 else:
                     _LOGGER.debug("Config version is compliant: {}".format(version))
+
+        # initialize "genomes_folder"
+        if CFG_FOLDER_KEY not in self:
+            self[CFG_FOLDER_KEY] = (
+                os.path.dirname(filepath) if filepath else os.getcwd()
+            )
+            _missing_key_msg(CFG_FOLDER_KEY, self[CFG_FOLDER_KEY])
+        # initialize "genome_servers"
+        if CFG_SERVERS_KEY not in self and CFG_SERVER_KEY in self:
+            # backwards compatibility after server config key change
+            self[CFG_SERVERS_KEY] = self[CFG_SERVER_KEY]
+            del self[CFG_SERVER_KEY]
+            _LOGGER.debug(
+                f"Moved servers list from '{CFG_SERVER_KEY}' to '{CFG_SERVERS_KEY}'")
+        try:
+            if isinstance(self[CFG_SERVERS_KEY], list):
+                tmp_list = [
+                    server_url.rstrip("/") for server_url in self[CFG_SERVERS_KEY]
+                ]
+                self[CFG_SERVERS_KEY] = tmp_list
+            else:  # Logic in pull_asset expects a list, even for a single server
+                self[CFG_SERVERS_KEY] = self[CFG_SERVERS_KEY].rstrip("/")
+                self[CFG_SERVERS_KEY] = [self[CFG_SERVERS_KEY]]
+        except KeyError:
+            _missing_key_msg(CFG_SERVERS_KEY, str([DEFAULT_SERVER]))
+            self[CFG_SERVERS_KEY] = [DEFAULT_SERVER]
+
         # initialize "genomes" mapping
         if CFG_GENOMES_KEY in self:
             if not isinstance(self[CFG_GENOMES_KEY], PXAM):
@@ -153,34 +180,6 @@ class RefGenConf(yacman.YacAttMap):
             aliases_strict=True,
             exact=genome_exact,
         )
-        # initialize "genomes_folder"
-        if CFG_FOLDER_KEY not in self:
-            self[CFG_FOLDER_KEY] = (
-                os.path.dirname(filepath) if filepath else os.getcwd()
-            )
-            _missing_key_msg(CFG_FOLDER_KEY, self[CFG_FOLDER_KEY])
-        # initialize "genome_servers"
-        if CFG_SERVERS_KEY not in self and CFG_SERVER_KEY in self:
-            # backwards compatibility after server config key change
-            self[CFG_SERVERS_KEY] = self[CFG_SERVER_KEY]
-            del self[CFG_SERVER_KEY]
-            _LOGGER.debug(
-                "Moved servers list from '{}' to '{}'".format(
-                    CFG_SERVER_KEY, CFG_SERVERS_KEY
-                )
-            )
-        try:
-            if isinstance(self[CFG_SERVERS_KEY], list):
-                tmp_list = [
-                    server_url.rstrip("/") for server_url in self[CFG_SERVERS_KEY]
-                ]
-                self[CFG_SERVERS_KEY] = tmp_list
-            else:  # Logic in pull_asset expects a list, even for a single server
-                self[CFG_SERVERS_KEY] = self[CFG_SERVERS_KEY].rstrip("/")
-                self[CFG_SERVERS_KEY] = [self[CFG_SERVERS_KEY]]
-        except KeyError:
-            _missing_key_msg(CFG_SERVERS_KEY, str([DEFAULT_SERVER]))
-            self[CFG_SERVERS_KEY] = [DEFAULT_SERVER]
 
     def __bool__(self):
         minkeys = set(self.keys()) == set(RGC_REQ_KEYS)

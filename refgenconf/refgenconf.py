@@ -148,7 +148,8 @@ class RefGenConf(yacman.YacAttMap):
             self[CFG_SERVERS_KEY] = self[CFG_SERVER_KEY]
             del self[CFG_SERVER_KEY]
             _LOGGER.debug(
-                f"Moved servers list from '{CFG_SERVER_KEY}' to '{CFG_SERVERS_KEY}'")
+                f"Moved servers list from '{CFG_SERVER_KEY}' to '{CFG_SERVERS_KEY}'"
+            )
         try:
             if isinstance(self[CFG_SERVERS_KEY], list):
                 tmp_list = [

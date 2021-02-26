@@ -40,7 +40,7 @@ class TestRefGenConf:
             entries={
                 CFG_FOLDER_KEY: tmpdir.strpath,
                 CFG_GENOMES_KEY: genomes,
-                CFG_SERVERS_KEY: DEFAULT_SERVER,
+                CFG_SERVERS_KEY: [DEFAULT_SERVER],
             }
         )
         res = rgc[CFG_GENOMES_KEY]

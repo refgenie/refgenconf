@@ -74,6 +74,7 @@ class RefGenConf(yacman.YacAttMap):
         wait_max=60,
         skip_read_lock=False,
         genome_exact=False,
+        schema_source=None,
     ):
         """
         Create the config instance by with a filepath or key-value pairs.
@@ -100,6 +101,8 @@ class RefGenConf(yacman.YacAttMap):
             writable=writable,
             wait_max=wait_max,
             skip_read_lock=skip_read_lock,
+            schema_source=schema_source or DEFAULT_CONFIG_SCHEMA,
+            write_validate=True,
         )
         # assert correct config version
         try:
@@ -847,15 +850,15 @@ class RefGenConf(yacman.YacAttMap):
 
     def get_default_tag(self, genome, asset, use_existing=True):
         """
-        Determine the asset tag to use as default. The one indicated by the 'default_tag' key in the asset
-        section is returned.
-        If no 'default_tag' key is found, by default the first listed tag is returned with a RuntimeWarning.
-        This behavior can be turned off with use_existing=False
+        Determine the asset tag to use as default. The one indicated by
+        the 'default_tag' key in the asset section is returned.
+        If no 'default_tag' key is found, by default the first listed tag is returned
+        with a RuntimeWarning. This behavior can be turned off with use_existing=False
 
         :param str genome: name of a reference genome assembly of interest
         :param str asset: name of the particular asset of interest
-        :param bool use_existing: whether the first tag in the config should be returned in case there is no default
-        tag defined for an asset
+        :param bool use_existing: whether the first tag in the config should be
+            returned in case there is no default tag defined for an asset
         :return str: name of the tag to use as the default one
         """
         try:
@@ -891,8 +894,8 @@ class RefGenConf(yacman.YacAttMap):
                     )
                 else:
                     warnings.warn(
-                        "Could not find the '{}' key for asset '{}/{}'. "
-                        "Returning '{}' instead. Make sure it does not corrupt your workflow.".format(
+                        "Could not find the '{}' key for asset '{}/{}'. Returning '{}' "
+                        "instead. Make sure it does not corrupt your workflow.".format(
                             CFG_ASSET_DEFAULT_TAG_KEY, genome, asset, alt
                         ),
                         RuntimeWarning,
@@ -912,7 +915,8 @@ class RefGenConf(yacman.YacAttMap):
         :param str tag: name of the particular asset tag to point to by default
         :param str force_digest: digest to force update of. The alias will
             not be converted to the digest, even if provided.
-        :param bool force: whether the default tag change should be forced (even if it exists)
+        :param bool force: whether the default tag change should be
+            forced (even if it exists)
         """
         self._assert_gat_exists(genome, asset, tag)
         asset_dict = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]
@@ -940,7 +944,8 @@ class RefGenConf(yacman.YacAttMap):
             if omitted, the full mapping from genome to asset names
         :param function(str) -> object order: how to key genome IDs and asset
             names for sort
-        :param bool include_tags: whether asset tags should be included in the returned dict
+        :param bool include_tags: whether asset tags should be included in the
+            returned dict
         :return Iterable[str] | Mapping[str, Iterable[str]]: collection of
             asset type names available for particular reference assembly if
             one is provided, else the full mapping between assembly ID and
@@ -1192,14 +1197,17 @@ class RefGenConf(yacman.YacAttMap):
         self, genome, asset, tag, new_tag, relatives, update_children
     ):
         """
-        Internal method used for tags updating in the 'asset_parents' section in the list of children.
+        Internal method used for tags updating in the 'asset_parents' section in the
+        list of children.
 
         :param str genome: name of a reference genome assembly of interest
         :param str asset: name of particular asset of interest
         :param str tag: name of the tag that identifies the asset of interest
         :param str new_tag: name of particular the new tag
-        :param list[str] relatives: relatives to be updated. Format: ["asset_name:tag", "asset_name1:tag1"]
-        :param bool update_children: whether the children of the selected relatives should be updated.
+        :param list[str] relatives: relatives to be updated. Format: ["asset_name:tag",
+            "asset_name1:tag1"]
+        :param bool update_children: whether the children of the selected relatives
+            should be updated.
         """
         relative_key = (
             CFG_ASSET_CHILDREN_KEY if update_children else CFG_ASSET_PARENTS_KEY
@@ -1697,7 +1705,10 @@ class RefGenConf(yacman.YacAttMap):
                 servers = self[CFG_SERVERS_KEY]
             for server in servers:
                 cnt += 1
-                url_alias = get_json_url(server=server).format(alias=genome)
+                url_alias_template = get_json_url(server=server)
+                if url_alias_template is None:
+                    continue
+                url_alias = url_alias_template.format(alias=genome)
                 _LOGGER.info(
                     "Setting '{}' identity with server: {}".format(genome, url_alias)
                 )
@@ -1821,13 +1832,15 @@ class RefGenConf(yacman.YacAttMap):
         self, genome, asset, tag=None, data=None, children=False
     ):
         """
-        A convenience method which wraps the update assets and uses it to update the asset relatives of an asset.
+        A convenience method which wraps the update assets and uses it to update the
+        asset relatives of an asset.
 
         :param str genome: genome to be added/updated
         :param str asset: asset to be added/updated
         :param str tag: tag to be added/updated
         :param list data: asset parents to be added/updated
-        :param bool children: a logical indicating whether the relationship to be added is 'children'
+        :param bool children: a logical indicating whether the relationship to be
+            added is 'children'
         :return RefGenConf: updated object
         """
         tag = tag or self.get_default_tag(genome, asset)
@@ -2449,7 +2462,7 @@ class RefGenConf(yacman.YacAttMap):
         :return str: the path to the created files
         """
         self.run_plugins(PRE_UPDATE_HOOK)
-        path = super(RefGenConf, self).write(filepath=filepath)
+        path = super(RefGenConf, self).write(filepath=filepath, exclude_case=True)
         self.run_plugins(POST_UPDATE_HOOK)
         return path
 
@@ -2993,7 +3006,8 @@ def _make_asset_tags_product(assets, asset_tag_delim=":", asset_sk_delim="."):
             seek_keys = get_tag_seek_keys(tag)
             # proceed only if asset is 'complete' -- has seek_keys
             if seek_keys is not None:
-                # add seek_keys if exist and different from the asset name, otherwise just the asset name
+                # add seek_keys if exist and different from the asset name,
+                # otherwise just the asset name
                 sk_assets.extend(
                     [
                         asset_sk_delim.join([aname, sk]) if sk != aname else aname
@@ -3039,7 +3053,8 @@ def _make_list_of_str(arg):
 
     def _raise_faulty_arg():
         raise TypeError(
-            f"Provided argument has to be a list[str] or a str, got '{arg.__class__.__name__}'"
+            f"Provided argument has to be a list[str] or a str, "
+            f"got '{arg.__class__.__name__}'"
         )
 
     if isinstance(arg, str):
@@ -3110,7 +3125,8 @@ def construct_request_url(server_url, operation_id):
 
 def _get_server_endpoints_mapping(url):
     """
-    Establishes the API with the server using operationId field in the openAPI JSON description
+    Establishes the API with the server using operationId field in the openAPI
+    JSON description
 
     :param str url: server URL
     :return dict: endpoints mapped by their operationIds
@@ -3130,7 +3146,8 @@ def map_paths_by_id(json_dict):
         or not isinstance(json_dict["paths"], dict)
     ):
         raise ValueError(
-            "The provided mapping is not a valid representation of a JSON openAPI description"
+            "The provided mapping is not a valid representation of a "
+            "JSON openAPI description"
         )
     return {
         values["get"]["operationId"]: endpoint
@@ -3168,7 +3185,8 @@ def _entity_dir_removal_log(directory, entity_class, asset_dict, removed_entitie
     subclass = "asset" if entity_class == "genome" else "tag"
     if os.path.basename(directory) == asset_dict[entity_class]:
         _LOGGER.info(
-            "Last {sub} for {ec} '{en}' has been removed, removing {ec} directory".format(
+            "Last {sub} for {ec} '{en}' has been removed, "
+            "removing {ec} directory".format(
                 sub=subclass, ec=entity_class, en=asset_dict[entity_class]
             )
         )

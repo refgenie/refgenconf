@@ -5,6 +5,8 @@ These values are defined here in refgenconf and use some within this package,
 but they're also integral to both refgenie and to refgenieserver.
 """
 
+import os
+
 CFG_NAME = "genome configuration"
 CFG_ENV_VARS = ["REFGENIE"]
 CFG_CONST = ["CFG_NAME", "CFG_ENV_VARS"]
@@ -12,6 +14,9 @@ DEFAULT_SERVER = "http://refgenomes.databio.org"
 API_VERSION = "v3"
 API_VERSION_2 = "v2"
 DEFAULT_TAG = "default"
+DEFAULT_CONFIG_SCHEMA = os.path.join(
+    os.path.dirname(__file__), "schemas", "genome_config_schema.yaml"
+)
 
 # file or dir names
 TEMPLATE_RECIPE_JSON = "build_recipe_{}__{}.json"
@@ -230,6 +235,7 @@ __all__ = (
         "OPERATION_IDS",
         "CUSTOM_PFX",
         "HOOKS",
+        "DEFAULT_CONFIG_SCHEMA",
     ]
     + FILE_DIR_NAMES
     + CFG_CONST

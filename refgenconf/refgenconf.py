@@ -383,16 +383,17 @@ class RefGenConf(yacman.YacAttMap):
                     )
             return table
 
-        if not server_url:
+        if server_url is None:
             genomes_data = self[CFG_GENOMES_KEY]
-            title = "Local refgenie assets\nServer subscriptions: {}".format(
-                ", ".join(self[CFG_SERVERS_KEY])
-            )
+            title = f"Local refgenie assets\nServer subscriptions: " \
+                    f"{', '.join(self[CFG_SERVERS_KEY])}"
         else:
             genomes_data = download_json(get_json_url(server_url, API_ID_GENOMES_DICT))
-            title = "Remote refgenie assets\nServer URL: {}".format(server_url)
+            title = f"Remote refgenie assets\nServer URL: {server_url}"
+        c = f"use refgenie list{'r' if server_url is not None else ''} " \
+            f"-g <genome> for more detailed view" if genomes is None else ""
         return _fill_table_with_genomes_data(
-            self, genomes_data, Table(title=title, min_width=70), genomes
+            self, genomes_data, Table(title=title, min_width=70, caption=c), genomes
         )
 
     def assets_str(

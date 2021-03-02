@@ -385,13 +385,19 @@ class RefGenConf(yacman.YacAttMap):
 
         if server_url is None:
             genomes_data = self[CFG_GENOMES_KEY]
-            title = f"Local refgenie assets\nServer subscriptions: " \
-                    f"{', '.join(self[CFG_SERVERS_KEY])}"
+            title = (
+                f"Local refgenie assets\nServer subscriptions: "
+                f"{', '.join(self[CFG_SERVERS_KEY])}"
+            )
         else:
             genomes_data = download_json(get_json_url(server_url, API_ID_GENOMES_DICT))
             title = f"Remote refgenie assets\nServer URL: {server_url}"
-        c = f"use refgenie list{'r' if server_url is not None else ''} " \
-            f"-g <genome> for more detailed view" if genomes is None else ""
+        c = (
+            f"use refgenie list{'r' if server_url is not None else ''} "
+            f"-g <genome> for more detailed view"
+            if genomes is None
+            else ""
+        )
         return _fill_table_with_genomes_data(
             self, genomes_data, Table(title=title, min_width=70, caption=c), genomes
         )
@@ -1432,7 +1438,9 @@ class RefGenConf(yacman.YacAttMap):
 
             # check asset digests local-server match for each parent
             [
-                self._chk_digest_if_avail(genome, x, server_url)
+                self._chk_digest_if_avail(
+                    genome, x, archive_data[CFG_ASSET_CHECKSUM_KEY]
+                )
                 for x in archive_data[CFG_ASSET_PARENTS_KEY]
                 if CFG_ASSET_PARENTS_KEY in archive_data
             ]
@@ -2290,7 +2298,7 @@ class RefGenConf(yacman.YacAttMap):
         assets = sorted(genomes.keys(), key=order)
         return OrderedDict([(a, sorted(genomes[a], key=order)) for a in assets])
 
-    def _chk_digest_if_avail(self, genome, remote_asset_name, server_url):
+    def _chk_digest_if_avail(self, genome, remote_asset_name, remote_digest):
         """
         Check local asset digest against the remote one and populate children of the
         asset with the provided asset:tag.
@@ -2306,17 +2314,6 @@ class RefGenConf(yacman.YacAttMap):
         remote_asset_data = prp(remote_asset_name)
         asset = remote_asset_data["item"]
         tag = remote_asset_data["tag"]
-        asset_digest_url = construct_request_url(server_url, API_ID_DIGEST).format(
-            genome=genome, asset=asset, tag=tag
-        )
-        try:
-            remote_digest = download_json(asset_digest_url)
-        except DownloadJsonError:
-            _LOGGER.warning(
-                f"Parent asset ({genome}/{asset}:{tag}) not found on the server. "
-                f"The asset provenance was not verified."
-            )
-            return
         try:
             local_digest = self.id(genome, asset, tag)
             if remote_digest != local_digest:

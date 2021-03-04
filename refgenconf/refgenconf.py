@@ -2728,7 +2728,7 @@ def upgrade_config(
     for server in rgc[CFG_SERVERS_KEY]:
         cnt += 1
         try:
-            get_json_url(server, API_ID_ASSETS, params={"includeSeekKeys": True})
+            get_json_url(server, API_ID_ASSETS)
         except (KeyError, ConnectionError, DownloadJsonError):
             incompat_servers.append(server)
     if incompat_servers:
@@ -2751,9 +2751,7 @@ def upgrade_config(
             for server in servers:
                 cnt += 1
                 try:
-                    get_json_url(s=server, i=API_ID_ALIAS_DIGEST).format(
-                        alias=genome
-                    )
+                    get_json_url(s=server, i=API_ID_ALIAS_DIGEST).format(alias=genome)
                     break
                 except (KeyError, ConnectionError, DownloadJsonError) as e:
                     if cnt == len(servers):

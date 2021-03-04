@@ -1063,7 +1063,7 @@ class RefGenConf(yacman.YacAttMap):
         data_by_server = {}
 
         for url in self[CFG_SERVERS_KEY]:
-            url = get_url(url, API_ID_ASSETS, params={"includeSeekKeys": True})
+            url = get_url(url, API_ID_ASSETS)
             if url is None:
                 continue
             data_by_server[url] = self._list_remote(url, genome, order, as_str=as_str)
@@ -2598,7 +2598,7 @@ class RefGenConf(yacman.YacAttMap):
             names for sort
         :return str, str: text reps of remotely available genomes and assets
         """
-        genomes_data = download_json(url)
+        genomes_data = download_json(url, params={"includeSeekKeys": True})
         refgens = self._select_genomes(
             external_genomes=genomes_data.keys(),
             genome=genome,

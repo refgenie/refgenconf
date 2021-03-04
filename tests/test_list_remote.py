@@ -20,9 +20,9 @@ def test_list_remote(my_rgc, genome):
     assert len(my_rgc[CFG_SERVERS_KEY]) == 1, "Expected only one test server"
     server = my_rgc[CFG_SERVERS_KEY][0]
     result = my_rgc.listr(genome=genome)
-    assert len(result.keys()) == 1, (
-        "More servers in list remote result than subscribed to"
-    )
+    assert (
+        len(result.keys()) == 1
+    ), "More servers in list remote result than subscribed to"
     server_key = list(result.keys())[0]
     assert server_key.startswith(server)
     json_genomes = download_json(server_key, params={"includeSeekKeys": True})
@@ -38,6 +38,6 @@ def test_list_remote_faulty(my_rgc):
     my_rgc[CFG_SERVERS_KEY].append("www.google.com")
     assert len(my_rgc[CFG_SERVERS_KEY]) == 2, "Expected two test servers"
     result = my_rgc.listr()
-    assert len(result.keys()) == 1, (
-        "More servers in list remote result than subscribed to"
-    )
+    assert (
+        len(result.keys()) == 1
+    ), "More servers in list remote result than subscribed to"

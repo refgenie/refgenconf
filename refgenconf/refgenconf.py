@@ -21,6 +21,7 @@ from pkg_resources import iter_entry_points
 from rich.table import Table
 from rich.progress import Progress, TextColumn, BarColumn
 from requests import ConnectionError
+from requests.exceptions import MissingSchema
 
 from .progress_bar import _DownloadColumn, _TimeRemainingColumn, _TransferSpeedColumn
 
@@ -3111,17 +3112,20 @@ def construct_request_url(server_url, operation_id):
     :param str operation_id: the operationId of the endpoint
     :return str: a complete URL for the request
     """
+    exception_str = f"'{server_url}' is not a compatible refgenieserver instance. "
     try:
         return (
             server_url
             + _get_server_endpoints_mapping(server_url)[API_VERSION + operation_id]
         )
+    except MissingSchema as e:
+        _LOGGER.error(
+            exception_str + f"Could not fetch OpenAPI schema: {server_url}/openapi.json"
+        )
     except KeyError as e:
         _LOGGER.error(
-            f"'{server_url}' is not a compatible refgenieserver instance. "
-            f"Could not determine API endpoint defined by ID: {e}"
+            exception_str + f"Could not determine API endpoint defined by ID: {e}"
         )
-        # sys.exit(1)
 
 
 def _get_server_endpoints_mapping(url):

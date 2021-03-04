@@ -32,3 +32,12 @@ def test_list_remote(my_rgc, genome):
             assert len(assets) == len(result[server_key][g])
     else:
         assert len(genome) == len(result[server_key])
+
+
+def test_list_remote_faulty(my_rgc):
+    my_rgc[CFG_SERVERS_KEY].append("www.google.com")
+    assert len(my_rgc[CFG_SERVERS_KEY]) == 2, "Expected two test servers"
+    result = my_rgc.listr()
+    assert len(result.keys()) == 1, (
+        "More servers in list remote result " "than subscribed to"
+    )

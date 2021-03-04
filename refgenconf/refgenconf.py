@@ -2728,7 +2728,7 @@ def upgrade_config(
     for server in rgc[CFG_SERVERS_KEY]:
         cnt += 1
         try:
-            get_json_url(server, API_ID_ASSETS)
+            get_json_url(server, API_VERSION + API_ID_ASSETS)
         except (KeyError, ConnectionError, DownloadJsonError):
             incompat_servers.append(server)
     if incompat_servers:

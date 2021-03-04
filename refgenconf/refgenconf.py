@@ -22,6 +22,7 @@ from rich.table import Table
 from rich.progress import Progress, TextColumn, BarColumn
 from requests import ConnectionError
 from requests.exceptions import MissingSchema
+from jsonschema.exceptions import ValidationError
 
 from .progress_bar import _DownloadColumn, _TimeRemainingColumn, _TransferSpeedColumn
 
@@ -2464,7 +2465,11 @@ class RefGenConf(yacman.YacAttMap):
         :return str: the path to the created files
         """
         self.run_plugins(PRE_UPDATE_HOOK)
-        path = super(RefGenConf, self).write(filepath=filepath, exclude_case=True)
+        try:
+            path = super(RefGenConf, self).write(filepath=filepath, exclude_case=True)
+        except ValidationError:
+            _LOGGER.error("The changes were not written to the file")
+            raise
         self.run_plugins(POST_UPDATE_HOOK)
         return path
 

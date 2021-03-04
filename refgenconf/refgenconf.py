@@ -1063,7 +1063,7 @@ class RefGenConf(yacman.YacAttMap):
         data_by_server = {}
 
         for url in self[CFG_SERVERS_KEY]:
-            url = get_url(url, API_ID_ASSETS)
+            url = get_url(url, API_ID_ASSETS, params={"includeSeekKeys": True})
             if url is None:
                 continue
             data_by_server[url] = self._list_remote(url, genome, order, as_str=as_str)
@@ -2598,7 +2598,7 @@ class RefGenConf(yacman.YacAttMap):
             names for sort
         :return str, str: text reps of remotely available genomes and assets
         """
-        genomes_data = _read_remote_data(url)
+        genomes_data = download_json(url)
         refgens = self._select_genomes(
             external_genomes=genomes_data.keys(),
             genome=genome,
@@ -2728,7 +2728,7 @@ def upgrade_config(
     for server in rgc[CFG_SERVERS_KEY]:
         cnt += 1
         try:
-            get_json_url(server, API_VERSION + API_ID_ASSETS)
+            get_json_url(server, API_ID_ASSETS, params={"includeSeekKeys": True})
         except (KeyError, ConnectionError, DownloadJsonError):
             incompat_servers.append(server)
     if incompat_servers:
@@ -2751,9 +2751,9 @@ def upgrade_config(
             for server in servers:
                 cnt += 1
                 try:
-                    url_alias = get_json_url(
-                        s=server, i=API_VERSION + API_ID_ALIAS_DIGEST
-                    ).format(alias=genome)
+                    get_json_url(s=server, i=API_ID_ALIAS_DIGEST).format(
+                        alias=genome
+                    )
                     break
                 except (KeyError, ConnectionError, DownloadJsonError) as e:
                     if cnt == len(servers):
@@ -3021,18 +3021,6 @@ def _make_asset_tags_product(assets, asset_tag_delim=":", asset_sk_delim="."):
                 [asset_tag_delim.join(i) for i in itertools.product(sk_assets, [tname])]
             )
     return tagged_assets
-
-
-def _read_remote_data(url):
-    """
-    Read as JSON data from a URL request response.
-
-    :param str url: data request
-    :return dict: JSON parsed from the response from given URL request
-    """
-    with urlopen(url) as response:
-        encoding = response.info().get_content_charset("utf8")
-        return json.loads(response.read().decode(encoding))
 
 
 def _check_insert_data(obj, datatype, name):

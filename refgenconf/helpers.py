@@ -294,7 +294,7 @@ def download_json(url, params=None):
     :return dict: served data
     """
 
-    _LOGGER.debug("Downloading JSON data; querying URL: '{}'".format(url))
+    _LOGGER.debug(f"Downloading JSON data; querying URL: {url}")
     resp = get(url, params=params)
     if resp.ok:
         return resp.json()

@@ -215,7 +215,7 @@ class RefGenConf(yacman.YacAttMap):
         :return dict: mapping of human-readable genome identifiers to genome
             identifiers
         """
-        return self.genomes.alias_dict
+        return self.genomes[yacman.IK][yacman.ALIASES_KEY]
 
     @property
     def genome_aliases_table(self):
@@ -258,6 +258,15 @@ class RefGenConf(yacman.YacAttMap):
         :return str: path to the directory where the assets are stored
         """
         return os.path.abspath(os.path.join(self[CFG_FOLDER_KEY], ALIAS_DIR))
+
+    @property
+    def file_path(self):
+        """
+        Path to the genome configuration file
+
+        :return str: path to the genome configuration file
+        """
+        return self[yacman.IK][yacman.FILEPATH_KEY]
 
     def initialize_config_file(self, filepath=None):
         """

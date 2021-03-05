@@ -9,6 +9,7 @@ import signal
 import warnings
 import shutil
 import json
+import yacman
 
 from collections import Iterable, Mapping, OrderedDict
 from functools import partial
@@ -18,7 +19,6 @@ from tqdm import tqdm
 from pkg_resources import iter_entry_points
 from tempfile import TemporaryDirectory
 
-from yacman import YacAttMap
 from attmap import PathExAttMap as PXAM
 from ubiquerg import (
     checksum,
@@ -57,7 +57,7 @@ def _handle_sigint(filepath):
     return handle
 
 
-class _RefGenConfV03(YacAttMap):
+class _RefGenConfV03(yacman.YacAttMap):
     """ A sort of oracle of available reference genome assembly assets """
 
     def __init__(
@@ -175,6 +175,17 @@ class _RefGenConfV03(YacAttMap):
             h: {ep.name: ep.load() for ep in iter_entry_points("refgenie.hooks." + h)}
             for h in HOOKS
         }
+
+
+    @property
+    def file_path(self):
+        """
+        Path to the genome configuration file
+
+        :return str: path to the genome configuration file
+        """
+        return self[yacman.IK][yacman.FILEPATH_KEY]
+
 
     def initialize_config_file(self, filepath=None):
         """

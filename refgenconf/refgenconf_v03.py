@@ -176,7 +176,6 @@ class _RefGenConfV03(yacman.YacAttMap):
             for h in HOOKS
         }
 
-
     @property
     def file_path(self):
         """
@@ -185,7 +184,6 @@ class _RefGenConfV03(yacman.YacAttMap):
         :return str: path to the genome configuration file
         """
         return self[yacman.IK][yacman.FILEPATH_KEY]
-
 
     def initialize_config_file(self, filepath=None):
         """

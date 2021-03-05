@@ -2,6 +2,6 @@ pyyaml
 requests
 # yacman>=0.7.1
 future
-jsonschema
+jsonschema>=3.0.1
 rich>=9.0.1
 pyfaidx

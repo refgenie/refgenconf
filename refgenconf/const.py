@@ -236,6 +236,7 @@ __all__ = (
         "CONF_STRUCTURE",
         "OPERATION_IDS",
         "CUSTOM_PFX",
+        "PRIVATE_API",
         "HOOKS",
         "DEFAULT_CONFIG_SCHEMA",
     ]

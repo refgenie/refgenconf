@@ -43,6 +43,7 @@ FILE_DIR_NAMES = [
 CUSTOM_PFX = "custom_Id"
 API_ID_ALIAS_ALIAS = CUSTOM_PFX + "_alias_alias"
 API_ID_ALIAS_DIGEST = CUSTOM_PFX + "_alias_digest"
+API_ID_ALIASES_DICT = CUSTOM_PFX + "_aliases_dict"
 API_ID_ASSETS = CUSTOM_PFX + "_assets"
 API_ID_ARCHIVE = CUSTOM_PFX + "_archive"
 API_ID_DEFAULT_TAG = CUSTOM_PFX + "_default_tag"
@@ -87,6 +88,7 @@ API_IDS = [
     "API_ID_RECIPE",
     "API_ID_ASSET_ATTRS",
     "API_ID_SPLASH",
+    "API_ID_ALIASES_DICT"
     "API_ID_ARCHIVE_DIGEST",
     "API_ID_ALIAS_ALIAS",
     "API_ID_ALIAS_DIGEST",

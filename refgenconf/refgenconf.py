@@ -1056,7 +1056,7 @@ class RefGenConf(yacman.YacAttMap):
         genome=None,
         order=None,
         get_url=lambda server, id: construct_request_url(server, id),
-        as_str=False,
+        as_digests=False,
     ):
         """
         List genomes and assets available remotely on all servers the object
@@ -1073,10 +1073,16 @@ class RefGenConf(yacman.YacAttMap):
         data_by_server = {}
 
         for url in self[CFG_SERVERS_KEY]:
+            aliases_dict = download_json(get_url(url, API_ID_ALIASES_DICT))
             url = get_url(url, API_ID_ASSETS)
             if url is None:
                 continue
-            data_by_server[url] = self._list_remote(url, genome, order, as_str=as_str)
+            server_data = self._list_remote(url, genome, order)
+            data_by_server[url] = (
+                server_data
+                if as_digests
+                else {aliases_dict[k][0]: v for k, v in server_data.items()}
+            )
 
         return data_by_server
 
@@ -2599,10 +2605,6 @@ class RefGenConf(yacman.YacAttMap):
         url,
         genome,
         order=None,
-        as_str=True,
-        offset_text="  ",
-        genome_assets_delim="/ ",
-        asset_sep=", ",
     ):
         """
         List genomes and assets available remotely.
@@ -2620,20 +2622,11 @@ class RefGenConf(yacman.YacAttMap):
             strict=True,
         )
         if not refgens:
-            return None, None if as_str else dict()
+            return dict()
         filtered_genomes_data = OrderedDict(
             [(rg, sorted(genomes_data[rg], key=order)) for rg in refgens]
         )
-        if not as_str:
-            return filtered_genomes_data
-        rj = max(map(len, list(filtered_genomes_data.keys()) or [0])) + 2
-        asset_texts = [
-            "{}{}{}{}".format(
-                g.rjust(rj), genome_assets_delim, offset_text, asset_sep.join(a)
-            )
-            for g, a in filtered_genomes_data.items()
-        ]
-        return ", ".join(refgens), "\n".join(asset_texts)
+        return filtered_genomes_data
 
     def _select_genomes(
         self, genome=None, strict=False, order=None, external_genomes=None

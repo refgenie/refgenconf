@@ -1,6 +1,10 @@
 # Changelog
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format. 
+## [0.10.0] - unreleased
+### Removed
+
+- `as_string` option from `listr` method
 
 ## [0.9.3] - 2020-09-02
 

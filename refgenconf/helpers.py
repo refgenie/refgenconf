@@ -85,7 +85,11 @@ def get_dir_digest(path, pm=None):
 
             x = check_output(cmd.format(path), shell=True).decode("utf-8")
         except Exception as e:
-
+            _LOGGER.warning(
+                "{}: could not calculate digest for '{}'".format(
+                    e.__class__.__name__, path
+                )
+            )
             return
     return str(sub(r"\W+", "", x))  # strips non-alphanumeric
 

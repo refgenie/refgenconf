@@ -347,7 +347,7 @@ class RefGenConf(yacman.YacAttMap):
         self,
         genomes=None,
         server_url=None,
-        get_json_url=lambda s, i: construct_request_url(s, i),
+        get_json_url=lambda s, i: construct_request_url(s, i, PRIVATE_API),
     ):
         """
         Get a rich.Table object representing assets available locally
@@ -1360,7 +1360,7 @@ class RefGenConf(yacman.YacAttMap):
             return _null_return()
 
         good_servers = [
-            s for s in self[CFG_SERVERS_KEY] if get_json_url(s, API_ID_GENOMES_DICT)
+            s for s in self[CFG_SERVERS_KEY] if get_json_url(s, API_ID_DIGEST)
         ]
 
         _LOGGER.info(f"Compatible refgenieserver instances: {good_servers}")
@@ -1815,7 +1815,7 @@ class RefGenConf(yacman.YacAttMap):
         :param str genome: genome name
         :return str: ASDs path
         """
-        return os.path.join(self.data_dir, genome, genome + "__ASDs.json")
+        return os.path.join(self.data_dir, genome, f"{genome}__ASDs.json")
 
     def remove_asset_from_relatives(self, genome, asset, tag):
         """
@@ -3104,19 +3104,20 @@ def get_tag_seek_keys(tag):
     return [s for s in tag[CFG_SEEK_KEYS_KEY]] if CFG_SEEK_KEYS_KEY in tag else None
 
 
-def construct_request_url(server_url, operation_id):
+def construct_request_url(server_url, operation_id, api_prefix=API_VERSION):
     """
     Create a request URL based on a openAPI description
 
     :param str server_url: server URL
     :param str operation_id: the operationId of the endpoint
+    :param str api_prefix: a string to prepend to the operation id
     :return str: a complete URL for the request
     """
     exception_str = f"'{server_url}' is not a compatible refgenieserver instance. "
     try:
         return (
             server_url
-            + _get_server_endpoints_mapping(server_url)[API_VERSION + operation_id]
+            + _get_server_endpoints_mapping(server_url)[api_prefix + operation_id]
         )
     except MissingSchema as e:
         _LOGGER.error(

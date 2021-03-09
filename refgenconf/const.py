@@ -55,6 +55,8 @@ API_ID_ARCHIVE_DIGEST = CUSTOM_PFX + "_asset_archive_digest"
 API_ID_SPLASH = CUSTOM_PFX + "_asset_splash"
 API_ID_GENOMES_DICT = CUSTOM_PFX + "_genomes_dict"
 
+PRIVATE_API = "_private_api"
+
 # this dictionary groups the operationIds so that they can be accessed as
 # modules for systematic links generation in the splash pages
 OPERATION_IDS = {

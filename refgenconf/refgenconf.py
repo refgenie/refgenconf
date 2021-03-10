@@ -2460,24 +2460,19 @@ class RefGenConf(yacman.YacAttMap):
             :param str genome: genome to find the file for
             :return list[dict]: list of ASDs, ready to compare
             """
+            g = rgc.get_genome_alias(genome, fallback=True)
+            error_msg = (
+                f"File containing Annotated Sequence Digests (ASDs) not "
+                f"found for genome: {g}. Must pull or build '{g}/fasta' again to "
+                f"check the compatibility."
+            )
             try:
                 rgc.seek_src(genome, "fasta", strict_exists=True)
             except MissingSeekKeyError:
-                g = rgc.get_genome_alias(genome, fallback=True)
-                raise MissingSeekKeyError(
-                    f"Failed to compare genomes; fasta asset for '{g}' genome is "
-                    f"incomplete, which probably means that it was pulled from the "
-                    f"server as a parent of another asset. Build or pull '{g}/fasta'"
-                    f" specifically to use it for comparison."
-                )
+                raise MissingSeekKeyError(error_msg)
             json_file = rgc.get_asds_path(genome)
             if not os.path.exists(json_file):
-                g = rgc.get_genome_alias(genome, fallback=True)
-                raise OSError(
-                    f"File containing Annotated Sequence Digests (ASDs) not "
-                    f"found for genome: {g}. Pull or build '{g}/fasta' again to "
-                    f"check the compatibility."
-                )
+                raise OSError(error_msg)
             with open(json_file, "r") as jfp:
                 return json.load(jfp)
 

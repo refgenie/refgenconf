@@ -4,7 +4,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [0.10.0] - unreleased
 ### Removed
 
-- `as_string` option from `listr` method
+- `as_string` and `order` option from `listr` method
+- added `as_digests` option in `listr` method
 
 ## [0.9.3] - 2020-09-02
 

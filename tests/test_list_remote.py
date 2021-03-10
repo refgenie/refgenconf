@@ -19,7 +19,7 @@ def test_list_remote(my_rgc, genome):
     """ Verify expected behavior of remote genome/asset listing. """
     assert len(my_rgc[CFG_SERVERS_KEY]) == 1, "Expected only one test server"
     server = my_rgc[CFG_SERVERS_KEY][0]
-    result = my_rgc.listr(genome=genome)
+    result = my_rgc.listr(genome=genome, as_digests=True)
     assert (
         len(result.keys()) == 1
     ), "More servers in list remote result than subscribed to"

@@ -1073,12 +1073,22 @@ class RefGenConf(yacman.YacAttMap):
         data_by_server = {}
 
         for url in self[CFG_SERVERS_KEY]:
-            aliases_dict = download_json(get_url(url, API_ID_ALIASES_DICT))
-            url = get_url(url, API_ID_ASSETS)
-            if url is None:
+            aliases_url = get_url(url, API_ID_ALIASES_DICT)
+            assets_url = get_url(url, API_ID_ASSETS)
+            if assets_url is None or aliases_url is None:
                 continue
-            server_data = self._list_remote(url, genome, order)
-            data_by_server[url] = (
+            genome_digest = (
+                self.get_genome_alias_digest(genome, fallback=True)
+                if genome is not None
+                else None
+            )
+            server_data = self._list_remote(
+                url=assets_url,
+                genome=genome_digest,
+                order=order,
+            )
+            aliases_dict = download_json(aliases_url)
+            data_by_server[assets_url] = (
                 server_data
                 if as_digests
                 else {aliases_dict[k][0]: v for k, v in server_data.items()}

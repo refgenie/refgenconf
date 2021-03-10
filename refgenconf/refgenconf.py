@@ -1054,7 +1054,6 @@ class RefGenConf(yacman.YacAttMap):
     def listr(
         self,
         genome=None,
-        order=None,
         get_url=lambda server, id: construct_request_url(server, id),
         as_digests=False,
     ):
@@ -1073,25 +1072,45 @@ class RefGenConf(yacman.YacAttMap):
         data_by_server = {}
 
         for url in self[CFG_SERVERS_KEY]:
+            # print(f"processing server: {url}")
             aliases_url = get_url(url, API_ID_ALIASES_DICT)
             assets_url = get_url(url, API_ID_ASSETS)
             if assets_url is None or aliases_url is None:
                 continue
-            genome_digest = (
-                self.get_genome_alias_digest(genome, fallback=True)
-                if genome is not None
-                else None
-            )
+
+            aliases_by_digest = download_json(aliases_url)
+            # print(f"\n\naliases_by_digest: {aliases_by_digest}")
+            # convert the original, condensed mapping to a data structure with optimal time complexity
+            digests_by_alias = {}
+            for k, v in aliases_by_digest.items():
+                for alias in v:
+                    digests_by_alias[alias] = k
+
+            # print(f"\n\ndigests_by_alias: {digests_by_alias}")
+            # print(f"genome: {genome}")
+            genome_digest = None
+            if genome is not None:
+                genome_digest = (
+                    genome
+                    if genome in aliases_by_digest.keys()
+                    else digests_by_alias[genome]
+                    if genome in digests_by_alias
+                    else None
+                )
+                if genome_digest is None:
+                    _LOGGER.info(f"{genome} not found on server: {url}")
+                    continue
+
             server_data = self._list_remote(
                 url=assets_url,
                 genome=genome_digest,
-                order=order,
+                order=None,
             )
-            aliases_dict = download_json(aliases_url)
+            # print(f"server data: {server_data.keys()}")
             data_by_server[assets_url] = (
                 server_data
                 if as_digests
-                else {aliases_dict[k][0]: v for k, v in server_data.items()}
+                else {aliases_by_digest[k][0]: v for k, v in server_data.items()}
             )
 
         return data_by_server
@@ -2614,27 +2633,22 @@ class RefGenConf(yacman.YacAttMap):
         self,
         url,
         genome,
-        order=None,
+        order,
     ):
         """
         List genomes and assets available remotely.
 
         :param url: location or ref genome config data
-        :param function(str) -> object order: how to key genome IDs and asset
-            names for sort
         :return str, str: text reps of remotely available genomes and assets
         """
         genomes_data = download_json(url, params={"includeSeekKeys": True})
-        refgens = self._select_genomes(
-            external_genomes=genomes_data.keys(),
-            genome=genome,
-            order=order,
-            strict=True,
-        )
-        if not refgens:
-            return dict()
+        genome = genome if isinstance(genome, list) else [genome]
         filtered_genomes_data = OrderedDict(
-            [(rg, sorted(genomes_data[rg], key=order)) for rg in refgens]
+            [
+                (rg, sorted(genomes_data[rg], key=order))
+                for rg in genomes_data
+                if rg in genome
+            ]
         )
         return filtered_genomes_data
 

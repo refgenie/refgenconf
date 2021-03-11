@@ -30,15 +30,23 @@ def set_flag(rgc):
         raise FileExistsError("Flag file already exists: {}".format(pth))
 
 
-PLUGINS_DICT = {'pre_list': {'my_func': set_flag}, 'pre_pull': {},
-                'pre_tag': {}, 'pre_update': {}, 'post_tag': {},
-                'post_list': {}, 'post_pull': {}, 'post_update': {}}
+PLUGINS_DICT = {
+    "pre_list": {"my_func": set_flag},
+    "pre_pull": {},
+    "pre_tag": {},
+    "pre_update": {},
+    "post_tag": {},
+    "post_list": {},
+    "post_pull": {},
+    "post_update": {},
+}
 
 
 class TestPlugins:
     def test_prelist_plugins_called(self, cfg_file):
-        with mock.patch("refgenconf.refgenconf.RefGenConf.plugins",
-                        new_callable=mock.PropertyMock) as mock_plugins:
+        with mock.patch(
+            "refgenconf.refgenconf.RefGenConf.plugins", new_callable=mock.PropertyMock
+        ) as mock_plugins:
             mock_plugins.return_value = PLUGINS_DICT
             rgc = RefGenConf(cfg_file, writable=False)
             rgc.list()

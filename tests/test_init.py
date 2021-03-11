@@ -7,7 +7,7 @@ import os
 import shutil
 
 
-class TestAdd:
+class TestInitialize:
     def test_init_exists(self):
         rgc = RefGenConf()
         tf = tempfile.NamedTemporaryFile(prefix="/tmp/", suffix=".yaml")

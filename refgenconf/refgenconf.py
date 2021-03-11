@@ -14,7 +14,8 @@ import yacman
 from urllib.request import urlopen, urlretrieve
 from urllib.error import HTTPError, ContentTooShortError
 from urllib.parse import urlencode
-from collections import Iterable, Mapping, OrderedDict
+from collections import OrderedDict
+from collections.abc import Iterable, Mapping
 from functools import partial
 from inspect import getfullargspec as finspect
 from pkg_resources import iter_entry_points

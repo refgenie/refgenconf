@@ -1,16 +1,23 @@
 """ Tests for querying available reference genome assembly names """
 
 from tests.conftest import get_conf_genomes
+from refgenconf.const import CFG_GENOMES_KEY
 
 __author__ = "Vince Reuter"
 __email__ = "vreuter@virginia.edu"
 
 
-def test_genomes_list(rgc):
+def test_genomes_list(my_rgc):
     """ List of available genomes is as expected. """
-    assert get_conf_genomes() == rgc.genomes_list()
+    listed_aliases = my_rgc.genomes_list()
+    digests = my_rgc[CFG_GENOMES_KEY].keys()
+    aliases = [my_rgc.get_genome_alias(digest=d) for d in digests]
+    assert aliases == listed_aliases
 
 
-def test_genomes_str(rgc):
+def test_genomes_str(my_rgc):
     """ Text of available genomes is as expected. """
-    assert ", ".join(get_conf_genomes()) == rgc.genomes_str()
+    listed_aliases = my_rgc.genomes_str()
+    digests = my_rgc[CFG_GENOMES_KEY].keys()
+    aliases = [my_rgc.get_genome_alias(digest=d) for d in digests]
+    assert ", ".join(aliases) == listed_aliases

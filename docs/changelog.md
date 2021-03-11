@@ -1,6 +1,29 @@
 # Changelog
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format. 
+## [0.10.0] - unreleased
+**After updating to this version your configuration file and genome assets will not be compatible with the software. Please refer to the [upgrade tutorial](config_upgrade_03_to_04.md) for instructions on how to migrate the config between versions.**
+
+## Changed
+
+- instead of using human-readable names as genome identifiers refgenie uses sequence-derived digests in the config
+- asset data moved to `data` directory
+- asset files are now named after genome digests
+- refgenieserver APIv3 is now used for remote assets retrieval
+- `RefGenConf.genomes` becomes an `AliasedYacAttMap` object
+
+### Removed
+- `as_string` and `order` option from `listr` method
+	
+### Added
+- `upgrade_config` function for genome configuration file migrating between versions
+- `RefGenConf.compare` method for genome compatibility level determination
+- `as_digests` option in `RefGenConf.listr` method
+- genome config validation on `RefGenConf` object instantiation stage and on every write
+- new progress bar in `RefGenConf.pull`  
+- `RefGenConf.get_ta`
+- numerous `RefGenConf` object properties and methods related to genome aliases handling: `genome_aliases`, `genome_aliases_table`, `alias_dir`, `data_dir`, `get_genome_alias`, `get_genome_alias_digest`, `remove_genome_aliases`, `set_genome_alias`, `initialize_genome`. Refer to [API documentation](http://refgenie.databio.org/en/latest/autodoc_build/refgenconf/) for more specific information.
+- `get_asset_table` method, which displays a concise assets table 
 
 ## [0.9.3] - 2020-09-02
 

@@ -3,6 +3,7 @@
 import os
 import pytest
 from attmap import PathExAttMap
+from yacman import AliasedYacAttMap
 from refgenconf import RefGenConf, ConfigNotCompliantError
 from refgenconf.const import CFG_FOLDER_KEY, CFG_GENOMES_KEY, CFG_SERVERS_KEY, \
     DEFAULT_SERVER, RGC_REQ_KEYS
@@ -49,7 +50,7 @@ class TestRefGenConf:
             CFG_SERVERS_KEY: DEFAULT_SERVER
         })
         res = rgc[CFG_GENOMES_KEY]
-        assert isinstance(res, PathExAttMap)
+        assert isinstance(res, AliasedYacAttMap)
         assert 0 == len(res)
 
     def test_errors_on_old_cfg(self, cfg_file_old):

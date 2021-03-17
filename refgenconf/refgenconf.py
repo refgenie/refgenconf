@@ -46,7 +46,7 @@ from .helpers import (
     download_json,
 )
 from .exceptions import *
-
+from .populator import populate_refgenie_refs
 _LOGGER = logging.getLogger(__name__)
 
 __all__ = ["RefGenConf", "upgrade_config"]
@@ -2482,6 +2482,9 @@ class RefGenConf(yacman.YacAttMap):
             _get_asds_for_genome(self, self.get_genome_alias_digest(genome2, True)),
             explain=explain,
         )
+
+    def populate(self, glob):
+        return populate_refgenie_refs(self, glob)
 
     def run_plugins(self, hook):
         """

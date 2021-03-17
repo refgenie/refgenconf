@@ -115,7 +115,7 @@ def format_config_03_04(rgc, get_json_url):
         try:
             _LOGGER.info(
                 f"Generating the digest from a local fasta file, "
-                f"and createing the ASDs for {genome}."
+                f"and creating the ASDs for {genome}."
             )
             tag = rgc.get_default_tag(genome, "fasta")
             asset_path = rgc.seek(genome, "fasta", tag, "fasta")

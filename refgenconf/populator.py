@@ -49,11 +49,10 @@ def populate_refgenie_refs(rgc, vardict):
     :return dict: modified input dict with refgenie paths populated
     """
     p = re.compile('refgenie://(.*)')
-
-    vardict
     for k,v in vardict.items():
         # print(k, v)
         if k.startswith("_"): continue
+        if k.startswith("sources"): continue # derived attribute sources
         # if k == "project": continue
         if isinstance(v, dict):
             vardict[k] = populate_refgenie_refs(rgc, v)
@@ -64,7 +63,7 @@ def populate_refgenie_refs(rgc, vardict):
                 # print(reg_path)
                 rgpkg = prp(reg_path)
                 if not rgpkg:
-                    print("Can't convert non-conforming refgenie registry path: {}".format(reg_path))
+                    _LOGGER.info("Can't convert non-conforming refgenie registry path: {} ({})".format(reg_path, k))
                     continue
                 rgpath = rgc.seek(rgpkg["namespace"], rgpkg["item"], rgpkg["tag"], rgpkg["subitem"])
                 vardict[k] = rgpath

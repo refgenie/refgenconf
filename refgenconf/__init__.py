@@ -5,7 +5,7 @@ from .const import *
 from .exceptions import *
 from .helpers import *
 from .refgenconf import *
-from .populator import populate_refgenie_refs, looper_refgenie_plugin
+from .populator import looper_refgenie_plugin
 
 __all__ = (
     [
@@ -21,5 +21,5 @@ __all__ = (
     ]
     + ["DEFAULT_SERVER"]
     + CFG_KEY_NAMES
-    + ["populate_refgenie_refs", "looper_refgenie_plugin"]
+    + ["looper_refgenie_plugin"]
 )

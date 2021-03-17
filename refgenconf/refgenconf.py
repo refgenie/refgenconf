@@ -4,6 +4,7 @@ import sys
 import itertools
 import logging
 import os
+import re
 import signal
 import warnings
 import shutil
@@ -46,7 +47,7 @@ from .helpers import (
     download_json,
 )
 from .exceptions import *
-from .populator import populate_refgenie_refs
+
 _LOGGER = logging.getLogger(__name__)
 
 __all__ = ["RefGenConf", "upgrade_config"]
@@ -2484,7 +2485,63 @@ class RefGenConf(yacman.YacAttMap):
         )
 
     def populate(self, glob):
-        return populate_refgenie_refs(self, glob)
+        """
+        Populates refgenie references from refgenie://genome/asset:tag registry paths
+
+        :param (dict | str) glob: String which may contain refgenie registry paths as
+            values; or a dict, for which values may contain refgenie registry
+            paths. Dict include nested dicts.
+        :return dict: modified input dict with refgenie paths populated
+        """
+
+        # Example code:
+        # import refgenconf as RGC
+        # rgc = RGC.RefGenConf("/home/nsheff/Dropbox/env/refgenie_config/zither.yaml")
+        # rgc.seek("hg19", "fasta")
+        # demo = {"genome": 'refgenie://hg19/fasta',
+        #         "other_attr": "something",
+        #         "bt2": 'refgenie://t7/bowtie2_index'}
+        # nested_demo = {"top_level_attr": "refgenie://t7/fasta",
+        #                 "other_top_attr": "don't do anything to this",
+        #                 "nested_dict": demo }
+        # populate_refgenie_refs(rgc, demo)
+        # populate_refgenie_refs(rgc, nested_demo)
+
+        p = re.compile("refgenie://([A-Za-z0-9_/\.]+)?")
+
+        if isinstance(glob, str):
+            m = p.match(glob)
+            it = re.finditer(p, glob)
+            for m in it:
+                reg_path = m.group()
+                # print(m)
+                # print(reg_path)
+                rgpkg = prp(reg_path)
+                if not rgpkg:
+                    _LOGGER.info(
+                        "Can't convert non-conforming refgenie registry path: {}".format(
+                            reg_path
+                        )
+                    )
+                    return glob
+                rgpath = self.seek(
+                    rgpkg["namespace"], rgpkg["item"], rgpkg["tag"], rgpkg["subitem"]
+                )
+                glob = re.sub(reg_path, rgpath, glob)
+            return glob
+        elif isinstance(glob, dict):
+            for k, v in glob.items():
+                # print(k, v)
+                if k.startswith("_"):
+                    continue
+                if k.startswith("sources"):
+                    continue  # derived attribute sources
+                glob[k] = self.populate(v)
+                # if k == "project": continue
+            return glob
+        else:
+            _LOGGER.error("Refgenie can only populate str or dict objects.")
+            return glob
 
     def run_plugins(self, hook):
         """

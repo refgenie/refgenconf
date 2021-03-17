@@ -28,6 +28,7 @@ def looper_refgenie_plugin(namespaces):
 
 
 # Example code:
+# import refgenconf as RGC
 # rgc = RGC.RefGenConf("/home/nsheff/Dropbox/env/refgenie_config/zither.yaml")
 # rgc.seek("hg19", "fasta")
 # demo = {"genome": 'refgenie://hg19/fasta', 
@@ -39,33 +40,40 @@ def looper_refgenie_plugin(namespaces):
 # populate_refgenie_refs(rgc, demo)
 # populate_refgenie_refs(rgc, nested_demo)
 
-def populate_refgenie_refs(rgc, vardict):
+def populate_refgenie_refs(rgc, glob):
     """
     Populates refgenie references from refgenie://genome/asset:tag registry paths
 
     :param RefGenConf rgc: A RefGenConf object to use to populate the paths
-    :param dict vardict: dict which may contain refgenie registry paths as
-    :values. Dict include nested dicts.
+    :param (dict | str) glob: String which may contain refgenie registry paths as
+        values; or a dict, for which values may contain refgenie registry
+        paths. Dict include nested dicts.
     :return dict: modified input dict with refgenie paths populated
     """
-    p = re.compile('refgenie://(.*)')
-    for k,v in vardict.items():
-        # print(k, v)
-        if k.startswith("_"): continue
-        if k.startswith("sources"): continue # derived attribute sources
-        # if k == "project": continue
-        if isinstance(v, dict):
-            vardict[k] = populate_refgenie_refs(rgc, v)
-        elif isinstance(v, str):
-            m = p.match(v)
-            if m:
-                reg_path = m.group()
-                # print(reg_path)
-                rgpkg = prp(reg_path)
-                if not rgpkg:
-                    _LOGGER.info("Can't convert non-conforming refgenie registry path: {} ({})".format(reg_path, k))
-                    continue
-                rgpath = rgc.seek(rgpkg["namespace"], rgpkg["item"], rgpkg["tag"], rgpkg["subitem"])
-                vardict[k] = rgpath
+    p = re.compile('refgenie://([A-Za-z0-9_/\.]+)?')
 
-    return vardict
+    if isinstance(glob, str):
+        m = p.match(glob)
+        it = re.finditer(p, glob)
+        for m in it:
+            reg_path = m.group()
+            # print(m)
+            # print(reg_path)
+            rgpkg = prp(reg_path)
+            if not rgpkg:
+                _LOGGER.info("Can't convert non-conforming refgenie registry path: {}".format(reg_path))
+                return glob
+            rgpath = rgc.seek(rgpkg["namespace"], rgpkg["item"], rgpkg["tag"], rgpkg["subitem"])
+            glob = re.sub(reg_path, rgpath, glob)
+        return glob
+    elif isinstance(glob, dict):
+        for k,v in glob.items():
+            # print(k, v)
+            if k.startswith("_"): continue
+            if k.startswith("sources"): continue # derived attribute sources
+            glob[k] = populate_refgenie_refs(rgc, v)    
+            # if k == "project": continue
+        return glob
+    else:
+        _LOGGER.error("Refgenie can only populate str or dict objects.")
+        return glob

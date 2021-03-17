@@ -1,8 +1,7 @@
-attmap>=0.12.5
 pyyaml
 requests
-yacman>=0.7.0
+yacman>=0.8.0
 future
-jsonschema
-rich
+jsonschema>=3.0.1
+rich>=9.0.1
 pyfaidx

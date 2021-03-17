@@ -11,15 +11,10 @@ items:
       type: string
     length:
       type: "integer"
-    topology:
-      type: string
-      enum: ["circular", "linear"]
-      default: "linear"
     sequence:
       description: "Sequence digest"
       type: string
   required:
     - length
     - name
-    - topology
     - sequence

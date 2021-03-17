@@ -14,7 +14,7 @@ __email__ = "vreuter@virginia.edu"
 def _touch(p):
     """ Ensure path existence, whether file or folder. """
     if os.path.splitext(p)[1]:
-        with open(p, 'w'):
+        with open(p, "w"):
             pass
     else:
         os.makedirs(p)
@@ -33,11 +33,14 @@ def test_select_null():
         assert select_genome_config(None) is None
 
 
-@pytest.mark.parametrize(["setup", "expect"], [
-    (lambda d: d.join("test-conf.yaml").strpath, lambda _: Exception),
-    (lambda d: _touch(os.path.join(d.strpath, "test-conf")), lambda _: Exception),
-    (lambda d: _touch(d.join("test-conf.yaml").strpath), lambda fp: fp)
-])
+@pytest.mark.parametrize(
+    ["setup", "expect"],
+    [
+        (lambda d: d.join("test-conf.yaml").strpath, lambda _: Exception),
+        (lambda d: _touch(os.path.join(d.strpath, "test-conf")), lambda _: Exception),
+        (lambda d: _touch(d.join("test-conf.yaml").strpath), lambda fp: fp),
+    ],
+)
 def test_select_local_config_file(tmpdir, setup, expect):
     """ Selection of local filepath hinges on its existence as a file """
     with TmpEnv(overwrite=True, **{ev: "" for ev in CFG_ENV_VARS}):
@@ -53,7 +56,7 @@ def test_select_via_env_var_implicit(env_var, tmpdir):
     """ Config file selection can leverage default environmanent variables. """
     conf_file = tmpdir.join("test-refgenconf-conf.yaml").strpath
     assert not os.path.exists(conf_file)
-    with open(conf_file, 'w'):
+    with open(conf_file, "w"):
         pass
     assert os.path.isfile(conf_file)
     with TmpEnv(overwrite=True, **{env_var: conf_file}):

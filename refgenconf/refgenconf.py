@@ -2546,7 +2546,9 @@ class RefGenConf(yacman.YacAttMap):
             return AttMap(self.populate(glob.to_dict()))
         else:
             otype = type(glob)
-            _LOGGER.debug(f"Refgenie can only populate str, list, or dict objects. Got {otype}")
+            _LOGGER.debug(
+                f"Refgenie can only populate str, list, or dict objects. Got {otype}"
+            )
             _LOGGER.debug(glob)
             return glob
 

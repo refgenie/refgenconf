@@ -24,4 +24,4 @@ def looper_refgenie_plugin(namespaces):
     """
     rgc_path = namespaces["pipeline"]["var_templates"]["refgenie_config"]
     rgc = refgenconf.RefGenConf(rgc_path)
-    return rgc.populate_refgenie_refs(namespaces)
+    return rgc.populate(namespaces)

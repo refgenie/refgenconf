@@ -2540,7 +2540,8 @@ class RefGenConf(yacman.YacAttMap):
                 # if k == "project": continue
             return glob
         else:
-            _LOGGER.error("Refgenie can only populate str or dict objects.")
+            otype = type(glob)
+            _LOGGER.error(f"Refgenie can only populate str or dict objects. Got {otype}")
             return glob
 
     def run_plugins(self, hook):

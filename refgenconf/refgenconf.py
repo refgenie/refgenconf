@@ -30,6 +30,7 @@ from .progress_bar import _DownloadColumn, _TimeRemainingColumn, _TransferSpeedC
 
 from .seqcol import SeqColClient
 from attmap import PathExAttMap as PXAM
+from attmap import AttMap
 from ubiquerg import (
     checksum,
     is_url,
@@ -2539,9 +2540,14 @@ class RefGenConf(yacman.YacAttMap):
                 glob[k] = self.populate(v)
                 # if k == "project": continue
             return glob
+        elif isinstance(glob, list):
+            return [self.populate(v) for v in glob]
+        elif isinstance(glob, AttMap):
+            return AttMap(self.populate(glob.to_dict()))
         else:
             otype = type(glob)
-            _LOGGER.error(f"Refgenie can only populate str or dict objects. Got {otype}")
+            _LOGGER.debug(f"Refgenie can only populate str, list, or dict objects. Got {otype}")
+            _LOGGER.debug(glob)
             return glob
 
     def run_plugins(self, hook):

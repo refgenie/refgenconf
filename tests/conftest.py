@@ -14,7 +14,7 @@ from refgenconf.exceptions import *
 __author__ = "Vince Reuter"
 __email__ = "vreuter@virginia.edu"
 
-TEST_SERVER = "http://rg.databio.org"
+TEST_SERVER = "http://refgenomes.databio.org"
 
 
 IDX_BT2_VAL = "indexed_bowtie2"
@@ -140,7 +140,7 @@ def made_genome_config_file(temp_genome_config_file):
     genome_folder = os.path.dirname(temp_genome_config_file)
     extra_kv_lines = [
         "{}: {}".format(CFG_FOLDER_KEY, genome_folder),
-        "{}: {}".format(CFG_SERVERS_KEY, "http://rg.databio.org"),
+        "{}: {}".format(CFG_SERVERS_KEY, "http://refgenomes.databio.org"),
         "{}: {}".format(CFG_VERSION_KEY, REQ_CFG_VERSION),
         "{}:".format(CFG_GENOMES_KEY),
     ]

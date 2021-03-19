@@ -362,8 +362,8 @@ class RefGenConf(yacman.YacAttMap):
 
         def _fill_table_with_genomes_data(rgc, genomes_data, table, genomes=None):
             it = "([italic]{}[/italic])"
+            table.add_column("genome")
             if genomes:
-                table.add_column("genome")
                 table.add_column("asset " + it.format("seek_keys"))
                 table.add_column("tags")
                 for g in genomes:
@@ -372,6 +372,8 @@ class RefGenConf(yacman.YacAttMap):
                         _LOGGER.error(f"Genome {g} ({genome}) not found")
                         continue
                     genome_dict = genomes_data[genome]
+                    if CFG_ASSETS_KEY not in genome_dict:
+                        continue
                     for asset, asset_dict in genome_dict[CFG_ASSETS_KEY].items():
                         tags = list(asset_dict[CFG_ASSET_TAGS_KEY].keys())
                         seek_keys = list(
@@ -385,10 +387,11 @@ class RefGenConf(yacman.YacAttMap):
                             ", ".join(tags),
                         )
             else:
-                table.add_column("genome")
                 table.add_column("assets")
                 for genome in list(genomes_data.keys()):
                     genome_dict = genomes_data[genome]
+                    if CFG_ASSETS_KEY not in genome_dict:
+                        continue
                     table.add_row(
                         ", ".join(genome_dict[CFG_ALIASES_KEY]),
                         ", ".join(list(genome_dict[CFG_ASSETS_KEY].keys())),

@@ -882,7 +882,7 @@ class RefGenConf(yacman.YacAttMap):
         good_servers = [
             s for s in self[CFG_SERVERS_KEY] if get_url(s, API_ID_ASSET_PATH)
         ]
-        _LOGGER.info(f"Compatible refgenieserver instances: {good_servers}")
+        _LOGGER.debug(f"Compatible refgenieserver instances: {good_servers}")
         for url in good_servers:
             try:
                 genome_digest = self.get_genome_alias_digest(alias=genome_name)

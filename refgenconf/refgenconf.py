@@ -868,6 +868,40 @@ class RefGenConf(yacman.YacAttMap):
             warnings.warn(msg, RuntimeWarning)
         return fullpath
 
+    def seekr(
+        self,
+        genome_name,
+        asset_name,
+        seek_key,
+        tag_name=None,
+        get_url=lambda server, id: construct_request_url(server, id),
+    ):
+        good_servers = [
+            s for s in self[CFG_SERVERS_KEY] if get_url(s, API_ID_ASSET_PATH)
+        ]
+        _LOGGER.info(f"Compatible refgenieserver instances: {good_servers}")
+        for url in good_servers:
+            try:
+                genome_digest = self.get_genome_alias_digest(alias=genome_name)
+            except yacman.UndefinedAliasError:
+                _LOGGER.info(f"No local digest for genome alias: {genome_name}")
+                if not self.set_genome_alias(
+                    genome=genome_name, servers=[url], create_genome=True
+                ):
+                    continue
+                genome_digest = self.get_genome_alias_digest(alias=genome_name)
+
+            asset_seek_key_url = get_url(url, API_ID_ASSET_PATH).format(
+                genome=genome_digest, asset=asset_name, seek_key=seek_key
+            )
+            if asset_seek_key_url is None:
+                continue
+            asset_seek_key_target = download_json(
+                asset_seek_key_url,
+                params={"tag": tag_name},
+            )
+            return asset_seek_key_target
+
     def get_default_tag(self, genome, asset, use_existing=True):
         """
         Determine the asset tag to use as default. The one indicated by

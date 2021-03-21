@@ -81,7 +81,7 @@ OPERATION_IDS = {
         API_VERSION + API_ID_ARCHIVE_DIGEST: "archive digest",
         API_VERSION + API_ID_RECIPE: "build recipe",
         API_VERSION + API_ID_LOG: "build log",
-        API_VERSION + API_ID_CONTENTS: "asset directory tree",
+        API_VERSION + API_ID_CONTENTS: "asset directory contents",
     },
 }
 

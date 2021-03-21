@@ -22,7 +22,7 @@ DEFAULT_CONFIG_SCHEMA = os.path.join(
 TEMPLATE_RECIPE_JSON = "build_recipe_{}__{}.json"
 TEMPLATE_TARGET = "{}_{}__{}.flag"
 TEMPLATE_LOG = "build_log_{}__{}.md"
-TEMPLATE_ASSET_DIR_TREE = "asset_dir_tree_{}__{}.txt"
+TEMPLATE_ASSET_DIR_CONTENTS = "asset_dir_contents_{}__{}.txt"
 ORI_LOG_NAME = "refgenie_log.md"
 BUILD_STATS_DIR = "_refgenie_build"
 ALIAS_DIR = "alias"
@@ -32,7 +32,7 @@ FILE_DIR_NAMES = [
     "TEMPLATE_RECIPE_JSON",
     "TEMPLATE_TARGET",
     "TEMPLATE_LOG",
-    "TEMPLATE_ASSET_DIR_TREE",
+    "TEMPLATE_ASSET_DIR_CONTENTS",
     "ORI_LOG_NAME",
     "BUILD_STATS_DIR",
     "ALIAS_DIR",
@@ -59,7 +59,7 @@ API_ID_ASSET_PATH = CUSTOM_PFX + "_asset_path"
 API_ID_ARCHIVE_DIGEST = CUSTOM_PFX + "_asset_archive_digest"
 API_ID_SPLASH = CUSTOM_PFX + "_asset_splash"
 API_ID_GENOMES_DICT = CUSTOM_PFX + "_genomes_dict"
-API_ID_TREE = CUSTOM_PFX + "_asset_dir_tree"
+API_ID_CONTENTS = CUSTOM_PFX + "_asset_dir_contents"
 
 PRIVATE_API = "_private_api"
 
@@ -81,7 +81,7 @@ OPERATION_IDS = {
         API_VERSION + API_ID_ARCHIVE_DIGEST: "archive digest",
         API_VERSION + API_ID_RECIPE: "build recipe",
         API_VERSION + API_ID_LOG: "build log",
-        API_VERSION + API_ID_TREE: "asset directory tree",
+        API_VERSION + API_ID_CONTENTS: "asset directory tree",
     },
 }
 
@@ -90,7 +90,7 @@ API_IDS = [
     "API_ID_ARCHIVE",
     "API_ID_DEFAULT_TAG",
     "API_ID_LOG",
-    "API_ID_TREE",
+    "API_ID_CONTENTS",
     "API_ID_ASSET_FILE",
     "API_ID_ASSET_PATH",
     "API_ID_DIGEST",

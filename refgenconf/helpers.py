@@ -302,8 +302,6 @@ def download_json(url, params=None):
     resp = get(url, params=params)
     if resp.ok:
         return resp.json()
-    elif resp.status_code == 404:
-        resp = None
     raise DownloadJsonError(resp)
 
 

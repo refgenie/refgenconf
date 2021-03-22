@@ -875,10 +875,21 @@ class RefGenConf(yacman.YacAttMap):
         self,
         genome_name,
         asset_name,
-        seek_key,
+        seek_key=None,
         tag_name=None,
         get_url=lambda server, id: construct_request_url(server, id),
     ):
+        """
+        Seek a remote path to a specified genome/asset.seek_key:tag
+
+        :param str genome_name: name of a reference genome assembly of interest
+        :param str asset_name: name of the particular asset to fetch
+        :param str tag_name: name of the particular asset tag to fetch
+        :param str seek_key: name of the particular subasset to fetch
+        :param function(serverUrl, operationId) -> str get_url: how to determine
+            URL request, given server URL and endpoint operationID
+        :return str: path to the asset
+        """
         good_servers = [
             s for s in self[CFG_SERVERS_KEY] if get_url(s, API_ID_ASSET_PATH)
         ]
@@ -895,7 +906,7 @@ class RefGenConf(yacman.YacAttMap):
                 genome_digest = self.get_genome_alias_digest(alias=genome_name)
 
             asset_seek_key_url = get_url(url, API_ID_ASSET_PATH).format(
-                genome=genome_digest, asset=asset_name, seek_key=seek_key
+                genome=genome_digest, asset=asset_name, seek_key=seek_key or asset_name
             )
             if asset_seek_key_url is None:
                 continue
@@ -1075,8 +1086,8 @@ class RefGenConf(yacman.YacAttMap):
         """
         List genomes and assets available remotely.
 
-        :param function(refgenconf.RefGenConf) -> str get_url: how to determine
-            URL request, given RefGenConf instance
+        :param function(serverUrl, operationId) -> str get_url: how to determine
+            URL request, given server URL and endpoint operationID
         :param list[str] | str genome: genomes that the assets should be found for
         :param function(str) -> object order: how to key genome IDs and asset
             names for sort
@@ -1099,8 +1110,8 @@ class RefGenConf(yacman.YacAttMap):
         List genomes and assets available remotely on all servers the object
         subscribes to
 
-        :param function(refgenconf.RefGenConf) -> str get_url: how to determine
-            URL request, given RefGenConf instance
+        :param function(serverUrl, operationId) -> str get_url: how to determine
+            URL request, given server URL and endpoint operationID
         :param list[str] | str genome: genomes that the assets should be found for
         :param function(str) -> object order: how to key genome IDs and asset
             names for sort

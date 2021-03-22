@@ -1,6 +1,13 @@
 # Changelog
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format. 
+
+## [0.11.0] - Unreleased
+### Added
+- `populate` function to support `refgenie populate`.
+- `refgenconf.looper_refgenie_plugin` -- new looper plugin that populates refgenie paths with looper.
+
+
 ## [0.10.0] - 2021-03-11
 **After updating to this version your configuration file and genome assets will not be compatible with the software. Please refer to the [upgrade tutorial](config_upgrade_03_to_04.md) for instructions on how to migrate the config between versions.**
 

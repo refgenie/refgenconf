@@ -4,6 +4,7 @@ import sys
 import itertools
 import logging
 import os
+import re
 import signal
 import warnings
 import shutil
@@ -29,6 +30,7 @@ from .progress_bar import _DownloadColumn, _TimeRemainingColumn, _TransferSpeedC
 
 from .seqcol import SeqColClient
 from attmap import PathExAttMap as PXAM
+from attmap import AttMap
 from ubiquerg import (
     checksum,
     is_url,
@@ -2530,6 +2532,54 @@ class RefGenConf(yacman.YacAttMap):
             _get_asds_for_genome(self, self.get_genome_alias_digest(genome2, True)),
             explain=explain,
         )
+
+    def populate(self, glob):
+        """
+        Populates refgenie references from refgenie://genome/asset:tag registry paths
+
+        :param dict | str | list glob: String which may contain refgenie registry paths as
+            values; or a dict, for which values may contain refgenie registry
+            paths. Dict include nested dicts.
+        :return dict | str | list: modified input dict with refgenie paths populated
+        """
+
+        p = re.compile("refgenie://([A-Za-z0-9_/\.]+)?")
+
+        if isinstance(glob, str):
+            it = re.finditer(p, glob)
+            for m in it:
+                reg_path = m.group()
+                rgpkg = prp(reg_path)
+                if not rgpkg:
+                    _LOGGER.info(
+                        f"Can't convert non-conforming refgenie registry path:"
+                        f" {reg_path}"
+                    )
+                    return glob
+                rgpath = self.seek(
+                    rgpkg["namespace"], rgpkg["item"], rgpkg["tag"], rgpkg["subitem"]
+                )
+                glob = re.sub(reg_path, rgpath, glob)
+            return glob
+        elif isinstance(glob, dict):
+            for k, v in glob.items():
+                if k.startswith("_"):
+                    continue
+                if k.startswith("sources"):
+                    continue  # derived attribute sources
+                glob[k] = self.populate(v)
+            return glob
+        elif isinstance(glob, list):
+            return [self.populate(v) for v in glob]
+        elif isinstance(glob, AttMap):
+            return AttMap(self.populate(glob.to_dict()))
+        else:
+            otype = type(glob)
+            _LOGGER.debug(
+                f"Refgenie can only populate str, list, or dict objects. Got {otype}"
+            )
+            _LOGGER.debug(glob)
+            return glob
 
     def run_plugins(self, hook):
         """

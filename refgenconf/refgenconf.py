@@ -2278,7 +2278,7 @@ class RefGenConf(yacman.YacAttMap):
                 )
             )
 
-    def subscribe(self, urls, reset=False):
+    def subscribe(self, urls, reset=False, no_write=False):
         """
         Add URLs the list of genome_servers.
 
@@ -2288,14 +2288,14 @@ class RefGenConf(yacman.YacAttMap):
         :param list[str] | str urls: urls to update the genome_servers list with
         :param bool reset: whether the current list should be overwritten
         """
-        if self.file_path:
+        if self.file_path and not no_write:
             with self as r:
                 r._update_genome_servers(url=urls, reset=reset)
         else:
             self._update_genome_servers(url=urls, reset=reset)
-        _LOGGER.info("Subscribed to: {}".format(", ".join(urls)))
+        _LOGGER.info(f"Subscribed to: {', '.join(urls)}")
 
-    def unsubscribe(self, urls):
+    def unsubscribe(self, urls, no_write=False):
         """
         Remove URLs the list of genome_servers.
 
@@ -2311,7 +2311,7 @@ class RefGenConf(yacman.YacAttMap):
                 _LOGGER.warning(
                     "URL '{}' not in genome_servers list: {}".format(s, ori_servers)
                 )
-        if self.file_path:
+        if self.file_path and not no_write:
             with self as r:
                 r._update_genome_servers(ori_servers, reset=True)
         else:

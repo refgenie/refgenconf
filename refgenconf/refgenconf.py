@@ -269,7 +269,10 @@ class RefGenConf(yacman.YacAttMap):
 
         :return str: path to the genome configuration file
         """
-        return self[yacman.IK][yacman.FILEPATH_KEY]
+        try:
+            return self[yacman.IK][yacman.FILEPATH_KEY]
+        except (AttributeError, KeyError):
+            return None
 
     def initialize_config_file(self, filepath=None):
         """
@@ -746,7 +749,7 @@ class RefGenConf(yacman.YacAttMap):
         nonexistent_pths = [
             fullpaths[p] for p in [i for i, x in enumerate(paths_existence) if not x]
         ]
-        msg = "For genome '{}' alias to the asset '{}/{}:{}' doesn't exist: {}".format(
+        msg = "For genome '{}' path to the asset '{}/{}:{}' doesn't exist: {}".format(
             genome_name, asset_name, seek_key, tag_name, ", ".join(nonexistent_pths)
         )
         if strict_exists is None:

@@ -3362,6 +3362,9 @@ def _populate_refgenie_registry_path(rgc, glob, seek_method_name, remote_class=N
             if remote_class is not None:
                 args.update(dict(remote_class=remote_class))
             rgpath = getattr(rgc, seek_method_name)(**args)
+            if rgpath is None:
+                _LOGGER.warning(f"'{reg_path}' refgenie registry path not populated.")
+                continue
             glob = re.sub(reg_path, rgpath, glob)
         return glob
     elif isinstance(glob, dict):

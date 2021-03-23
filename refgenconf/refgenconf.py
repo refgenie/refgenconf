@@ -760,6 +760,53 @@ class RefGenConf(yacman.YacAttMap):
             warnings.warn(msg, RuntimeWarning)
         return fullpaths if all_aliases else fullpaths[idx]
 
+    def seekr(
+        self,
+        genome_name,
+        asset_name,
+        tag_name=None,
+        seek_key=None,
+        remote_class="html",
+        get_url=lambda server, id: construct_request_url(server, id),
+    ):
+        """
+        Seek a remote path to a specified genome/asset.seek_key:tag
+
+        :param str genome_name: name of a reference genome assembly of interest
+        :param str asset_name: name of the particular asset to fetch
+        :param str tag_name: name of the particular asset tag to fetch
+        :param str seek_key: name of the particular subasset to fetch
+        :param str remote_class: remote data provider class, e.g. 'html' or 's3'
+        :param function(serverUrl, operationId) -> str get_url: how to determine
+            URL request, given server URL and endpoint operationID
+        :return str: path to the asset
+        """
+        good_servers = [
+            s for s in self[CFG_SERVERS_KEY] if get_url(s, API_ID_ASSET_PATH)
+        ]
+        _LOGGER.debug(f"Compatible refgenieserver instances: {good_servers}")
+        for url in good_servers:
+            try:
+                genome_digest = self.get_genome_alias_digest(alias=genome_name)
+            except yacman.UndefinedAliasError:
+                _LOGGER.info(f"No local digest for genome alias: {genome_name}")
+                if not self.set_genome_alias(
+                    genome=genome_name, servers=[url], create_genome=True
+                ):
+                    continue
+                genome_digest = self.get_genome_alias_digest(alias=genome_name)
+
+            asset_seek_key_url = get_url(url, API_ID_ASSET_PATH).format(
+                genome=genome_digest, asset=asset_name, seek_key=seek_key or asset_name
+            )
+            if asset_seek_key_url is None:
+                continue
+            asset_seek_key_target = download_json(
+                asset_seek_key_url,
+                params={"tag": tag_name, "remoteClass": remote_class},
+            )
+            return asset_seek_key_target
+
     def seek_src(
         self,
         genome_name,
@@ -875,53 +922,6 @@ class RefGenConf(yacman.YacAttMap):
         else:
             warnings.warn(msg, RuntimeWarning)
         return fullpath
-
-    def seekr(
-        self,
-        genome_name,
-        asset_name,
-        seek_key=None,
-        tag_name=None,
-        remote_class="html",
-        get_url=lambda server, id: construct_request_url(server, id),
-    ):
-        """
-        Seek a remote path to a specified genome/asset.seek_key:tag
-
-        :param str genome_name: name of a reference genome assembly of interest
-        :param str asset_name: name of the particular asset to fetch
-        :param str tag_name: name of the particular asset tag to fetch
-        :param str seek_key: name of the particular subasset to fetch
-        :param str remote_class: remote data provider class, e.g. 'html' or 's3'
-        :param function(serverUrl, operationId) -> str get_url: how to determine
-            URL request, given server URL and endpoint operationID
-        :return str: path to the asset
-        """
-        good_servers = [
-            s for s in self[CFG_SERVERS_KEY] if get_url(s, API_ID_ASSET_PATH)
-        ]
-        _LOGGER.debug(f"Compatible refgenieserver instances: {good_servers}")
-        for url in good_servers:
-            try:
-                genome_digest = self.get_genome_alias_digest(alias=genome_name)
-            except yacman.UndefinedAliasError:
-                _LOGGER.info(f"No local digest for genome alias: {genome_name}")
-                if not self.set_genome_alias(
-                    genome=genome_name, servers=[url], create_genome=True
-                ):
-                    continue
-                genome_digest = self.get_genome_alias_digest(alias=genome_name)
-
-            asset_seek_key_url = get_url(url, API_ID_ASSET_PATH).format(
-                genome=genome_digest, asset=asset_name, seek_key=seek_key or asset_name
-            )
-            if asset_seek_key_url is None:
-                continue
-            asset_seek_key_target = download_json(
-                asset_seek_key_url,
-                params={"tag": tag_name, "remoteClass": remote_class},
-            )
-            return asset_seek_key_target
 
     def get_default_tag(self, genome, asset, use_existing=True):
         """
@@ -2538,16 +2538,18 @@ class RefGenConf(yacman.YacAttMap):
             explain=explain,
         )
 
-    def populate(self, glob):
+    def populate(self, glob, remote=False, remote_class="html"):
         """
         Populates refgenie references from refgenie://genome/asset:tag registry paths
 
         :param dict | str | list glob: String which may contain refgenie registry paths as
             values; or a dict, for which values may contain refgenie registry
             paths. Dict include nested dicts.
+        :param bool remote: whether to use remote paths. Local paths are used by default
+        :param str remote_class: remote data provider class. Used only in remote=True
         :return dict | str | list: modified input dict with refgenie paths populated
         """
-
+        seek_method_name = "seekr" if remote else "seek"
         p = re.compile("refgenie://([A-Za-z0-9_/\.]+)?")
 
         if isinstance(glob, str):
@@ -2561,9 +2563,15 @@ class RefGenConf(yacman.YacAttMap):
                         f" {reg_path}"
                     )
                     return glob
-                rgpath = self.seek(
-                    rgpkg["namespace"], rgpkg["item"], rgpkg["tag"], rgpkg["subitem"]
+                args = dict(
+                    genome_name=rgpkg["namespace"],
+                    asset_name=rgpkg["item"],
+                    tag_name=rgpkg["tag"],
+                    seek_key=rgpkg["subitem"],
                 )
+                if remote:
+                    args.update(dict(remote_class=remote_class))
+                rgpath = getattr(self, seek_method_name)(**args)
                 glob = re.sub(reg_path, rgpath, glob)
             return glob
         elif isinstance(glob, dict):

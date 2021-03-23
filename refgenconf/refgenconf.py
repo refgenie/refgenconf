@@ -2538,61 +2538,37 @@ class RefGenConf(yacman.YacAttMap):
             explain=explain,
         )
 
-    def populate(self, glob, remote=False, remote_class="html"):
+    def populate(self, glob):
         """
-        Populates refgenie references from refgenie://genome/asset:tag registry paths
+        Populates *local* refgenie references from
+        refgenie://genome/asset.seek_key:tag registry paths
 
         :param dict | str | list glob: String which may contain refgenie registry paths as
             values; or a dict, for which values may contain refgenie registry
             paths. Dict include nested dicts.
-        :param bool remote: whether to use remote paths. Local paths are used by default
-        :param str remote_class: remote data provider class. Used only in remote=True
         :return dict | str | list: modified input dict with refgenie paths populated
         """
-        seek_method_name = "seekr" if remote else "seek"
-        p = re.compile("refgenie://([A-Za-z0-9_/\.]+)?")
+        return _populate_refgenie_registry_path(
+            self, glob=glob, seek_method_name="seek"
+        )
 
-        if isinstance(glob, str):
-            it = re.finditer(p, glob)
-            for m in it:
-                reg_path = m.group()
-                rgpkg = prp(reg_path)
-                if not rgpkg:
-                    _LOGGER.info(
-                        f"Can't convert non-conforming refgenie registry path:"
-                        f" {reg_path}"
-                    )
-                    return glob
-                args = dict(
-                    genome_name=rgpkg["namespace"],
-                    asset_name=rgpkg["item"],
-                    tag_name=rgpkg["tag"],
-                    seek_key=rgpkg["subitem"],
-                )
-                if remote:
-                    args.update(dict(remote_class=remote_class))
-                rgpath = getattr(self, seek_method_name)(**args)
-                glob = re.sub(reg_path, rgpath, glob)
-            return glob
-        elif isinstance(glob, dict):
-            for k, v in glob.items():
-                if k.startswith("_"):
-                    continue
-                if k.startswith("sources"):
-                    continue  # derived attribute sources
-                glob[k] = self.populate(v)
-            return glob
-        elif isinstance(glob, list):
-            return [self.populate(v) for v in glob]
-        elif isinstance(glob, AttMap):
-            return AttMap(self.populate(glob.to_dict()))
-        else:
-            otype = type(glob)
-            _LOGGER.debug(
-                f"Refgenie can only populate str, list, or dict objects. Got {otype}"
-            )
-            _LOGGER.debug(glob)
-            return glob
+    def populater(self, glob, remote_class=None):
+        """
+        Populates *remote* refgenie references from
+        refgenie://genome/asset:tag registry paths
+
+        :param dict | str | list glob: String which may contain refgenie registry paths as
+            values; or a dict, for which values may contain refgenie registry
+            paths. Dict include nested dicts.
+        :param str remote_class: remote data provider class, e.g. 'http' or 's3'
+        :return dict | str | list: modified input dict with refgenie paths populated
+        """
+        return _populate_refgenie_registry_path(
+            self,
+            glob=glob,
+            seek_method_name="seekr",
+            remote_class=remote_class or "html",
+        )
 
     def run_plugins(self, hook):
         """
@@ -3350,3 +3326,60 @@ def _raise_not_mapping(mapping, prefix=""):
         prefix + f"is not a mapping but '{type(mapping).__name__}'. "
         f"This is usually a result of a previous error"
     )
+
+
+def _populate_refgenie_registry_path(rgc, glob, seek_method_name, remote_class=None):
+    """
+    Populates refgenie references from refgenie://genome/asset:tag registry paths
+
+    :param dict | str | list glob: String which may contain refgenie registry paths as
+        values; or a dict, for which values may contain refgenie registry
+        paths. Dict include nested dicts.
+    :param bool seek_method_name: a RefGenConf method name to use to seek for the
+        strings to replace matched refgenie registry paths, e.g. 'seek' or 'seekr'
+    :param str remote_class: remote data provider class. Used only in remote=True
+    :return dict | str | list: modified input dict with refgenie paths populated
+    """
+    p = re.compile("refgenie://([A-Za-z0-9_/\.]+)?")
+
+    if isinstance(glob, str):
+        it = re.finditer(p, glob)
+        for m in it:
+            reg_path = m.group()
+            rgpkg = prp(reg_path)
+            if not rgpkg:
+                _LOGGER.info(
+                    f"Can't convert non-conforming refgenie registry path:"
+                    f" {reg_path}"
+                )
+                return glob
+            args = dict(
+                genome_name=rgpkg["namespace"],
+                asset_name=rgpkg["item"],
+                tag_name=rgpkg["tag"],
+                seek_key=rgpkg["subitem"],
+            )
+            if remote_class is not None:
+                args.update(dict(remote_class=remote_class))
+            rgpath = getattr(rgc, seek_method_name)(**args)
+            glob = re.sub(reg_path, rgpath, glob)
+        return glob
+    elif isinstance(glob, dict):
+        for k, v in glob.items():
+            if k.startswith("_"):
+                continue
+            if k.startswith("sources"):
+                continue  # derived attribute sources
+            glob[k] = rgc.populate(v)
+        return glob
+    elif isinstance(glob, list):
+        return [rgc.populate(v) for v in glob]
+    elif isinstance(glob, AttMap):
+        return AttMap(rgc.populate(glob.to_dict()))
+    else:
+        otype = type(glob)
+        _LOGGER.debug(
+            f"Refgenie can only populate str, list, or dict objects. Got {otype}"
+        )
+        _LOGGER.debug(glob)
+        return glob

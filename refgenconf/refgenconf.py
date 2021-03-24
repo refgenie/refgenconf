@@ -372,7 +372,11 @@ class RefGenConf(yacman.YacAttMap):
                 table.add_column("asset " + it.format("seek_keys"))
                 table.add_column("tags")
                 for g in genomes:
-                    genome = rgc.get_genome_alias_digest(alias=g, fallback=True)
+                    try:
+                        genome = rgc.get_genome_alias_digest(alias=g, fallback=True)
+                    except yacman.UndefinedAliasError:
+                        rgc.set_genome_alias(genome=g, create_genome=True, no_write=True)
+                        genome = rgc.get_genome_alias_digest(alias=g, fallback=True)
                     if genome not in genomes_data:
                         _LOGGER.error(f"Genome {g} ({genome}) not found")
                         continue
@@ -1847,14 +1851,14 @@ class RefGenConf(yacman.YacAttMap):
                 set_aliases, removed_aliases = _check_and_set_alias(
                     rgc=r, d=digest, a=genome, create=create_genome
                 )
+            self._remove_symlink_alias(symlink_mapping, removed_aliases)
+            self._symlink_alias(genome=digest)
         else:
             set_aliases, removed_aliases = _check_and_set_alias(
                 rgc=self, d=digest, a=genome, create=create_genome
             )
         if not set_aliases:
             return False
-        self._remove_symlink_alias(symlink_mapping, removed_aliases)
-        self._symlink_alias(genome=digest)
         return True
 
     def initialize_genome(

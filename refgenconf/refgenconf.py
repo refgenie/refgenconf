@@ -375,7 +375,9 @@ class RefGenConf(yacman.YacAttMap):
                     try:
                         genome = rgc.get_genome_alias_digest(alias=g, fallback=True)
                     except yacman.UndefinedAliasError:
-                        rgc.set_genome_alias(genome=g, create_genome=True, no_write=True)
+                        rgc.set_genome_alias(
+                            genome=g, create_genome=True, no_write=True
+                        )
                         genome = rgc.get_genome_alias_digest(alias=g, fallback=True)
                     if genome not in genomes_data:
                         _LOGGER.error(f"Genome {g} ({genome}) not found")

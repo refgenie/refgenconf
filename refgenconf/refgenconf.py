@@ -568,15 +568,18 @@ class RefGenConf(yacman.YacAttMap):
             or os.link
         """
 
-        def _rpl(str):
+        def _rpl(x):
             """
             RePLace genome digest with human-readable genome ID, if exists
+
+            :param str x: string to replace digest with alias in
+            :return str: processed string
             """
-            return str.replace(genome_digest, alias)
+            return x.replace(genome_digest, alias)
 
         if not callable(link_fun) or len(finspect(link_fun).args) != 2:
             raise TypeError(
-                "Linking function must be a two-arg function " "(target, destination)"
+                "Linking function must be a two-arg function (target, destination)"
             )
         created = []
         genome_digest = self.get_genome_alias_digest(genome, fallback=True)
@@ -593,21 +596,21 @@ class RefGenConf(yacman.YacAttMap):
                 os.makedirs(path, exist_ok=True)
                 for root, dirs, files in os.walk(src_path):
                     appendix = os.path.relpath(root, src_path)
-                    for dir in dirs:
+                    for directory in dirs:
                         try:
-                            os.makedirs(os.path.join(path, appendix, _rpl(dir)))
+                            os.makedirs(os.path.join(path, appendix, _rpl(directory)))
                         except FileExistsError:
                             continue
                     for file in files:
                         try:
                             rel = os.path.relpath(
-                                os.path.join(root, file), os.path.join(path)
+                                os.path.join(root, file), os.path.join(path, appendix)
                             )
-                            link_fun(rel, os.path.join(path, appendix, _rpl(file)))
+                            new_path = os.path.join(path, appendix, _rpl(file))
+                            link_fun(rel, new_path)
                         except FileExistsError:
                             _LOGGER.warning(
-                                f"Could not create link, file exists: "
-                                f"{os.path.join(path, appendix, _rpl(file))}"
+                                f"Could not create link, file exists: {new_path}"
                             )
                             continue
                 created.append(path)

@@ -1,10 +1,12 @@
 """ Tests for basic functionality of the RefGenConf constructor """
 
 import os
+
 import pytest
 from attmap import PathExAttMap
 from yacman import AliasedYacAttMap
-from refgenconf import RefGenConf, ConfigNotCompliantError
+
+from refgenconf import ConfigNotCompliantError, RefGenConf
 from refgenconf.const import (
     CFG_FOLDER_KEY,
     CFG_GENOMES_KEY,

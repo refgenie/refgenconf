@@ -1,6 +1,7 @@
+from datetime import timedelta
+
 from rich.progress import ProgressColumn, filesize
 from rich.text import Text
-from datetime import timedelta
 
 
 class _DownloadColumn(ProgressColumn):

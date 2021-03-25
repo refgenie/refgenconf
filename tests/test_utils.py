@@ -1,5 +1,6 @@
-import pytest
 from collections import Mapping
+
+import pytest
 
 
 @pytest.mark.parametrize(["genome", "asset", "tag"], [("rCRSd", "fasta", "default")])

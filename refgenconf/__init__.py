@@ -1,11 +1,11 @@
 from ._version import __version__
-from .refgenconf import RefGenConf, upgrade_config
-from .helpers import select_genome_config, get_dir_digest
 from .const import *
 from .exceptions import *
 from .helpers import *
-from .refgenconf import *
+from .helpers import get_dir_digest, select_genome_config
 from .populator import looper_refgenie_plugin
+from .refgenconf import *
+from .refgenconf import RefGenConf, upgrade_config
 
 __all__ = (
     [

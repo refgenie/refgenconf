@@ -1,10 +1,11 @@
 # refgenie looper plugin
 
 import logging
-import refgenconf
 import re
 
 from ubiquerg import parse_registry_path as prp
+
+import refgenconf
 
 _LOGGER = logging.getLogger(__name__)
 

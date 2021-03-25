@@ -1,6 +1,6 @@
 # Changelog
 
-This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format. 
+This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ## [0.11.0] - Unreleased
 ### Added
@@ -21,16 +21,16 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Removed
 - `as_string` and `order` option from `listr` method
-	
+
 ### Added
 - `upgrade_config` function for genome configuration file migrating between versions
 - `RefGenConf.compare` method for genome compatibility level determination
 - `as_digests` option in `RefGenConf.listr` method
 - genome config validation on `RefGenConf` object instantiation stage and on every write
-- new progress bar in `RefGenConf.pull`  
+- new progress bar in `RefGenConf.pull`
 - `RefGenConf.get_ta`
 - numerous `RefGenConf` object properties and methods related to genome aliases handling: `genome_aliases`, `genome_aliases_table`, `alias_dir`, `data_dir`, `get_genome_alias`, `get_genome_alias_digest`, `remove_genome_aliases`, `set_genome_alias`, `initialize_genome`. Refer to [API documentation](http://refgenie.databio.org/en/latest/autodoc_build/refgenconf/) for more specific information.
-- `get_asset_table` method, which displays a concise assets table 
+- `get_asset_table` method, which displays a concise assets table
 
 ## [0.9.3] - 2020-09-02
 
@@ -85,7 +85,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 	- `tag_asset` to `tag`
 	- `pull_asset` to `pull`
 	- `get_asset_digest` to `id`
-  	- `get_asset` to `seek`. Moreover the file existence 
+  	- `get_asset` to `seek`. Moreover the file existence
 
 ### Deprecated
 - `get_asset` method. Use `seek` instead
@@ -96,7 +96,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - `genome_archive_config` key to the genome configuration file
 
 ### Changed
-- `genome_archive` key to `genome_archive_folder` in the config file. 
+- `genome_archive` key to `genome_archive_folder` in the config file.
 
 ## [0.6.1] - 2019-12-13
 
@@ -114,11 +114,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - `get_asset_digest` method for asset digest retrieval
 - `dir` to the `filepath` method to return an archive enclosing directory
 - `get_asset_digest` method to return the digest for the specified asset
-- `update_genome_servers` method for `genome_servers` attribute manipulation 
+- `update_genome_servers` method for `genome_servers` attribute manipulation
 
 ### Changed
 - `pull_asset` method so that it downloads the archive from a server, makes the object writable, updates it and writes the updates to the refgenie configuration file on disk
-- the way of distribution of `refgenieserver` endpoints operationIds. They are grouped and mapped to a short description   
+- the way of distribution of `refgenieserver` endpoints operationIds. They are grouped and mapped to a short description
 
 ### Fixed
 - overloaded colon in progress bar descriptions; [#73](https://github.com/databio/refgenconf/issues/73)
@@ -179,7 +179,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 - `udpate_genomes` method
-- Genome config file version is now verified in `RefGenConf.__init__` 
+- Genome config file version is now verified in `RefGenConf.__init__`
 
 ## [0.2.0] - 2019-06-18
 ### Added

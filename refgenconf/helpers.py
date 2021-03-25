@@ -1,21 +1,21 @@
 """ Helper functions """
 
-import os
-from yacman import select_config
-from .const import *
-from .exceptions import DownloadJsonError, MissingAssetError
-from .seqcol import SeqColClient
-
 import json
-from re import sub
-import requests
-from requests import get
-from ubiquerg import is_command_callable
 import logging
+import os
 import shutil
 from copy import copy
 from functools import partial
-from requests import ConnectionError
+from re import sub
+
+import requests
+from requests import ConnectionError, get
+from ubiquerg import is_command_callable
+from yacman import select_config
+
+from .const import *
+from .exceptions import DownloadJsonError, MissingAssetError
+from .seqcol import SeqColClient
 
 _LOGGER = logging.getLogger(__name__)
 

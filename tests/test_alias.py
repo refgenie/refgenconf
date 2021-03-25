@@ -1,8 +1,10 @@
-import pytest
 import os
-from yacman import UndefinedAliasError
-from refgenconf.const import CFG_GENOMES_KEY, CFG_ALIASES_KEY
 from shutil import rmtree
+
+import pytest
+from yacman import UndefinedAliasError
+
+from refgenconf.const import CFG_ALIASES_KEY, CFG_GENOMES_KEY
 
 DEMO_FILES = ["demo.fa.gz", "demo2.fa", "demo3.fa", "demo4.fa", "demo5.fa.gz"]
 

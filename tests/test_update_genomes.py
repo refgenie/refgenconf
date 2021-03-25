@@ -2,15 +2,11 @@
 
 import pytest
 from attmap import PathExAttMap
-from refgenconf import (
-    CFG_FOLDER_KEY,
-    CFG_GENOMES_KEY,
-    CFG_SERVER_KEY,
-    DEFAULT_SERVER,
-    RefGenConf as RGC,
-)
+
+from refgenconf import CFG_FOLDER_KEY, CFG_GENOMES_KEY, CFG_SERVER_KEY, DEFAULT_SERVER
+from refgenconf import RefGenConf as RGC
 from refgenconf.const import CFG_ASSETS_KEY
-from tests.conftest import bind_to_assets, get_conf_genomes, CONF_DATA
+from tests.conftest import CONF_DATA, bind_to_assets, get_conf_genomes
 
 __author__ = "Vince Reuter"
 __email__ = "vreuter@virginia.edu"

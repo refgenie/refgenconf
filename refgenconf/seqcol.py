@@ -1,12 +1,11 @@
-import os
-import logging
-import hashlib
 import binascii
-
+import hashlib
+import logging
+import os
 from gzip import open as gzopen
 
-from .henge import ITEM_TYPE, Henge
 from .exceptions import RefgenconfError
+from .henge import ITEM_TYPE, Henge
 
 
 def trunc512_digest(seq, offset=24):

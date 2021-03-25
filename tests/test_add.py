@@ -1,7 +1,8 @@
 """ Tests for RefGenConf.add. These tests depend on successful completion of tests is test_1pull_asset.py """
 
-import pytest
 import mock
+import pytest
+
 from refgenconf import RefGenConf
 
 

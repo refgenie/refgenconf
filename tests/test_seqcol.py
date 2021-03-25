@@ -1,4 +1,5 @@
 import pytest
+
 from refgenconf.seqcol import *
 
 DEMO_FILES = ["demo.fa.gz", "demo2.fa", "demo3.fa", "demo4.fa", "demo5.fa.gz"]

@@ -1,15 +1,17 @@
 """ Tests for listing remotely available genomes and assets. """
 
 from collections import OrderedDict
+
+import pytest
+
 from refgenconf import (
-    RefGenConf,
+    API_VERSION,
     CFG_FOLDER_KEY,
     CFG_GENOMES_KEY,
     CFG_SERVERS_KEY,
-    API_VERSION,
+    RefGenConf,
 )
 from refgenconf.helpers import download_json
-import pytest
 
 
 @pytest.mark.parametrize(

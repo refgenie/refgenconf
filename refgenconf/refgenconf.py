@@ -1,53 +1,45 @@
 #!/usr/bin/env python
 
-import sys
 import itertools
+import json
 import logging
 import os
 import re
-import signal
-import warnings
 import shutil
-import json
-
-import yacman
-
-from urllib.request import urlopen, urlretrieve
-from urllib.error import HTTPError, ContentTooShortError
-from urllib.parse import urlencode
+import signal
+import sys
+import warnings
 from collections import OrderedDict
 from collections.abc import Iterable, Mapping
 from functools import partial
 from inspect import getfullargspec as finspect
+from urllib.error import ContentTooShortError, HTTPError
+from urllib.parse import urlencode
+from urllib.request import urlopen, urlretrieve
+
+import yacman
+from attmap import AttMap
+from attmap import PathExAttMap as PXAM
+from jsonschema.exceptions import ValidationError
 from pkg_resources import iter_entry_points
-from rich.table import Table
-from rich.progress import Progress, TextColumn, BarColumn
 from requests import ConnectionError
 from requests.exceptions import MissingSchema
-from jsonschema.exceptions import ValidationError
-
-from .progress_bar import _DownloadColumn, _TimeRemainingColumn, _TransferSpeedColumn
-
-from .seqcol import SeqColClient
-from attmap import PathExAttMap as PXAM
-from attmap import AttMap
-from ubiquerg import (
-    checksum,
-    is_url,
-    query_yes_no,
-    untar,
-    is_writable,
-    parse_registry_path as prp,
-)
+from rich.progress import BarColumn, Progress, TextColumn
+from rich.table import Table
+from ubiquerg import checksum, is_url, is_writable
+from ubiquerg import parse_registry_path as prp
+from ubiquerg import query_yes_no, untar
 
 from .const import *
+from .exceptions import *
 from .helpers import (
     asciify_json_dict,
-    select_genome_config,
-    get_dir_digest,
     download_json,
+    get_dir_digest,
+    select_genome_config,
 )
-from .exceptions import *
+from .progress_bar import _DownloadColumn, _TimeRemainingColumn, _TransferSpeedColumn
+from .seqcol import SeqColClient
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -2816,8 +2808,8 @@ def upgrade_config(
         rgc = OldRefGenConf(filepath=filepath, writable=True)
 
         if target_version == "0.4":
-            from .helpers import format_config_03_04 as format_config
             from .helpers import alter_file_tree_03_04 as alter_file_tree
+            from .helpers import format_config_03_04 as format_config
     else:
         raise NotImplementedError(
             f"Did not upgrade. Upgrade from v{current_version} config is not "

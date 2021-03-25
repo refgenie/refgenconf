@@ -1,10 +1,12 @@
 """ Tests for RefGenConf.populate. These tests depend on successful completion of tests is test_1pull_asset.py """
 
-import pytest
 import random
 import string
-from refgenconf.exceptions import MissingAssetError
+
+import pytest
 from yacman.exceptions import UndefinedAliasError
+
+from refgenconf.exceptions import MissingAssetError
 
 
 def _generate_random_text_template(str_len):

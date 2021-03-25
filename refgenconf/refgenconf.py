@@ -34,9 +34,9 @@ from .const import *
 from .exceptions import *
 from .helpers import (
     asciify_json_dict,
-    download_json,
     get_dir_digest,
     select_genome_config,
+    send_data_request,
 )
 from .progress_bar import _DownloadColumn, _TimeRemainingColumn, _TransferSpeedColumn
 from .seqcol import SeqColClient
@@ -408,7 +408,9 @@ class RefGenConf(yacman.YacAttMap):
                 f"{', '.join(self[CFG_SERVERS_KEY])}"
             )
         else:
-            genomes_data = download_json(get_json_url(server_url, API_ID_GENOMES_DICT))
+            genomes_data = send_data_request(
+                get_json_url(server_url, API_ID_GENOMES_DICT)
+            )
             title = f"Remote refgenie assets\nServer URL: {server_url}"
         c = (
             f"use refgenie list{'r' if server_url is not None else ''} "
@@ -802,7 +804,7 @@ class RefGenConf(yacman.YacAttMap):
             )
             if asset_seek_key_url is None:
                 continue
-            asset_seek_key_target = download_json(
+            asset_seek_key_target = send_data_request(
                 asset_seek_key_url,
                 params={"tag": tag_name, "remoteClass": remote_class},
             )
@@ -1134,7 +1136,7 @@ class RefGenConf(yacman.YacAttMap):
             if assets_url is None or aliases_url is None:
                 continue
 
-            aliases_by_digest = download_json(aliases_url)
+            aliases_by_digest = send_data_request(aliases_url)
             # convert the original, condensed mapping to a data structure with optimal time complexity
             digests_by_alias = {}
             for k, v in aliases_by_digest.items():
@@ -1465,7 +1467,7 @@ class RefGenConf(yacman.YacAttMap):
             num_servers += 1
             try:
                 determined_tag = (
-                    download_json(
+                    send_data_request(
                         get_json_url(server_url, API_ID_DEFAULT_TAG).format(
                             genome=genome, asset=asset
                         )
@@ -1493,7 +1495,7 @@ class RefGenConf(yacman.YacAttMap):
             )
 
             try:
-                archive_data = download_json(
+                archive_data = send_data_request(
                     url_asset_attrs, params={"tag": determined_tag}
                 )
             except DownloadJsonError:
@@ -1508,7 +1510,7 @@ class RefGenConf(yacman.YacAttMap):
                 continue
             else:
                 _LOGGER.debug("Determined server URL: {}".format(server_url))
-                genome_archive_data = download_json(url_genome_attrs)
+                genome_archive_data = send_data_request(url_genome_attrs)
 
             if sys.version_info[0] == 2:
                 archive_data = asciify_json_dict(archive_data)
@@ -1822,7 +1824,7 @@ class RefGenConf(yacman.YacAttMap):
                     "Setting '{}' identity with server: {}".format(genome, url_alias)
                 )
                 try:
-                    digest = download_json(url_alias)
+                    digest = send_data_request(url_alias)
                 except DownloadJsonError:
                     if cnt == len(servers):
                         _LOGGER.error(
@@ -2447,7 +2449,7 @@ class RefGenConf(yacman.YacAttMap):
             genome=genome, asset=asset, tag=tag
         )
         try:
-            remote_digest = download_json(asset_digest_url)
+            remote_digest = send_data_request(asset_digest_url)
         except DownloadJsonError:
             return
         try:
@@ -2728,7 +2730,7 @@ class RefGenConf(yacman.YacAttMap):
         :param url: location or ref genome config data
         :return str, str: text reps of remotely available genomes and assets
         """
-        genomes_data = download_json(url, params={"includeSeekKeys": True})
+        genomes_data = send_data_request(url, params={"includeSeekKeys": True})
         return (
             {g: data for g, data in genomes_data.items() if g in genome}
             if genome is not None
@@ -3237,7 +3239,7 @@ def _get_server_endpoints_mapping(url):
     :param str url: server URL
     :return dict: endpoints mapped by their operationIds
     """
-    json = download_json(url + "/openapi.json")
+    json = send_data_request(url + "/openapi.json")
     return map_paths_by_id(
         asciify_json_dict(json) if sys.version_info[0] == 2 else json
     )

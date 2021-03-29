@@ -1188,6 +1188,10 @@ class RefGenConf(yacman.YacAttMap):
         :raise ValueError: when the original tag is not specified
         :return bool: a logical indicating whether the tagging was successful
         """
+        if any([c in new_tag for c in TAG_NAME_BANNED_CHARS]):
+            raise ValueError(
+                f"The tag name can't consist of characters: {TAG_NAME_BANNED_CHARS}"
+            )
         self.run_plugins(PRE_TAG_HOOK)
         ori_path = self.seek_src(
             genome, asset, tag, enclosing_dir=True, strict_exists=True

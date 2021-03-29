@@ -11,6 +11,7 @@ CFG_NAME = "genome configuration"
 CFG_ENV_VARS = ["REFGENIE"]
 CFG_CONST = ["CFG_NAME", "CFG_ENV_VARS"]
 DEFAULT_SERVER = "http://refgenomes.databio.org"  # "http://rg.databio.org"
+TAG_NAME_BANNED_CHARS = [":", "/"]
 API_VERSION = "v3"
 API_VERSION_2 = "v2"
 DEFAULT_TAG = "default"
@@ -244,6 +245,7 @@ __all__ = (
         "CUSTOM_BAR_FMT",
         "API_VERSION",
         "API_VERSION_2",
+        "TAG_NAME_BANNED_CHARS",
         "CONF_STRUCTURE",
         "OPERATION_IDS",
         "CUSTOM_PFX",

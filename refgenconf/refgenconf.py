@@ -1824,24 +1824,18 @@ class RefGenConf(yacman.YacAttMap):
                 if url_alias_template is None:
                     continue
                 url_alias = url_alias_template.format(alias=genome)
-                _LOGGER.info(
-                    "Setting '{}' identity with server: {}".format(genome, url_alias)
-                )
+                _LOGGER.info(f"Setting '{genome}' identity with server: {url_alias}")
                 try:
                     digest = send_data_request(url_alias)
                 except DownloadJsonError:
                     if cnt == len(servers):
                         _LOGGER.error(
-                            "Genome '{}' not available on any of the following "
-                            "servers: {}".format(genome, ", ".join(servers))
+                            f"Genome '{genome}' not available on any of the "
+                            f"following servers: {', '.join(servers)}"
                         )
                         return False
                     continue
-                _LOGGER.info(
-                    "Determined server digest for local genome alias ({}): {}".format(
-                        genome, digest
-                    )
-                )
+                _LOGGER.info(f"Determined digest for local '{genome}' alias: {digest}")
                 break
 
         # get the symlink mapping before the removal for _remove_symlink_alias

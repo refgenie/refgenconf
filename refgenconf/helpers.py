@@ -279,8 +279,8 @@ def swap_names_in_tree(top, new_name, old_name):
     if not os.path.isdir(top):
         return False
     for root, dirs, files in os.walk(top):
-        for dir in dirs:
-            _rename(dir, root)
+        for directory in dirs:
+            _rename(directory, root)
         for file in files:
             _rename(file, root)
     if os.path.split(top)[1] == old_name:
@@ -305,9 +305,9 @@ def send_data_request(url, params=None):
         except (json.JSONDecodeError, ValueError):
             _LOGGER.debug("The returned data is not a valid JSON")
             if resp.encoding == "utf-8" or resp.apparent_encoding == "ascii":
-                _LOGGER.debug("Request returned pain text data")
+                _LOGGER.debug(f"Request returned pain text data: {resp.text}")
                 return resp.text
-            raise DownloadJsonError(resp)
+    raise DownloadJsonError(resp)
 
 
 def replace_str_in_obj(object, x, y):

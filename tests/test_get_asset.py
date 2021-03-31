@@ -23,7 +23,7 @@ class TestGetAsset:
         ["gname", "aname", "tname", "seek_key", "etype"],
         [
             ("rCRSd", "missing", "default", None, MissingAssetError),
-            ("missing", "bowtie2_index", "default", None, UndefinedAliasError),
+            ("missing", "bowtie2_index", "default", None, MissingGenomeError),
             ("rCRSd", "bowtie2_index", "missing", None, MissingTagError),
             ("rCRSd", "bowtie2_index", "default", "missing", MissingSeekKeyError),
         ],

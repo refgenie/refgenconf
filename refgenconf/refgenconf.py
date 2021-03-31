@@ -716,7 +716,10 @@ class RefGenConf(yacman.YacAttMap):
             this configuration instance, but the requested asset is unknown
         """
         tag_name = tag_name or self.get_default_tag(genome_name, asset_name)
-        genome_digest = self.get_genome_alias_digest(genome_name, fallback=True)
+        try:
+            genome_digest = self.get_genome_alias_digest(genome_name, fallback=True)
+        except yacman.UndefinedAliasError:
+            raise MissingGenomeError(f"Your genomes do not include '{genome_name}'")
         genome_ids = _make_list_of_str(
             self.get_genome_alias(genome_digest, fallback=True, all_aliases=True)
         )

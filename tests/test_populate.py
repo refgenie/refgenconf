@@ -4,9 +4,8 @@ import random
 import string
 
 import pytest
-from yacman.exceptions import UndefinedAliasError
 
-from refgenconf.exceptions import MissingAssetError
+from refgenconf.exceptions import MissingAssetError, MissingGenomeError
 
 
 def _generate_random_text_template(str_len):
@@ -92,5 +91,5 @@ class TestPopulate:
     @pytest.mark.parametrize("aname", ["fasta", "bowtie2_index"])
     @pytest.mark.parametrize("gname", ["asset", "test", "bogus"])
     def test_populate_recognizes_missing_genome(self, ro_rgc, gname, aname):
-        with pytest.raises(UndefinedAliasError):
+        with pytest.raises(MissingGenomeError):
             ro_rgc.populate(f"refgenie://{gname}/{aname}")

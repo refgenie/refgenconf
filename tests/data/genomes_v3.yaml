@@ -1,7 +1,7 @@
 config_version: 0.3
 genome_folder: /tmp/old
 genome_servers:
- - http://refgenomes.databio.org
+  - http://refgenomes.databio.org
 genomes:
   human_repeats:
     assets:
@@ -31,13 +31,3 @@ genomes:
             asset_digest: 4eb430296bc02ed7e4006624f1d5ac53
         default_tag: default
     genome_description: The revised cambridge reference sequence. This is the human mitochondrial reference genome
-  human_alu:
-    assets:
-      fasta:
-        tags:
-          default:
-            asset_path: /tmp/old/human_alu/fasta/default
-            asset_digest: 6d74fb9f68e546348ec825b2e0cc10f6
-            seek_keys:
-              fasta: human_alu.fa
-        default_tag: default

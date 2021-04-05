@@ -48,6 +48,15 @@ class TestPopulate:
         )
 
     @pytest.mark.parametrize(
+        ["gname", "aname", "tname"],
+        [("rCRSd", "fasta", "default"), ("human_repeats", "fasta", "default")],
+    )
+    def test_populate_single_string_with_tag(self, ro_rgc, gname, aname, tname):
+        assert ro_rgc.populate(f"refgenie://{gname}/{aname}:{tname}") == ro_rgc.seek(
+            genome_name=gname, asset_name=aname, tag_name=tname
+        )
+
+    @pytest.mark.parametrize(
         ["gname", "aname"], [("rCRSd", "fasta"), ("human_repeats", "fasta")]
     )
     @pytest.mark.parametrize("str_len", [50, 100])

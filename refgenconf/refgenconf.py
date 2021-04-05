@@ -3344,7 +3344,7 @@ def _populate_refgenie_registry_path(rgc, glob, seek_method_name, remote_class=N
     :param str remote_class: remote data provider class. Used only in remote=True
     :return dict | str | list: modified input dict with refgenie paths populated
     """
-    p = re.compile("refgenie://([A-Za-z0-9_/\.]+)?")
+    p = re.compile("refgenie://([A-Za-z0-9_/\.\:]+)?")
 
     if isinstance(glob, str):
         it = re.finditer(p, glob)

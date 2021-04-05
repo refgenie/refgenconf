@@ -987,7 +987,15 @@ class RefGenConf(yacman.YacAttMap):
                 self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset], "Asset section "
             )
 
-    def set_default_pointer(self, genome, asset, tag, force=False, force_digest=None):
+    def set_default_pointer(
+        self,
+        genome,
+        asset,
+        tag,
+        force_exists=False,
+        force_digest=None,
+        force_fasta=False,
+    ):
         """
         Point to the selected tag by default
 
@@ -996,7 +1004,9 @@ class RefGenConf(yacman.YacAttMap):
         :param str tag: name of the particular asset tag to point to by default
         :param str force_digest: digest to force update of. The alias will
             not be converted to the digest, even if provided.
-        :param bool force: whether the default tag change should be
+        :param bool force_fasta: whether setting a default tag for a fasta asset
+            should be forced. Beware: This could lead to genome identity issues
+        :param bool force_exists: whether the default tag change should be
             forced (even if it exists)
         """
         self._assert_gat_exists(genome, asset, tag)
@@ -1005,9 +1015,9 @@ class RefGenConf(yacman.YacAttMap):
             CFG_ASSET_DEFAULT_TAG_KEY in asset_dict
             and len(asset_dict[CFG_ASSET_DEFAULT_TAG_KEY]) > 0
         ):
-            if not force:
+            if not force_exists:
                 return
-            if asset == "fasta":
+            if asset == "fasta" and not force_fasta:
                 raise NotImplementedError(
                     "Can't change the default tag for fasta assets, "
                     "this would lead to genome identity issues"
@@ -1305,7 +1315,9 @@ class RefGenConf(yacman.YacAttMap):
             CFG_ASSET_DEFAULT_TAG_KEY in asset_mapping
             and asset_mapping[CFG_ASSET_DEFAULT_TAG_KEY] == tag
         ):
-            self.set_default_pointer(genome, asset, new_tag, force=True)
+            self.set_default_pointer(
+                genome, asset, new_tag, force_exists=True, force_fasta=True
+            )
         self.cfg_remove_assets(genome, asset, tag)
         return True
 

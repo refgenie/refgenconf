@@ -4,9 +4,17 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [0.11.0] - Unreleased
 ### Added
-- `populate` function to support `refgenie populate`.
-- `refgenconf.looper_refgenie_plugin` -- new looper plugin that populates refgenie paths with looper.
+- `RefGenConf.populate` function to support `refgenie populate`
+- `RefGenConf.populater` function to support `refgenie populater`
+- `RefGenConf.seekr` function to support `refgenie seekr`
+- `refgenconf.looper_refgenie_plugin` -- new looper plugin that populates refgenie paths with looper
+- tag scanning for disallowed characters: `:`, `/`
 
+## Fixed
+- issue with dangling symbolic links in `_refgenie_build` directory; [#122](https://github.com/refgenie/refgenconf/issues/122)
+
+## Changed
+- `RefGenConf.seek` to raise `refgenconf.MissingGenomeError`, rather than `yacman.UndefinedAliasError` if a nonexistent genome is specified
 
 ## [0.10.0] - 2021-03-11
 **After updating to this version your configuration file and genome assets will not be compatible with the software. Please refer to the [upgrade tutorial](config_upgrade_03_to_04.md) for instructions on how to migrate the config between versions.**

@@ -772,7 +772,7 @@ class RefGenConf(yacman.YacAttMap):
         asset_name,
         tag_name=None,
         seek_key=None,
-        remote_class="html",
+        remote_class="http",
         get_url=lambda server, id: construct_request_url(server, id),
     ):
         """
@@ -782,7 +782,7 @@ class RefGenConf(yacman.YacAttMap):
         :param str asset_name: name of the particular asset to fetch
         :param str tag_name: name of the particular asset tag to fetch
         :param str seek_key: name of the particular subasset to fetch
-        :param str remote_class: remote data provider class, e.g. 'html' or 's3'
+        :param str remote_class: remote data provider class, e.g. 'http' or 's3'
         :param function(serverUrl, operationId) -> str get_url: how to determine
             URL request, given server URL and endpoint operationID
         :return str: path to the asset
@@ -2583,7 +2583,7 @@ class RefGenConf(yacman.YacAttMap):
             self,
             glob=glob,
             seek_method_name="seekr",
-            remote_class=remote_class or "html",
+            remote_class=remote_class or "http",
         )
 
     def run_plugins(self, hook):

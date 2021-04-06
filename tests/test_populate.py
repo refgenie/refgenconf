@@ -20,14 +20,14 @@ def _generate_random_text_template(str_len):
     return res
 
 
-def _get_demo_dicts(genome, asset, str_len):
+def get_demo_dicts(genome, asset, str_len):
     demo = {
         "genome": _generate_random_text_template(str_len=str_len).format(
-            f"refgenie://{genome}/{asset}"
+            f"refgenie://{genome}/{asset}:default"
         ),
         "other_attr": "something",
         "bt2": _generate_random_text_template(str_len=str_len).format(
-            f"refgenie://{genome}/{asset}"
+            f"refgenie://{genome}/{asset}:default"
         ),
     }
     nested_demo = {
@@ -72,7 +72,7 @@ class TestPopulate:
     )
     @pytest.mark.parametrize("str_len", [50, 100])
     def test_populate_dicts(self, ro_rgc, gname, aname, str_len):
-        demo, nested_demo = _get_demo_dicts(genome=gname, asset=aname, str_len=str_len)
+        demo, nested_demo = get_demo_dicts(genome=gname, asset=aname, str_len=str_len)
         assert ro_rgc.seek(genome_name=gname, asset_name=aname) in str(
             ro_rgc.populate(demo)
         )
@@ -85,7 +85,7 @@ class TestPopulate:
     )
     @pytest.mark.parametrize("str_len", [50, 100])
     def test_populate_lists(self, ro_rgc, gname, aname, str_len):
-        demo, nested_demo = _get_demo_dicts(genome=gname, asset=aname, str_len=str_len)
+        demo, nested_demo = get_demo_dicts(genome=gname, asset=aname, str_len=str_len)
         demo_list = [demo, nested_demo]
         assert ro_rgc.seek(genome_name=gname, asset_name=aname) in str(
             ro_rgc.populate(demo_list)

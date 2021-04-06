@@ -3357,6 +3357,15 @@ def _populate_refgenie_registry_path(rgc, glob, seek_method_name, remote_class=N
     :return dict | str | list: modified input dict with refgenie paths populated
     """
     p = re.compile("refgenie://([A-Za-z0-9_/\.\:]+)?")
+    partial_args = dict()
+
+    # prepare partial function based on operation mode
+    if remote_class is not None:
+        partial_args.update(dict(remote_class=remote_class))
+    _pop = partial(
+        rgc.populate if seek_method_name == "seek" else rgc.populater,
+        **partial_args,
+    )
 
     if isinstance(glob, str):
         it = re.finditer(p, glob)
@@ -3389,12 +3398,12 @@ def _populate_refgenie_registry_path(rgc, glob, seek_method_name, remote_class=N
                 continue
             if k.startswith("sources"):
                 continue  # derived attribute sources
-            glob[k] = rgc.populate(v)
+            glob[k] = _pop(v)
         return glob
     elif isinstance(glob, list):
-        return [rgc.populate(v) for v in glob]
+        return [_pop(v) for v in glob]
     elif isinstance(glob, AttMap):
-        return AttMap(rgc.populate(glob.to_dict()))
+        return AttMap(_pop(glob.to_dict()))
     else:
         otype = type(glob)
         _LOGGER.debug(

@@ -379,6 +379,11 @@ class RefGenConf(yacman.YacAttMap):
                         continue
                     for asset, asset_dict in genome_dict[CFG_ASSETS_KEY].items():
                         tags = list(asset_dict[CFG_ASSET_TAGS_KEY].keys())
+                        if (
+                            CFG_SEEK_KEYS_KEY
+                            not in asset_dict[CFG_ASSET_TAGS_KEY][tags[0]]
+                        ):
+                            continue
                         seek_keys = list(
                             asset_dict[CFG_ASSET_TAGS_KEY][tags[0]][
                                 CFG_SEEK_KEYS_KEY

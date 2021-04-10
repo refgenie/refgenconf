@@ -1499,13 +1499,15 @@ class RefGenConf(yacman.YacAttMap):
                     if tag is None
                     else tag
                 )
-            except DownloadJsonError:
-                _LOGGER.warning(f"Could not retrieve JSON from: {server_url}")
+            except DownloadJsonError as e:
+                _LOGGER.warning(
+                    f"Could not retrieve tag from: {server_url}. Caught exception: {e}"
+                )
                 bad_servers.append(server_url)
                 continue
             else:
                 determined_tag = str(determined_tag)
-                _LOGGER.debug("Determined tag: {}".format(determined_tag))
+                _LOGGER.debug(f"Determined tag: {determined_tag}")
                 unpack or _raise_unpack_error()
             gat = [genome, asset, determined_tag]
             url_asset_attrs = get_json_url(server_url, API_ID_ASSET_ATTRS).format(
@@ -1526,7 +1528,7 @@ class RefGenConf(yacman.YacAttMap):
                 no_asset_json.append(server_url)
                 if num_servers == len(good_servers):
                     _LOGGER.error(
-                        f"'{alias}/{asset}:{determined_tag}' not "
+                        f"'{genome}/{asset}:{determined_tag}' not "
                         f"available on any of the following servers: "
                         f"{', '.join(self[CFG_SERVERS_KEY])}"
                     )

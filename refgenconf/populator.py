@@ -10,7 +10,7 @@ import refgenconf
 _LOGGER = logging.getLogger(__name__)
 
 
-def looper_refgenie_plugin(namespaces):
+def looper_refgenie_populate(namespaces):
     """
     A looper plugin that populates refgenie references in a PEP from
     refgenie://genome/asset:tag registry paths. This can be used to convert

@@ -3,7 +3,7 @@ from .const import *
 from .exceptions import *
 from .helpers import *
 from .helpers import get_dir_digest, select_genome_config
-from .populator import looper_refgenie_plugin
+from .populator import looper_refgenie_populate
 from .refgenconf import *
 from .refgenconf import RefGenConf, upgrade_config
 

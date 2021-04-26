@@ -21,5 +21,5 @@ __all__ = (
     ]
     + ["DEFAULT_SERVER"]
     + CFG_KEY_NAMES
-    + ["looper_refgenie_plugin"]
+    + ["looper_refgenie_populate"]
 )

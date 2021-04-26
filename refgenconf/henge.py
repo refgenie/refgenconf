@@ -2,12 +2,12 @@
 
 import copy
 import hashlib
-import jsonschema
 import logging
 import os
+
+import jsonschema
 import yacman
 import yaml
-
 
 # module constants
 # seqcol separators definition, e.g. chr1>2342>k34m6vlksb35nb,chr2>234>8h4m6vlaaab31ng

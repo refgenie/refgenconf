@@ -1,53 +1,45 @@
 #!/usr/bin/env python
 
-import sys
 import itertools
+import json
 import logging
 import os
 import re
-import signal
-import warnings
 import shutil
-import json
-
-import yacman
-
-from urllib.request import urlopen, urlretrieve
-from urllib.error import HTTPError, ContentTooShortError
-from urllib.parse import urlencode
+import signal
+import sys
+import warnings
 from collections import OrderedDict
 from collections.abc import Iterable, Mapping
 from functools import partial
 from inspect import getfullargspec as finspect
+from urllib.error import ContentTooShortError, HTTPError
+from urllib.parse import urlencode
+from urllib.request import urlopen, urlretrieve
+
+import yacman
+from attmap import AttMap
+from attmap import PathExAttMap as PXAM
+from jsonschema.exceptions import ValidationError
 from pkg_resources import iter_entry_points
-from rich.table import Table
-from rich.progress import Progress, TextColumn, BarColumn
 from requests import ConnectionError
 from requests.exceptions import MissingSchema
-from jsonschema.exceptions import ValidationError
-
-from .progress_bar import _DownloadColumn, _TimeRemainingColumn, _TransferSpeedColumn
-
-from .seqcol import SeqColClient
-from attmap import PathExAttMap as PXAM
-from attmap import AttMap
-from ubiquerg import (
-    checksum,
-    is_url,
-    query_yes_no,
-    untar,
-    is_writable,
-    parse_registry_path as prp,
-)
+from rich.progress import BarColumn, Progress, TextColumn
+from rich.table import Table
+from ubiquerg import checksum, is_url, is_writable
+from ubiquerg import parse_registry_path as prp
+from ubiquerg import query_yes_no, untar
 
 from .const import *
+from .exceptions import *
 from .helpers import (
     asciify_json_dict,
-    select_genome_config,
     get_dir_digest,
-    download_json,
+    select_genome_config,
+    send_data_request,
 )
-from .exceptions import *
+from .progress_bar import _DownloadColumn, _TimeRemainingColumn, _TransferSpeedColumn
+from .seqcol import SeqColClient
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -372,7 +364,13 @@ class RefGenConf(yacman.YacAttMap):
                 table.add_column("asset " + it.format("seek_keys"))
                 table.add_column("tags")
                 for g in genomes:
-                    genome = rgc.get_genome_alias_digest(alias=g, fallback=True)
+                    try:
+                        genome = rgc.get_genome_alias_digest(alias=g, fallback=True)
+                    except yacman.UndefinedAliasError:
+                        rgc.set_genome_alias(
+                            genome=g, create_genome=True, no_write=True
+                        )
+                        genome = rgc.get_genome_alias_digest(alias=g, fallback=True)
                     if genome not in genomes_data:
                         _LOGGER.error(f"Genome {g} ({genome}) not found")
                         continue
@@ -381,6 +379,11 @@ class RefGenConf(yacman.YacAttMap):
                         continue
                     for asset, asset_dict in genome_dict[CFG_ASSETS_KEY].items():
                         tags = list(asset_dict[CFG_ASSET_TAGS_KEY].keys())
+                        if (
+                            CFG_SEEK_KEYS_KEY
+                            not in asset_dict[CFG_ASSET_TAGS_KEY][tags[0]]
+                        ):
+                            continue
                         seek_keys = list(
                             asset_dict[CFG_ASSET_TAGS_KEY][tags[0]][
                                 CFG_SEEK_KEYS_KEY
@@ -410,7 +413,9 @@ class RefGenConf(yacman.YacAttMap):
                 f"{', '.join(self[CFG_SERVERS_KEY])}"
             )
         else:
-            genomes_data = download_json(get_json_url(server_url, API_ID_GENOMES_DICT))
+            genomes_data = send_data_request(
+                get_json_url(server_url, API_ID_GENOMES_DICT)
+            )
             title = f"Remote refgenie assets\nServer URL: {server_url}"
         c = (
             f"use refgenie list{'r' if server_url is not None else ''} "
@@ -568,15 +573,18 @@ class RefGenConf(yacman.YacAttMap):
             or os.link
         """
 
-        def _rpl(str):
+        def _rpl(x):
             """
             RePLace genome digest with human-readable genome ID, if exists
+
+            :param str x: string to replace digest with alias in
+            :return str: processed string
             """
-            return str.replace(genome_digest, alias)
+            return x.replace(genome_digest, alias)
 
         if not callable(link_fun) or len(finspect(link_fun).args) != 2:
             raise TypeError(
-                "Linking function must be a two-arg function " "(target, destination)"
+                "Linking function must be a two-arg function (target, destination)"
             )
         created = []
         genome_digest = self.get_genome_alias_digest(genome, fallback=True)
@@ -593,21 +601,21 @@ class RefGenConf(yacman.YacAttMap):
                 os.makedirs(path, exist_ok=True)
                 for root, dirs, files in os.walk(src_path):
                     appendix = os.path.relpath(root, src_path)
-                    for dir in dirs:
+                    for directory in dirs:
                         try:
-                            os.makedirs(os.path.join(path, appendix, _rpl(dir)))
+                            os.makedirs(os.path.join(path, appendix, _rpl(directory)))
                         except FileExistsError:
                             continue
                     for file in files:
                         try:
                             rel = os.path.relpath(
-                                os.path.join(root, file), os.path.join(path)
+                                os.path.join(root, file), os.path.join(path, appendix)
                             )
-                            link_fun(rel, os.path.join(path, appendix, _rpl(file)))
+                            new_path = os.path.join(path, appendix, _rpl(file))
+                            link_fun(rel, new_path)
                         except FileExistsError:
                             _LOGGER.warning(
-                                f"Could not create link, file exists: "
-                                f"{os.path.join(path, appendix, _rpl(file))}"
+                                f"Could not create link, file exists: {new_path}"
                             )
                             continue
                 created.append(path)
@@ -713,7 +721,10 @@ class RefGenConf(yacman.YacAttMap):
             this configuration instance, but the requested asset is unknown
         """
         tag_name = tag_name or self.get_default_tag(genome_name, asset_name)
-        genome_digest = self.get_genome_alias_digest(genome_name, fallback=True)
+        try:
+            genome_digest = self.get_genome_alias_digest(genome_name, fallback=True)
+        except yacman.UndefinedAliasError:
+            raise MissingGenomeError(f"Your genomes do not include '{genome_name}'")
         genome_ids = _make_list_of_str(
             self.get_genome_alias(genome_digest, fallback=True, all_aliases=True)
         )
@@ -766,7 +777,7 @@ class RefGenConf(yacman.YacAttMap):
         asset_name,
         tag_name=None,
         seek_key=None,
-        remote_class="html",
+        remote_class="http",
         get_url=lambda server, id: construct_request_url(server, id),
     ):
         """
@@ -776,7 +787,7 @@ class RefGenConf(yacman.YacAttMap):
         :param str asset_name: name of the particular asset to fetch
         :param str tag_name: name of the particular asset tag to fetch
         :param str seek_key: name of the particular subasset to fetch
-        :param str remote_class: remote data provider class, e.g. 'html' or 's3'
+        :param str remote_class: remote data provider class, e.g. 'http' or 's3'
         :param function(serverUrl, operationId) -> str get_url: how to determine
             URL request, given server URL and endpoint operationID
         :return str: path to the asset
@@ -801,7 +812,7 @@ class RefGenConf(yacman.YacAttMap):
             )
             if asset_seek_key_url is None:
                 continue
-            asset_seek_key_target = download_json(
+            asset_seek_key_target = send_data_request(
                 asset_seek_key_url,
                 params={"tag": tag_name, "remoteClass": remote_class},
             )
@@ -981,7 +992,15 @@ class RefGenConf(yacman.YacAttMap):
                 self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset], "Asset section "
             )
 
-    def set_default_pointer(self, genome, asset, tag, force=False, force_digest=None):
+    def set_default_pointer(
+        self,
+        genome,
+        asset,
+        tag,
+        force_exists=False,
+        force_digest=None,
+        force_fasta=False,
+    ):
         """
         Point to the selected tag by default
 
@@ -990,7 +1009,9 @@ class RefGenConf(yacman.YacAttMap):
         :param str tag: name of the particular asset tag to point to by default
         :param str force_digest: digest to force update of. The alias will
             not be converted to the digest, even if provided.
-        :param bool force: whether the default tag change should be
+        :param bool force_fasta: whether setting a default tag for a fasta asset
+            should be forced. Beware: This could lead to genome identity issues
+        :param bool force_exists: whether the default tag change should be
             forced (even if it exists)
         """
         self._assert_gat_exists(genome, asset, tag)
@@ -999,9 +1020,9 @@ class RefGenConf(yacman.YacAttMap):
             CFG_ASSET_DEFAULT_TAG_KEY in asset_dict
             and len(asset_dict[CFG_ASSET_DEFAULT_TAG_KEY]) > 0
         ):
-            if not force:
+            if not force_exists:
                 return
-            if asset == "fasta":
+            if asset == "fasta" and not force_fasta:
                 raise NotImplementedError(
                     "Can't change the default tag for fasta assets, "
                     "this would lead to genome identity issues"
@@ -1133,7 +1154,7 @@ class RefGenConf(yacman.YacAttMap):
             if assets_url is None or aliases_url is None:
                 continue
 
-            aliases_by_digest = download_json(aliases_url)
+            aliases_by_digest = send_data_request(aliases_url)
             # convert the original, condensed mapping to a data structure with optimal time complexity
             digests_by_alias = {}
             for k, v in aliases_by_digest.items():
@@ -1185,6 +1206,10 @@ class RefGenConf(yacman.YacAttMap):
         :raise ValueError: when the original tag is not specified
         :return bool: a logical indicating whether the tagging was successful
         """
+        if any([c in new_tag for c in TAG_NAME_BANNED_CHARS]):
+            raise ValueError(
+                f"The tag name can't consist of characters: {TAG_NAME_BANNED_CHARS}"
+            )
         self.run_plugins(PRE_TAG_HOOK)
         ori_path = self.seek_src(
             genome, asset, tag, enclosing_dir=True, strict_exists=True
@@ -1295,7 +1320,9 @@ class RefGenConf(yacman.YacAttMap):
             CFG_ASSET_DEFAULT_TAG_KEY in asset_mapping
             and asset_mapping[CFG_ASSET_DEFAULT_TAG_KEY] == tag
         ):
-            self.set_default_pointer(genome, asset, new_tag, force=True)
+            self.set_default_pointer(
+                genome, asset, new_tag, force_exists=True, force_fasta=True
+            )
         self.cfg_remove_assets(genome, asset, tag)
         return True
 
@@ -1464,7 +1491,7 @@ class RefGenConf(yacman.YacAttMap):
             num_servers += 1
             try:
                 determined_tag = (
-                    download_json(
+                    send_data_request(
                         get_json_url(server_url, API_ID_DEFAULT_TAG).format(
                             genome=genome, asset=asset
                         )
@@ -1472,13 +1499,15 @@ class RefGenConf(yacman.YacAttMap):
                     if tag is None
                     else tag
                 )
-            except DownloadJsonError:
-                _LOGGER.warning(f"Could not retrieve JSON from: {server_url}")
+            except DownloadJsonError as e:
+                _LOGGER.warning(
+                    f"Could not retrieve tag from: {server_url}. Caught exception: {e}"
+                )
                 bad_servers.append(server_url)
                 continue
             else:
                 determined_tag = str(determined_tag)
-                _LOGGER.debug("Determined tag: {}".format(determined_tag))
+                _LOGGER.debug(f"Determined tag: {determined_tag}")
                 unpack or _raise_unpack_error()
             gat = [genome, asset, determined_tag]
             url_asset_attrs = get_json_url(server_url, API_ID_ASSET_ATTRS).format(
@@ -1492,14 +1521,14 @@ class RefGenConf(yacman.YacAttMap):
             )
 
             try:
-                archive_data = download_json(
+                archive_data = send_data_request(
                     url_asset_attrs, params={"tag": determined_tag}
                 )
             except DownloadJsonError:
                 no_asset_json.append(server_url)
                 if num_servers == len(good_servers):
                     _LOGGER.error(
-                        f"'{alias}/{asset}:{determined_tag}' not "
+                        f"'{genome}/{asset}:{determined_tag}' not "
                         f"available on any of the following servers: "
                         f"{', '.join(self[CFG_SERVERS_KEY])}"
                     )
@@ -1507,7 +1536,7 @@ class RefGenConf(yacman.YacAttMap):
                 continue
             else:
                 _LOGGER.debug("Determined server URL: {}".format(server_url))
-                genome_archive_data = download_json(url_genome_attrs)
+                genome_archive_data = send_data_request(url_genome_attrs)
 
             if sys.version_info[0] == 2:
                 archive_data = asciify_json_dict(archive_data)
@@ -1817,24 +1846,18 @@ class RefGenConf(yacman.YacAttMap):
                 if url_alias_template is None:
                     continue
                 url_alias = url_alias_template.format(alias=genome)
-                _LOGGER.info(
-                    "Setting '{}' identity with server: {}".format(genome, url_alias)
-                )
+                _LOGGER.info(f"Setting '{genome}' identity with server: {url_alias}")
                 try:
-                    digest = download_json(url_alias)
+                    digest = send_data_request(url_alias)
                 except DownloadJsonError:
                     if cnt == len(servers):
                         _LOGGER.error(
-                            "Genome '{}' not available on any of the following "
-                            "servers: {}".format(genome, ", ".join(servers))
+                            f"Genome '{genome}' not available on any of the "
+                            f"following servers: {', '.join(servers)}"
                         )
                         return False
                     continue
-                _LOGGER.info(
-                    "Determined server digest for local genome alias ({}): {}".format(
-                        genome, digest
-                    )
-                )
+                _LOGGER.info(f"Determined digest for local '{genome}' alias: {digest}")
                 break
 
         # get the symlink mapping before the removal for _remove_symlink_alias
@@ -1844,14 +1867,14 @@ class RefGenConf(yacman.YacAttMap):
                 set_aliases, removed_aliases = _check_and_set_alias(
                     rgc=r, d=digest, a=genome, create=create_genome
                 )
+            self._remove_symlink_alias(symlink_mapping, removed_aliases)
+            self._symlink_alias(genome=digest)
         else:
             set_aliases, removed_aliases = _check_and_set_alias(
                 rgc=self, d=digest, a=genome, create=create_genome
             )
         if not set_aliases:
             return False
-        self._remove_symlink_alias(symlink_mapping, removed_aliases)
-        self._symlink_alias(genome=digest)
         return True
 
     def initialize_genome(
@@ -2446,7 +2469,7 @@ class RefGenConf(yacman.YacAttMap):
             genome=genome, asset=asset, tag=tag
         )
         try:
-            remote_digest = download_json(asset_digest_url)
+            remote_digest = send_data_request(asset_digest_url)
         except DownloadJsonError:
             return
         try:
@@ -2567,7 +2590,7 @@ class RefGenConf(yacman.YacAttMap):
             self,
             glob=glob,
             seek_method_name="seekr",
-            remote_class=remote_class or "html",
+            remote_class=remote_class or "http",
         )
 
     def run_plugins(self, hook):
@@ -2727,7 +2750,7 @@ class RefGenConf(yacman.YacAttMap):
         :param url: location or ref genome config data
         :return str, str: text reps of remotely available genomes and assets
         """
-        genomes_data = download_json(url, params={"includeSeekKeys": True})
+        genomes_data = send_data_request(url, params={"includeSeekKeys": True})
         return (
             {g: data for g, data in genomes_data.items() if g in genome}
             if genome is not None
@@ -2807,8 +2830,8 @@ def upgrade_config(
         rgc = OldRefGenConf(filepath=filepath, writable=True)
 
         if target_version == "0.4":
-            from .helpers import format_config_03_04 as format_config
             from .helpers import alter_file_tree_03_04 as alter_file_tree
+            from .helpers import format_config_03_04 as format_config
     else:
         raise NotImplementedError(
             f"Did not upgrade. Upgrade from v{current_version} config is not "
@@ -3236,7 +3259,7 @@ def _get_server_endpoints_mapping(url):
     :param str url: server URL
     :return dict: endpoints mapped by their operationIds
     """
-    json = download_json(url + "/openapi.json")
+    json = send_data_request(url + "/openapi.json")
     return map_paths_by_id(
         asciify_json_dict(json) if sys.version_info[0] == 2 else json
     )
@@ -3340,7 +3363,16 @@ def _populate_refgenie_registry_path(rgc, glob, seek_method_name, remote_class=N
     :param str remote_class: remote data provider class. Used only in remote=True
     :return dict | str | list: modified input dict with refgenie paths populated
     """
-    p = re.compile("refgenie://([A-Za-z0-9_/\.]+)?")
+    p = re.compile("refgenie://([A-Za-z0-9_/\.\:]+)?")
+    partial_args = dict()
+
+    # prepare partial function based on operation mode
+    if remote_class is not None:
+        partial_args.update(dict(remote_class=remote_class))
+    _pop = partial(
+        rgc.populate if seek_method_name == "seek" else rgc.populater,
+        **partial_args,
+    )
 
     if isinstance(glob, str):
         it = re.finditer(p, glob)
@@ -3373,12 +3405,12 @@ def _populate_refgenie_registry_path(rgc, glob, seek_method_name, remote_class=N
                 continue
             if k.startswith("sources"):
                 continue  # derived attribute sources
-            glob[k] = rgc.populate(v)
+            glob[k] = _pop(v)
         return glob
     elif isinstance(glob, list):
-        return [rgc.populate(v) for v in glob]
+        return [_pop(v) for v in glob]
     elif isinstance(glob, AttMap):
-        return AttMap(rgc.populate(glob.to_dict()))
+        return AttMap(_pop(glob.to_dict()))
     else:
         otype = type(glob)
         _LOGGER.debug(

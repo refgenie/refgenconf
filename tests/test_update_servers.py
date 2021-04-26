@@ -1,7 +1,9 @@
 """ Tests for updating a configuration object's genome_servers section """
 
 import pytest
+
 from refgenconf.const import *
+
 from .conftest import TEST_SERVER
 
 

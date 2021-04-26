@@ -3,11 +3,13 @@ import os
 import random
 import shutil
 import string
+
 import pytest
 import yaml
 from attmap import PathExAttMap
-from refgenconf import __version__ as package_version
+
 from refgenconf import RefGenConf
+from refgenconf import __version__ as package_version
 from refgenconf.const import *
 from refgenconf.exceptions import *
 

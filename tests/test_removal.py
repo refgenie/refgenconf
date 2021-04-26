@@ -1,9 +1,10 @@
 """ Tests for RefGenConf.remove assets """
 
-import pytest
 import mock
-from refgenconf.exceptions import *
+import pytest
+
 from refgenconf.const import *
+from refgenconf.exceptions import *
 
 
 class TestRemoveAssets:

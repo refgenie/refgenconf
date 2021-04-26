@@ -1,10 +1,12 @@
 """ Tests for RefGenConf.initialize_config_file """
 
-from refgenconf import RefGenConf
-import pytest
-import tempfile
 import os
 import shutil
+import tempfile
+
+import pytest
+
+from refgenconf import RefGenConf
 
 
 class TestInitialize:

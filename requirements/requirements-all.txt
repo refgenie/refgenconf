@@ -1,7 +1,7 @@
-pyyaml
-requests
-yacman>=0.8.0
 future
 jsonschema>=3.0.1
-rich>=9.0.1
 pyfaidx
+pyyaml
+requests
+rich>=9.0.1
+yacman>=0.8.0

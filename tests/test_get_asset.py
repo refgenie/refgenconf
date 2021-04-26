@@ -1,12 +1,14 @@
 """ Tests for RefGenConf.get_asset. These tests depend on successful completion of tests is test_1pull_asset.py """
 
 import os
-import pytest
-from refgenconf.exceptions import *
-from yacman.exceptions import UndefinedAliasError
-from refgenconf.const import *
-from tests.conftest import CONF_DATA
 from shutil import rmtree
+
+import pytest
+from yacman.exceptions import UndefinedAliasError
+
+from refgenconf.const import *
+from refgenconf.exceptions import *
+from tests.conftest import CONF_DATA
 
 
 class TestGetAsset:
@@ -21,7 +23,7 @@ class TestGetAsset:
         ["gname", "aname", "tname", "seek_key", "etype"],
         [
             ("rCRSd", "missing", "default", None, MissingAssetError),
-            ("missing", "bowtie2_index", "default", None, UndefinedAliasError),
+            ("missing", "bowtie2_index", "default", None, MissingGenomeError),
             ("rCRSd", "bowtie2_index", "missing", None, MissingTagError),
             ("rCRSd", "bowtie2_index", "default", "missing", MissingSeekKeyError),
         ],

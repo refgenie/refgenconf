@@ -1,21 +1,21 @@
 """ Helper functions """
 
-import os
-from yacman import select_config
-from .const import *
-from .exceptions import DownloadJsonError, MissingAssetError
-from .seqcol import SeqColClient
-
 import json
-from re import sub
-import requests
-from requests import get
-from ubiquerg import is_command_callable
 import logging
+import os
 import shutil
 from copy import copy
 from functools import partial
-from requests import ConnectionError
+from re import sub
+
+import requests
+from requests import ConnectionError, get
+from ubiquerg import is_command_callable
+from yacman import select_config
+
+from .const import *
+from .exceptions import DownloadJsonError, MissingAssetError
+from .seqcol import SeqColClient
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -142,7 +142,7 @@ def format_config_03_04(rgc, get_json_url):
                         url_alias = get_json_url(
                             s=server, i=API_VERSION + API_ID_ALIAS_DIGEST
                         ).format(alias=genome)
-                        digest = download_json(url_alias)
+                        digest = send_data_request(url_alias)
                         _LOGGER.info(
                             f"Retrieved {genome} digest from the server: {digest}"
                         )
@@ -279,8 +279,8 @@ def swap_names_in_tree(top, new_name, old_name):
     if not os.path.isdir(top):
         return False
     for root, dirs, files in os.walk(top):
-        for dir in dirs:
-            _rename(dir, root)
+        for directory in dirs:
+            _rename(directory, root)
         for file in files:
             _rename(file, root)
     if os.path.split(top)[1] == old_name:
@@ -289,19 +289,24 @@ def swap_names_in_tree(top, new_name, old_name):
     return True
 
 
-def download_json(url, params=None):
+def send_data_request(url, params=None):
     """
-    Safely connect to the provided API endpoint and download JSON data.
+    Safely connect to the provided API endpoint and download the returned data.
 
     :param str url: server API endpoint
     :param dict params: query parameters
     :return dict: served data
     """
-
     _LOGGER.debug(f"Downloading JSON data; querying URL: {url}")
     resp = get(url, params=params)
     if resp.ok:
-        return resp.json()
+        try:
+            return resp.json()
+        except (json.JSONDecodeError, ValueError):
+            _LOGGER.debug("The returned data is not a valid JSON")
+            if resp.encoding == "utf-8" or resp.apparent_encoding == "ascii":
+                _LOGGER.debug(f"Request returned pain text data: {resp.text}")
+                return resp.text
     raise DownloadJsonError(resp)
 
 

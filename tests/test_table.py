@@ -1,7 +1,3 @@
-import pytest
-import os
-
-
 class TestAliasTable:
     def test_alias_table_dimensions(self, my_rgc):
         assert len(my_rgc.genomes_list()) == my_rgc.genome_aliases_table.row_count

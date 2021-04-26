@@ -1,15 +1,16 @@
 # refgenie looper plugin
 
 import logging
-import refgenconf
 import re
 
 from ubiquerg import parse_registry_path as prp
 
+import refgenconf
+
 _LOGGER = logging.getLogger(__name__)
 
 
-def looper_refgenie_plugin(namespaces):
+def looper_refgenie_populate(namespaces):
     """
     A looper plugin that populates refgenie references in a PEP from
     refgenie://genome/asset:tag registry paths. This can be used to convert

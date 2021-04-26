@@ -1,42 +1,36 @@
 #!/usr/bin/env python
 
-import sys
-import urllib.request
 import itertools
+import json
 import logging
 import os
-import signal
-import warnings
 import shutil
-import json
-import yacman
-
+import signal
+import sys
+import urllib.request
+import warnings
 from collections import Iterable, Mapping, OrderedDict
 from functools import partial
 from inspect import getfullargspec as finspect
-from urllib.error import HTTPError, ContentTooShortError
-from tqdm import tqdm
-from pkg_resources import iter_entry_points
 from tempfile import TemporaryDirectory
+from urllib.error import ContentTooShortError, HTTPError
 
+import yacman
 from attmap import PathExAttMap as PXAM
-from ubiquerg import (
-    checksum,
-    is_url,
-    query_yes_no,
-    untar,
-    is_writable,
-    parse_registry_path as prp,
-)
+from pkg_resources import iter_entry_points
+from tqdm import tqdm
+from ubiquerg import checksum, is_url, is_writable
+from ubiquerg import parse_registry_path as prp
+from ubiquerg import query_yes_no, untar
 
 from .const import *
-from .helpers import (
-    unbound_env_vars,
-    asciify_json_dict,
-    select_genome_config,
-    get_dir_digest,
-)
 from .exceptions import *
+from .helpers import (
+    asciify_json_dict,
+    get_dir_digest,
+    select_genome_config,
+    unbound_env_vars,
+)
 
 _LOGGER = logging.getLogger(__name__)
 

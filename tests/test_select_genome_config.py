@@ -1,11 +1,13 @@
 """ Tests for selection of genome configuration file """
 
 import os
+
 import pytest
-from refgenconf import select_genome_config
-from refgenconf.const import CFG_ENV_VARS
 from ubiquerg import TmpEnv
 from veracitools import ExpectContext
+
+from refgenconf import select_genome_config
+from refgenconf.const import CFG_ENV_VARS
 
 __author__ = "Vince Reuter"
 __email__ = "vreuter@virginia.edu"

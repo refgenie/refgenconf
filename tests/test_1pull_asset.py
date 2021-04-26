@@ -1,19 +1,22 @@
 """ Tests for asset pull """
 
 import logging
-import mock
 import os
 import sys
+
+import mock
 
 if sys.version_info.major < 3:
     ConnectionRefusedError = Exception
 else:
     from urllib.error import HTTPError
+
 import pytest
+
+from refgenconf import RefGenConf
 from refgenconf.const import *
 from refgenconf.exceptions import *
 from refgenconf.refgenconf import _download_url_progress
-from refgenconf import RefGenConf
 
 from .conftest import remove_asset_and_file
 

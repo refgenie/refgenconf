@@ -11,6 +11,7 @@ CFG_NAME = "genome configuration"
 CFG_ENV_VARS = ["REFGENIE"]
 CFG_CONST = ["CFG_NAME", "CFG_ENV_VARS"]
 DEFAULT_SERVER = "http://refgenomes.databio.org"  # "http://rg.databio.org"
+TAG_NAME_BANNED_CHARS = [":", "/"]
 API_VERSION = "v3"
 API_VERSION_2 = "v2"
 DEFAULT_TAG = "default"
@@ -22,7 +23,7 @@ DEFAULT_CONFIG_SCHEMA = os.path.join(
 TEMPLATE_RECIPE_JSON = "build_recipe_{}__{}.json"
 TEMPLATE_TARGET = "{}_{}__{}.flag"
 TEMPLATE_LOG = "build_log_{}__{}.md"
-TEMPLATE_ASSET_DIR_CONTENTS = "asset_dir_contents_{}__{}.txt"
+TEMPLATE_ASSET_DIR_CONTENTS = "asset_dir_contents_{}__{}.json"
 ORI_LOG_NAME = "refgenie_log.md"
 BUILD_STATS_DIR = "_refgenie_build"
 ALIAS_DIR = "alias"
@@ -244,6 +245,7 @@ __all__ = (
         "CUSTOM_BAR_FMT",
         "API_VERSION",
         "API_VERSION_2",
+        "TAG_NAME_BANNED_CHARS",
         "CONF_STRUCTURE",
         "OPERATION_IDS",
         "CUSTOM_PFX",

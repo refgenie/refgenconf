@@ -1,10 +1,11 @@
 """ Tests for RefGenConf.populate. These tests depend on successful completion of tests is test_1pull_asset.py """
 
-import pytest
 import random
 import string
-from refgenconf.exceptions import MissingAssetError
-from yacman.exceptions import UndefinedAliasError
+
+import pytest
+
+from refgenconf.exceptions import MissingAssetError, MissingGenomeError
 
 
 def _generate_random_text_template(str_len):
@@ -19,14 +20,14 @@ def _generate_random_text_template(str_len):
     return res
 
 
-def _get_demo_dicts(genome, asset, str_len):
+def get_demo_dicts(genome, asset, str_len):
     demo = {
         "genome": _generate_random_text_template(str_len=str_len).format(
-            f"refgenie://{genome}/{asset}"
+            f"refgenie://{genome}/{asset}:default"
         ),
         "other_attr": "something",
         "bt2": _generate_random_text_template(str_len=str_len).format(
-            f"refgenie://{genome}/{asset}"
+            f"refgenie://{genome}/{asset}:default"
         ),
     }
     nested_demo = {
@@ -47,6 +48,15 @@ class TestPopulate:
         )
 
     @pytest.mark.parametrize(
+        ["gname", "aname", "tname"],
+        [("rCRSd", "fasta", "default"), ("human_repeats", "fasta", "default")],
+    )
+    def test_populate_single_string_with_tag(self, ro_rgc, gname, aname, tname):
+        assert ro_rgc.populate(f"refgenie://{gname}/{aname}:{tname}") == ro_rgc.seek(
+            genome_name=gname, asset_name=aname, tag_name=tname
+        )
+
+    @pytest.mark.parametrize(
         ["gname", "aname"], [("rCRSd", "fasta"), ("human_repeats", "fasta")]
     )
     @pytest.mark.parametrize("str_len", [50, 100])
@@ -62,7 +72,7 @@ class TestPopulate:
     )
     @pytest.mark.parametrize("str_len", [50, 100])
     def test_populate_dicts(self, ro_rgc, gname, aname, str_len):
-        demo, nested_demo = _get_demo_dicts(genome=gname, asset=aname, str_len=str_len)
+        demo, nested_demo = get_demo_dicts(genome=gname, asset=aname, str_len=str_len)
         assert ro_rgc.seek(genome_name=gname, asset_name=aname) in str(
             ro_rgc.populate(demo)
         )
@@ -75,7 +85,7 @@ class TestPopulate:
     )
     @pytest.mark.parametrize("str_len", [50, 100])
     def test_populate_lists(self, ro_rgc, gname, aname, str_len):
-        demo, nested_demo = _get_demo_dicts(genome=gname, asset=aname, str_len=str_len)
+        demo, nested_demo = get_demo_dicts(genome=gname, asset=aname, str_len=str_len)
         demo_list = [demo, nested_demo]
         assert ro_rgc.seek(genome_name=gname, asset_name=aname) in str(
             ro_rgc.populate(demo_list)
@@ -90,5 +100,5 @@ class TestPopulate:
     @pytest.mark.parametrize("aname", ["fasta", "bowtie2_index"])
     @pytest.mark.parametrize("gname", ["asset", "test", "bogus"])
     def test_populate_recognizes_missing_genome(self, ro_rgc, gname, aname):
-        with pytest.raises(UndefinedAliasError):
+        with pytest.raises(MissingGenomeError):
             ro_rgc.populate(f"refgenie://{gname}/{aname}")

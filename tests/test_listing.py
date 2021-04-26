@@ -1,9 +1,11 @@
 """ Basic RGC asset tests """
 
 from collections import OrderedDict
+
 import pytest
-from refgenconf.const import CFG_GENOMES_KEY
 from yacman.exceptions import UndefinedAliasError
+
+from refgenconf.const import CFG_GENOMES_KEY
 
 __author__ = "Michal Stolarczyk"
 __email__ = "michal@virginia.edu"

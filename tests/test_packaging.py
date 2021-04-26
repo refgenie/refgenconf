@@ -31,7 +31,7 @@ def _is_custom_error(obj):
     ],
 )
 def test_top_level_exports(obj_name, typecheck):
-    """ At package level, validate object availability and type. """
+    """At package level, validate object availability and type."""
     import refgenconf
 
     try:

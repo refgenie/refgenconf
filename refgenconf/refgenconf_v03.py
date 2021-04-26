@@ -52,7 +52,7 @@ def _handle_sigint(filepath):
 
 
 class _RefGenConfV03(yacman.YacAttMap):
-    """ A sort of oracle of available reference genome assembly assets """
+    """A sort of oracle of available reference genome assembly assets"""
 
     def __init__(
         self,
@@ -1992,7 +1992,7 @@ def _read_remote_data(url):
 
 
 def _check_insert_data(obj, datatype, name):
-    """ Checks validity of an object """
+    """Checks validity of an object"""
     if obj is None:
         return False
     if not isinstance(obj, datatype):

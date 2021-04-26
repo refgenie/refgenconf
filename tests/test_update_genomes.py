@@ -23,7 +23,7 @@ def _asset_data_is_pxam(a, g, c):
     [lambda a, g, c: a in c[CFG_GENOMES_KEY][g][CFG_ASSETS_KEY], _asset_data_is_pxam],
 )
 def test_new_asset(my_rgc, assembly, asset, validate):
-    """ update_genomes can insert new asset for existing assembly. """
+    """update_genomes can insert new asset for existing assembly."""
     assert assembly in my_rgc[CFG_GENOMES_KEY]
     assert asset not in my_rgc[CFG_GENOMES_KEY][assembly][CFG_ASSETS_KEY]
     my_rgc.update_assets(assembly, asset)
@@ -63,6 +63,6 @@ def test_new_asset(my_rgc, assembly, asset, validate):
     ],
 )
 def test_illegal_argtype(my_rgc, args):
-    """ update_genomes accurately restricts argument types. """
+    """update_genomes accurately restricts argument types."""
     with pytest.raises(TypeError):
         my_rgc.update_assets(*args)

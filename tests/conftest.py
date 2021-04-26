@@ -93,7 +93,7 @@ def cfg_file_old(data_path):
 
 @pytest.fixture
 def cfg_file_copy(cfg_file, tmpdir_factory):
-    """ Provide test case with copied version of test session's genome config. """
+    """Provide test case with copied version of test session's genome config."""
     fn = "".join(random.choice(string.ascii_letters) for _ in range(15)) + ".yaml"
     fp = os.path.join(tmpdir_factory.mktemp("test").strpath, fn)
     assert not os.path.exists(fp)
@@ -104,7 +104,7 @@ def cfg_file_copy(cfg_file, tmpdir_factory):
 
 @pytest.fixture
 def gencfg(temp_genome_config_file):
-    """ Provide test case with copied version of test session's genome config. """
+    """Provide test case with copied version of test session's genome config."""
     fn = "".join(random.choice(string.ascii_letters) for _ in range(15)) + ".yaml"
     fp = os.path.join(os.path.dirname(temp_genome_config_file), fn)
     assert not os.path.exists(fp)
@@ -138,7 +138,7 @@ def remove_asset_and_file(rgc, gname, aname, tname):
 
 @pytest.fixture(scope="session")
 def made_genome_config_file(temp_genome_config_file):
-    """ Make the test session's genome config file. """
+    """Make the test session's genome config file."""
     genome_folder = os.path.dirname(temp_genome_config_file)
     extra_kv_lines = [
         "{}: {}".format(CFG_FOLDER_KEY, genome_folder),
@@ -155,7 +155,7 @@ def made_genome_config_file(temp_genome_config_file):
 
 @pytest.fixture
 def rgc(made_genome_config_file):
-    """ Provide test case with a genome config instance. """
+    """Provide test case with a genome config instance."""
     with open(made_genome_config_file, "r") as f:
         return RefGenConf(entries=yaml.load(f, yaml.SafeLoader))
 
@@ -178,7 +178,7 @@ def all_genomes(ro_rgc):
 
 @pytest.fixture
 def remove_genome_folder(request):
-    """ Remove a test case's folder for a particular genome. """
+    """Remove a test case's folder for a particular genome."""
     folder = request.getfixturevalue("rgc").genome_folder
     genome = request.getfixturevalue("genome")
     path = os.path.join(folder, genome)
@@ -189,7 +189,7 @@ def remove_genome_folder(request):
 
 @pytest.fixture(scope="session")
 def temp_genome_config_file(tmpdir_factory):
-    """ The genome configuration file for the test suite. """
+    """The genome configuration file for the test suite."""
     return tmpdir_factory.mktemp("data").join("refgenie.yaml").strpath
 
 

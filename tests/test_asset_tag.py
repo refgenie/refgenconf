@@ -13,7 +13,7 @@ class TestTagging:
         ],
     )
     def test_tag_and_back(self, my_rgc, gname, aname, new_tname):
-        """ The default asset is removed if specific not provided """
+        """The default asset is removed if specific not provided"""
         tname = my_rgc.get_default_tag(gname, aname)
         with mock.patch("refgenconf.refgenconf.query_yes_no", return_value=True):
             my_rgc.tag(gname, aname, tname, new_tname)

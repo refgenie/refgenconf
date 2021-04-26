@@ -8,7 +8,7 @@ __email__ = "vreuter@virginia.edu"
 
 
 def test_genomes_list(my_rgc):
-    """ List of available genomes is as expected. """
+    """List of available genomes is as expected."""
     listed_aliases = my_rgc.genomes_list()
     digests = my_rgc[CFG_GENOMES_KEY].keys()
     aliases = [my_rgc.get_genome_alias(digest=d) for d in digests]
@@ -16,7 +16,7 @@ def test_genomes_list(my_rgc):
 
 
 def test_genomes_str(my_rgc):
-    """ Text of available genomes is as expected. """
+    """Text of available genomes is as expected."""
     listed_aliases = my_rgc.genomes_str()
     digests = my_rgc[CFG_GENOMES_KEY].keys()
     aliases = [my_rgc.get_genome_alias(digest=d) for d in digests]

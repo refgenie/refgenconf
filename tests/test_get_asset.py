@@ -35,7 +35,7 @@ class TestGetAsset:
     @pytest.mark.parametrize("check_exist", [lambda: True, lambda _1, _2: True])
     @pytest.mark.parametrize("gname,aname", [("human_repeats", "fasta")])
     def test_check_exist_param_type(self, ro_rgc, check_exist, gname, aname):
-        """ The asset existence check must be a one-arg function. """
+        """The asset existence check must be a one-arg function."""
         with pytest.raises(TypeError):
             ro_rgc.seek(gname, aname, check_exist=check_exist)
 
@@ -44,7 +44,7 @@ class TestGetAsset:
         [("rCRSd", "fasta", "default"), ("mouse_chrM2x", "fasta", "default")],
     )
     def test_result_correctness(self, ro_rgc, gname, aname, tname):
-        """ The FASTA file asset is returned  when fasta asset is requested, not the entire dir """
+        """The FASTA file asset is returned  when fasta asset is requested, not the entire dir"""
         assert os.path.join(ro_rgc[CFG_FOLDER_KEY], gname, aname, tname) != ro_rgc.seek(
             gname, aname, tname
         )

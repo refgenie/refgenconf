@@ -13,7 +13,7 @@ class TestRemoveAssets:
         [("rCRSd", "fasta", None), ("mouse_chrM2x", "fasta", None)],
     )
     def test_default_tag_removal(self, my_rgc, gname, aname, tname):
-        """ The default asset is removed if specific not provided """
+        """The default asset is removed if specific not provided"""
         with mock.patch("refgenconf.refgenconf.query_yes_no", return_value=True):
             my_rgc.pull(gname, aname, tname)
             my_rgc.remove(gname, aname, tname)
@@ -24,7 +24,7 @@ class TestRemoveAssets:
         ["gname", "aname"], [("rCRSd", "fasta"), ("mouse_chrM2x", "fasta")]
     )
     def test_asset_removal_after_last_tag_removed(self, my_rgc, gname, aname):
-        """ The asset is removed when last tag is removed """
+        """The asset is removed when last tag is removed"""
         my_rgc.pull(gname, aname, "default")
         asset = my_rgc.genomes[gname].assets[aname]
         for t in asset[CFG_ASSET_TAGS_KEY]:

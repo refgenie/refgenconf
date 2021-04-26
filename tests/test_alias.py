@@ -12,14 +12,14 @@ DEMO_FILES = ["demo.fa.gz", "demo2.fa", "demo3.fa", "demo4.fa", "demo5.fa.gz"]
 class TestAliasSetting:
     @pytest.mark.parametrize(["alias", "digest"], [(["human_repeats", "rCRSd"], None)])
     def test_set_genome_alias_server_more_than_1(self, my_rgc, alias, digest):
-        """ Multi digest lookup is not implemented """
+        """Multi digest lookup is not implemented"""
         with pytest.raises(NotImplementedError):
             my_rgc.set_genome_alias(genome=alias, digest=digest)
 
     @pytest.mark.parametrize(["alias", "digest"], [("human_repeats", None)])
     @pytest.mark.xfail
     def test_set_genome_alias_server(self, my_rgc, alias, digest):
-        """ Lookup aliases for a single digest """
+        """Lookup aliases for a single digest"""
         my_rgc.set_genome_alias(genome=alias, digest=digest)
         assert alias in my_rgc.get_genome_alias(digest=digest, all_aliases=True)
 
@@ -92,7 +92,7 @@ class TestAliasGetting:
         "digest", ["7319f9237651755047bc40d7f7a9770d42a537e840f4e105"]
     )
     def test_get_genome_alias_multi(self, my_rgc, digest):
-        """ Get muliple single aliases, result is always a list """
+        """Get muliple single aliases, result is always a list"""
         assert isinstance(
             my_rgc.get_genome_alias(digest=digest, all_aliases=True), list
         )

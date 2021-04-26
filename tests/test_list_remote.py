@@ -18,7 +18,7 @@ from refgenconf.helpers import send_data_request
     "genome", [["human_repeats"], ["human_repeats", "rCRSd"], None]
 )
 def test_list_remote(my_rgc, genome):
-    """ Verify expected behavior of remote genome/asset listing. """
+    """Verify expected behavior of remote genome/asset listing."""
     assert len(my_rgc[CFG_SERVERS_KEY]) == 1, "Expected only one test server"
     server = my_rgc[CFG_SERVERS_KEY][0]
     result = my_rgc.listr(genome=genome, as_digests=True)

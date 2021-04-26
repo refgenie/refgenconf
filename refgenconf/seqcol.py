@@ -146,11 +146,11 @@ class SeqColClient(Henge):
         """
 
         def _xp(prop, lst):
-            """ Extract property from a list of dicts """
+            """Extract property from a list of dicts"""
             return list(map(lambda x: x[prop], lst))
 
         def _index(x, lst):
-            """ Find an index of a sequence element in a list of dicts """
+            """Find an index of a sequence element in a list of dicts"""
             try:
                 return _xp(SEQ_KEY, lst).index(x)
             except:
@@ -241,7 +241,7 @@ class SeqColClient(Henge):
 
 
 def explain_flag(flag):
-    """ Explains a compare flag """
+    """Explains a compare flag"""
     print(f"Flag: {flag}\nBinary: {bin(flag)}\n")
     for e in range(0, 13):
         if flag & 2 ** e:

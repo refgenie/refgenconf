@@ -31,7 +31,7 @@ DOWNLOAD_FUNCTION = "refgenconf.refgenconf.{}".format(_download_url_progress.__n
     ["gname", "aname"], [("human_repeats", 1), ("mouse_chrM2x", None)]
 )
 def test_pull_asset_illegal_asset_name(my_rgc, gname, aname):
-    """ TypeError occurs if asset argument is not iterable. """
+    """TypeError occurs if asset argument is not iterable."""
     with pytest.raises(TypeError):
         my_rgc.pull(gname, aname)
 
@@ -44,7 +44,7 @@ def test_pull_asset_illegal_asset_name(my_rgc, gname, aname):
     ],
 )
 def test_download_interruption(my_rgc, gname, aname, tname, caplog):
-    """ Download interruption provides appropriate warning message and halts. """
+    """Download interruption provides appropriate warning message and halts."""
     import signal
 
     print("filepath: " + my_rgc.__internal.file_path)
@@ -78,7 +78,7 @@ def test_pull_asset(my_rgc, gname, aname, tname):
     [("rCRSd", "bowtie2_index", "default"), ("mouse_chrM2x", "bwa_index", "default")],
 )
 def test_parent_asset_mismatch(my_rgc, gname, aname, tname):
-    """ Test that an exception is raised when remote and local parent checksums do not match on pull"""
+    """Test that an exception is raised when remote and local parent checksums do not match on pull"""
     with mock.patch("refgenconf.refgenconf.query_yes_no", return_value=True):
         my_rgc.pull(gname, "fasta", tname)
     my_rgc.make_writable()

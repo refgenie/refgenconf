@@ -23,7 +23,10 @@ def looper_refgenie_populate(namespaces):
     :param dict namespaces: variable namespaces dict
     :return dict: sample namespace dict
     """
-    if "var_templates" in namespaces["pipeline"] and "refgenie_config" in namespaces["pipeline"]["var_templates"]:
+    if (
+        "var_templates" in namespaces["pipeline"]
+        and "refgenie_config" in namespaces["pipeline"]["var_templates"]
+    ):
         rgc_path = namespaces["pipeline"]["var_templates"]["refgenie_config"]
         rgc = refgenconf.RefGenConf(rgc_path)
         return rgc.populate(namespaces)
@@ -32,5 +35,7 @@ def looper_refgenie_populate(namespaces):
         var_templates:
           refgenie_config: "$REFGENIE"
         """
-        _LOGGER.error(f"refgenie_config not specified in pipeline interface. Do like so: {msg}")
+        _LOGGER.error(
+            f"refgenie_config not specified in pipeline interface. Do like so: {msg}"
+        )
         raise NotImplementedError

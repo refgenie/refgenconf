@@ -1,5 +1,4 @@
-config_version: 0.4
 genome_folder: /tmp
 genome_servers:
- - http://rg.databio.org
+ - http://refgenomes.databio.org
 genomes: null

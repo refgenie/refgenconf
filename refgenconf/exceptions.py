@@ -21,13 +21,13 @@ DOC_URL = "http://refgenie.databio.org/en/latest/genome_config/"
 
 
 class RefgenconfError(Exception):
-    """ Base exception type for this package """
+    """Base exception type for this package"""
 
     __metaclass__ = abc.ABCMeta
 
 
 class DownloadJsonError(RefgenconfError):
-    """ Non-OK response from a JSON download attempt """
+    """Non-OK response from a JSON download attempt"""
 
     def __init__(self, resp):
         super(DownloadJsonError, self).__init__(
@@ -37,7 +37,7 @@ class DownloadJsonError(RefgenconfError):
 
 
 class GenomeConfigFormatError(RefgenconfError):
-    """ Exception for invalid genome config file format. """
+    """Exception for invalid genome config file format."""
 
     def __init__(self, msg):
         spacing = " " if msg[-1] in ["?", ".", "\n"] else "; "
@@ -46,55 +46,55 @@ class GenomeConfigFormatError(RefgenconfError):
 
 
 class MissingAssetError(RefgenconfError):
-    """ Error type for request of an unavailable genome asset. """
+    """Error type for request of an unavailable genome asset."""
 
     pass
 
 
 class MissingTagError(RefgenconfError):
-    """ Error type for request of an unavailable asset tag. """
+    """Error type for request of an unavailable asset tag."""
 
     pass
 
 
 class MissingSeekKeyError(RefgenconfError):
-    """ Error type for request of an unavailable asset seek key. """
+    """Error type for request of an unavailable asset seek key."""
 
     pass
 
 
 class MissingRecipeError(RefgenconfError):
-    """ Error type for request of an unavailable recipe. """
+    """Error type for request of an unavailable recipe."""
 
     pass
 
 
 class MissingConfigDataError(RefgenconfError):
-    """ Missing required configuration instance items """
+    """Missing required configuration instance items"""
 
     pass
 
 
 class ConfigNotCompliantError(GenomeConfigFormatError):
-    """ The format of the config file does not match required version/standards """
+    """The format of the config file does not match required version/standards"""
 
     pass
 
 
 class MissingGenomeError(RefgenconfError):
-    """ Error type for request of unknown genome/assembly. """
+    """Error type for request of unknown genome/assembly."""
 
     pass
 
 
 class UnboundEnvironmentVariablesError(RefgenconfError):
-    """ Use of environment variable that isn't bound to a value. """
+    """Use of environment variable that isn't bound to a value."""
 
     pass
 
 
 class RemoteDigestMismatchError(RefgenconfError):
-    """ Remote digest of the parent asset does not match its local counterpart """
+    """Remote digest of the parent asset does not match its local counterpart"""
 
     def __init__(self, asset, local_digest, remote_digest):
         msg = (

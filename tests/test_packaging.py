@@ -1,7 +1,9 @@
 """ Validate what's available directly on the top-level import. """
 
-import pytest
 from inspect import isclass, isfunction
+
+import pytest
+
 from refgenconf.exceptions import RefgenconfError
 
 __author__ = "Vince Reuter"
@@ -29,7 +31,7 @@ def _is_custom_error(obj):
     ],
 )
 def test_top_level_exports(obj_name, typecheck):
-    """ At package level, validate object availability and type. """
+    """At package level, validate object availability and type."""
     import refgenconf
 
     try:

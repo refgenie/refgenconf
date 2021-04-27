@@ -10,7 +10,8 @@ import os
 CFG_NAME = "genome configuration"
 CFG_ENV_VARS = ["REFGENIE"]
 CFG_CONST = ["CFG_NAME", "CFG_ENV_VARS"]
-DEFAULT_SERVER = "http://refgenomes.databio.org"
+DEFAULT_SERVER = "http://refgenomes.databio.org"  # "http://rg.databio.org"
+TAG_NAME_BANNED_CHARS = [":", "/"]
 API_VERSION = "v3"
 API_VERSION_2 = "v2"
 DEFAULT_TAG = "default"
@@ -22,6 +23,7 @@ DEFAULT_CONFIG_SCHEMA = os.path.join(
 TEMPLATE_RECIPE_JSON = "build_recipe_{}__{}.json"
 TEMPLATE_TARGET = "{}_{}__{}.flag"
 TEMPLATE_LOG = "build_log_{}__{}.md"
+TEMPLATE_ASSET_DIR_CONTENTS = "asset_dir_contents_{}__{}.json"
 ORI_LOG_NAME = "refgenie_log.md"
 BUILD_STATS_DIR = "_refgenie_build"
 ALIAS_DIR = "alias"
@@ -31,6 +33,7 @@ FILE_DIR_NAMES = [
     "TEMPLATE_RECIPE_JSON",
     "TEMPLATE_TARGET",
     "TEMPLATE_LOG",
+    "TEMPLATE_ASSET_DIR_CONTENTS",
     "ORI_LOG_NAME",
     "BUILD_STATS_DIR",
     "ALIAS_DIR",
@@ -52,9 +55,12 @@ API_ID_GENOME_ATTRS = CUSTOM_PFX + "_genome_attrs"
 API_ID_DIGEST = CUSTOM_PFX + "_asset_digest"
 API_ID_RECIPE = CUSTOM_PFX + "_asset_recipe"
 API_ID_LOG = CUSTOM_PFX + "_asset_log"
+API_ID_ASSET_FILE = CUSTOM_PFX + "_asset_file"
+API_ID_ASSET_PATH = CUSTOM_PFX + "_asset_path"
 API_ID_ARCHIVE_DIGEST = CUSTOM_PFX + "_asset_archive_digest"
 API_ID_SPLASH = CUSTOM_PFX + "_asset_splash"
 API_ID_GENOMES_DICT = CUSTOM_PFX + "_genomes_dict"
+API_ID_CONTENTS = CUSTOM_PFX + "_asset_dir_contents"
 
 PRIVATE_API = "_private_api"
 
@@ -76,6 +82,7 @@ OPERATION_IDS = {
         API_VERSION + API_ID_ARCHIVE_DIGEST: "archive digest",
         API_VERSION + API_ID_RECIPE: "build recipe",
         API_VERSION + API_ID_LOG: "build log",
+        API_VERSION + API_ID_CONTENTS: "asset directory contents",
     },
 }
 
@@ -84,6 +91,9 @@ API_IDS = [
     "API_ID_ARCHIVE",
     "API_ID_DEFAULT_TAG",
     "API_ID_LOG",
+    "API_ID_CONTENTS",
+    "API_ID_ASSET_FILE",
+    "API_ID_ASSET_PATH",
     "API_ID_DIGEST",
     "API_ID_RECIPE",
     "API_ID_ASSET_ATTRS",
@@ -235,6 +245,7 @@ __all__ = (
         "CUSTOM_BAR_FMT",
         "API_VERSION",
         "API_VERSION_2",
+        "TAG_NAME_BANNED_CHARS",
         "CONF_STRUCTURE",
         "OPERATION_IDS",
         "CUSTOM_PFX",

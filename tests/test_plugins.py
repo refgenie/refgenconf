@@ -1,5 +1,7 @@
 import os
+
 import mock
+
 from refgenconf import RefGenConf
 
 __author__ = "Michal Stolarczyk"

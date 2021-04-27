@@ -1,14 +1,14 @@
-import mock
 import os
+import urllib.request
+
+import mock
 import pytest
-from refgenconf import upgrade_config
-from refgenconf.refgenconf_v03 import _RefGenConfV03
+
+from refgenconf import RefGenConf, upgrade_config
 from refgenconf.const import *
 from refgenconf.exceptions import *
 from refgenconf.refgenconf import _download_url_progress
-from refgenconf import RefGenConf
-
-import urllib.request
+from refgenconf.refgenconf_v03 import _RefGenConfV03
 
 __author__ = "Michal Stolarczyk"
 __email__ = "michal@virginia.edu"

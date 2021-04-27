@@ -1,9 +1,11 @@
 """ Basic RGC asset tests """
 
 from collections import OrderedDict
+
 import pytest
-from refgenconf.const import CFG_GENOMES_KEY
 from yacman.exceptions import UndefinedAliasError
+
+from refgenconf.const import CFG_GENOMES_KEY
 
 __author__ = "Michal Stolarczyk"
 __email__ = "michal@virginia.edu"
@@ -20,7 +22,7 @@ class ListTest:
             assert len(ro_rgc.list(genome=gname)) > len(ro_rgc.list(genome=g))
 
     def test_multiple_genomes(self, ro_rgc, all_genomes):
-        """ Verify asset dict works with multiple genomes and returns all of them """
+        """Verify asset dict works with multiple genomes and returns all of them"""
         assert sorted(ro_rgc.list(genome=all_genomes).keys()) == sorted(
             ro_rgc.list().keys()
         )

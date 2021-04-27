@@ -1,22 +1,24 @@
 """ Tests for listing remotely available genomes and assets. """
 
 from collections import OrderedDict
+
+import pytest
+
 from refgenconf import (
-    RefGenConf,
+    API_VERSION,
     CFG_FOLDER_KEY,
     CFG_GENOMES_KEY,
     CFG_SERVERS_KEY,
-    API_VERSION,
+    RefGenConf,
 )
-from refgenconf.helpers import download_json
-import pytest
+from refgenconf.helpers import send_data_request
 
 
 @pytest.mark.parametrize(
     "genome", [["human_repeats"], ["human_repeats", "rCRSd"], None]
 )
 def test_list_remote(my_rgc, genome):
-    """ Verify expected behavior of remote genome/asset listing. """
+    """Verify expected behavior of remote genome/asset listing."""
     assert len(my_rgc[CFG_SERVERS_KEY]) == 1, "Expected only one test server"
     server = my_rgc[CFG_SERVERS_KEY][0]
     result = my_rgc.listr(genome=genome, as_digests=True)
@@ -25,7 +27,7 @@ def test_list_remote(my_rgc, genome):
     ), "More servers in list remote result than subscribed to"
     server_key = list(result.keys())[0]
     assert server_key.startswith(server)
-    json_genomes = download_json(server_key, params={"includeSeekKeys": True})
+    json_genomes = send_data_request(server_key, params={"includeSeekKeys": True})
     if not genome:
         assert len(json_genomes) == len(result[server_key])
         for g, assets in json_genomes.items():

@@ -326,6 +326,7 @@ class RefGenConf(yacman.YacAttMap):
                         ),
                     )
                     for g in refgens
+                    if CFG_ASSETS_KEY in self[CFG_GENOMES_KEY][g]
                 ]
             )
         self.run_plugins(POST_LIST_HOOK)
@@ -338,6 +339,7 @@ class RefGenConf(yacman.YacAttMap):
                     ),
                 )
                 for g in refgens
+                if CFG_ASSETS_KEY in self[CFG_GENOMES_KEY][g]
             ]
         )
 

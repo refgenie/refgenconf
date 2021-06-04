@@ -761,7 +761,12 @@ class RefGenConf(yacman.YacAttMap):
             fullpaths[p] for p in [i for i, x in enumerate(paths_existence) if not x]
         ]
         msg = "For genome '{}' path to the asset '{}/{}:{}' doesn't exist: {}".format(
-            genome_name, genome_name, asset_name, seek_key, tag_name, ", ".join(nonexistent_pths)
+            genome_name,
+            genome_name,
+            asset_name,
+            seek_key,
+            tag_name,
+            ", ".join(nonexistent_pths),
         )
         if strict_exists is None:
             _LOGGER.debug(msg)
@@ -1080,6 +1085,48 @@ class RefGenConf(yacman.YacAttMap):
                 key=order,
             )
         )
+
+    def list_seek_keys_values(self, genomes=None, assets=None):
+        """
+        List values for all seek keys for the specified genome and asset.
+        Leave the arguments out to get all seek keys values managed by refgenie.
+
+        :param str | List[str] genome_names: optional list of genomes to include
+        :param str | List[str] asset_names: optional list of assets to include
+        :return dict: a nested dictionary with the seek key values
+        """
+        ret = {}
+
+        if genomes is None:
+            genome_names = self.genomes_list()
+        else:
+            genome_names = _make_list_of_str(genomes)
+
+        for genome_name in genome_names:
+            self._assert_gat_exists(genome_name)
+            ret[genome_name] = {}
+            if assets is None:
+                asset_names = self.list_assets_by_genome(genome_name)
+            else:
+                asset_names = _make_list_of_str(assets)
+            for asset_name in asset_names:
+                try:
+                    self._assert_gat_exists(genome_name, asset_name)
+                except MissingAssetError as e:
+                    _LOGGER.warning(f"Skipping {asset_name} asset: {str(e)}")
+                    continue
+                asset_mapping = self[CFG_GENOMES_KEY][genome_name][CFG_ASSETS_KEY][
+                    asset_name
+                ]
+                ret[genome_name][asset_name] = {}
+                for tag_name in get_asset_tags(asset_mapping):
+                    tag_mapping = asset_mapping[CFG_ASSET_TAGS_KEY][tag_name]
+                    ret[genome_name][asset_name][tag_name] = {}
+                    for seek_key_name in get_tag_seek_keys(tag_mapping):
+                        ret[genome_name][asset_name][tag_name][
+                            seek_key_name
+                        ] = self.seek(genome_name, asset_name, tag_name, seek_key_name)
+        return ret
 
     def get_local_data_str(self, genome=None, order=None):
         """

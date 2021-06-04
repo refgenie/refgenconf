@@ -35,10 +35,11 @@ def looper_refgenie_populate(namespaces):
         # for a in rgc.list_assets_by_genome(g):
         #     paths_dict[a] = rgc.seek(g, a, "default")
 
-        complete_seek_key_dict = rgc.list_seek_keys_values(genomes=namespaces["sample"]["genome"])
+        complete_seek_key_dict = rgc.list_seek_keys_values(
+            genomes=namespaces["sample"]["genome"]
+        )
         genome_seek_key_dict = complete_seek_key_dict[namespaces["sample"]["genome"]]
         paths_dict = {}
-
 
         # This function allows you to specify tags for specific assets to use
         # in the project config like:
@@ -55,12 +56,11 @@ def looper_refgenie_populate(namespaces):
         for k, v in genome_seek_key_dict.items():
             tag = get_asset_tag(k)
             # print(k,v)
-            try: 
+            try:
                 paths_dict[k] = v[tag]
             except KeyError:
                 _LOGGER.warn(f"Can't find tag '{tag}' for asset '{k}'. Using default")
                 paths_dict[k] = v["default"]
-
 
         # print(paths_dict)
         # Provide these values under the 'refgenie' namespace

@@ -761,7 +761,7 @@ class RefGenConf(yacman.YacAttMap):
             fullpaths[p] for p in [i for i, x in enumerate(paths_existence) if not x]
         ]
         msg = "For genome '{}' path to the asset '{}/{}:{}' doesn't exist: {}".format(
-            genome_name, asset_name, seek_key, tag_name, ", ".join(nonexistent_pths)
+            genome_name, genome_name, asset_name, seek_key, tag_name, ", ".join(nonexistent_pths)
         )
         if strict_exists is None:
             _LOGGER.debug(msg)

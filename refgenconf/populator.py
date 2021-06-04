@@ -31,10 +31,11 @@ def looper_refgenie_populate(namespaces):
         rgc = refgenconf.RefGenConf(rgc_path)
 
         # Populate a dict with paths for the given sample's genome
-        g = namespaces["sample"]["genome"]
-        paths_dict = {}
-        for a in rgc.list_assets_by_genome(g):
-            paths_dict[a] = rgc.seek(g, a, "default")
+        # paths_dict = {}
+        # for a in rgc.list_assets_by_genome(g):
+        #     paths_dict[a] = rgc.seek(g, a, "default")
+
+        paths_dict = rgc.list_seek_keys_values(genomes=namespaces["sample"]["genome"])
 
         # Provide these values under the 'refgenie' namespace
         namespaces["refgenie"] = AttMap(paths_dict)

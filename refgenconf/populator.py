@@ -50,6 +50,8 @@ def looper_refgenie_populate(namespaces):
             except:
                 return "default"
 
+        # Restructure the seek key paths to make them accessible with
+        # {refgenie.asset_name.seek_key} in command templates
         for k, v in genome_seek_key_dict.items():
             tag = get_asset_tag(k)
             # print(k,v)

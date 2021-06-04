@@ -27,6 +27,26 @@ class ListTest:
             ro_rgc.list().keys()
         )
 
+    def test_no_asset_section(self, ro_rgc):
+        """
+        Verify listing works even if the 'assets' section is missing in the config.
+        This situation may occur after setting genome identity for nonexistent genome.
+        """
+        # get the original genomes count
+        ori_genomes_count = len(ro_rgc.genomes)
+        # set test alias, which will create an empty genome section
+        ro_rgc.set_genome_alias(
+            genome="test_alias",
+            digest="test_digest",
+            create_genome=True,
+        )
+        # check if list works and skips the empty genome
+        assert len(ro_rgc.list().keys()) == ori_genomes_count
+        # clean up
+        ro_rgc.remove_genome_aliases(digest="test_digest")
+        with ro_rgc as r:
+            del r["genomes"]["test_digest"]
+
 
 class ListByGenomeTest:
     def test_returns_entire_mapping_when_no_genonome_specified(self, my_rgc):

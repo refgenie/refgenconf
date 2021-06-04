@@ -4,7 +4,7 @@ import logging
 import re
 
 from ubiquerg import parse_registry_path as prp
-
+from attmap import AttMap
 import refgenconf
 
 _LOGGER = logging.getLogger(__name__)
@@ -29,6 +29,16 @@ def looper_refgenie_populate(namespaces):
     ):
         rgc_path = namespaces["pipeline"]["var_templates"]["refgenie_config"]
         rgc = refgenconf.RefGenConf(rgc_path)
+
+        # Populate a dict with paths for the given sample's genome
+        g = namespaces["sample"]["genome"]
+        paths_dict = {}
+        for a in rgc.list_assets_by_genome(g):
+            paths_dict[a] = rgc.seek(g, a, "default")
+
+        # Provide these values under the 'refgenie' namespace
+        namespaces["refgenie"] = AttMap(paths_dict)
+
         return rgc.populate(namespaces)
     else:
         msg = """

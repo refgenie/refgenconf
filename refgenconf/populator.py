@@ -35,9 +35,14 @@ def looper_refgenie_populate(namespaces):
         # for a in rgc.list_assets_by_genome(g):
         #     paths_dict[a] = rgc.seek(g, a, "default")
 
+        if not "genome" in namespaces["sample"]:
+            _LOGGER.error("Refgenie plugin requires samples to have a 'genome' attribute.")
+            raise KeyError
+
         complete_seek_key_dict = rgc.list_seek_keys_values(
             genomes=namespaces["sample"]["genome"]
         )
+
         genome_seek_key_dict = complete_seek_key_dict[namespaces["sample"]["genome"]]
         paths_dict = {}
 

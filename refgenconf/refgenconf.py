@@ -763,7 +763,12 @@ class RefGenConf(yacman.YacAttMap):
             fullpaths[p] for p in [i for i, x in enumerate(paths_existence) if not x]
         ]
         msg = "For genome '{}' path to the asset '{}/{}:{}' doesn't exist: {}".format(
-            genome_name, genome_name, asset_name, seek_key, tag_name, ", ".join(nonexistent_pths)
+            genome_name,
+            genome_name,
+            asset_name,
+            seek_key,
+            tag_name,
+            ", ".join(nonexistent_pths),
         )
         if strict_exists is None:
             _LOGGER.debug(msg)
@@ -1971,7 +1976,7 @@ class RefGenConf(yacman.YacAttMap):
         :param str genome: genome to be added/updated
         :param str asset: asset to be added/updated
         :param str tag: tag to be added/updated
-        :param list data: asset parents to be added/updated
+        :param list data: asset parents or children to be added/updated
         :param bool children: a logical indicating whether the relationship to be
             added is 'children'
         :return RefGenConf: updated object
@@ -1981,15 +1986,10 @@ class RefGenConf(yacman.YacAttMap):
         if _check_insert_data(data, list, "data"):
             # creates/asserts the genome/asset:tag combination
             self.update_tags(genome, asset, tag)
-            self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][
-                tag
-            ].setdefault(relationship, list())
-            self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][
-                tag
-            ][relationship] = _extend_unique(
-                self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][
-                    CFG_ASSET_TAGS_KEY
-                ][tag][relationship],
+            tag_data = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag]
+            tag_data.setdefault(relationship, list())
+            tag_data[relationship] = _extend_unique(
+                tag_data[relationship],
                 data,
             )
 

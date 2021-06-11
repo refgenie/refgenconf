@@ -26,6 +26,7 @@ TEMPLATE_LOG = "build_log_{}__{}.md"
 TEMPLATE_ASSET_DIR_CONTENTS = "asset_dir_contents_{}__{}.json"
 ORI_LOG_NAME = "refgenie_log.md"
 BUILD_STATS_DIR = "_refgenie_build"
+BUILD_MAP_CFG = "_map_build.yaml"
 ALIAS_DIR = "alias"
 DATA_DIR = "data"
 
@@ -36,6 +37,7 @@ FILE_DIR_NAMES = [
     "TEMPLATE_ASSET_DIR_CONTENTS",
     "ORI_LOG_NAME",
     "BUILD_STATS_DIR",
+    "BUILD_MAP_CFG",
     "ALIAS_DIR",
     "DATA_DIR",
 ]

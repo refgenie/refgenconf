@@ -1986,7 +1986,9 @@ class RefGenConf(yacman.YacAttMap):
         if _check_insert_data(data, list, "data"):
             # creates/asserts the genome/asset:tag combination
             self.update_tags(genome, asset, tag)
-            tag_data = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][tag]
+            tag_data = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][
+                CFG_ASSET_TAGS_KEY
+            ][tag]
             tag_data.setdefault(relationship, list())
             tag_data[relationship] = _extend_unique(
                 tag_data[relationship],

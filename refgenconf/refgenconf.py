@@ -34,6 +34,7 @@ from .const import *
 from .exceptions import *
 from .helpers import (
     asciify_json_dict,
+    block_iter_repr,
     get_dir_digest,
     select_genome_config,
     send_data_request,
@@ -296,8 +297,9 @@ class RefGenConf(yacman.YacAttMap):
         os.makedirs(self.data_dir, exist_ok=True)
         os.makedirs(self.alias_dir, exist_ok=True)
         _LOGGER.info(
-            f"Created directories:\n - {self.data_dir}" f"\n - {self.alias_dir}"
+            f"Created directories:{block_iter_repr([self.data_dir, self.alias_dir])}"
         )
+
         return filepath
 
     def list(self, genome=None, order=None, include_tags=False):
@@ -622,9 +624,7 @@ class RefGenConf(yacman.YacAttMap):
                             continue
                 created.append(path)
         if created:
-            _LOGGER.info(
-                "Created alias directories: \n - {}".format("\n - ".join(created))
-            )
+            _LOGGER.info(f"Created alias directories:{block_iter_repr(created)}")
 
     @staticmethod
     def _remove_symlink_alias(symlink_dict, aliases_to_remove):
@@ -2184,9 +2184,7 @@ class RefGenConf(yacman.YacAttMap):
                             "Could not remove genome '{}' from the config; it "
                             "does not exist".format(genome)
                         )
-            _LOGGER.info(
-                "Successfully removed entities:\n- {}".format("\n- ".join(removed))
-            )
+            _LOGGER.info(f"Successfully removed entities:{block_iter_repr(removed)}")
         else:
             if self.file_path:
                 with self as r:

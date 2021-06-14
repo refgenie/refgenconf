@@ -27,6 +27,7 @@ from .const import *
 from .exceptions import *
 from .helpers import (
     asciify_json_dict,
+    block_iter_repr,
     get_dir_digest,
     select_genome_config,
     unbound_env_vars,
@@ -1132,7 +1133,7 @@ class _RefGenConfV03(yacman.YacAttMap):
                             attr: archive_data[attr]
                             for attr in ATTRS_COPY_PULL
                             if attr in archive_data
-                        }
+                        },
                     )
                     rgc.set_default_pointer(*gat)
                     rgc.update_genomes(genome=genome, data=genome_archive_data)
@@ -1150,7 +1151,7 @@ class _RefGenConfV03(yacman.YacAttMap):
                         attr: archive_data[attr]
                         for attr in ATTRS_COPY_PULL
                         if attr in archive_data
-                    }
+                    },
                 )
                 self.set_default_pointer(*gat)
                 self.update_genomes(genome=genome, data=genome_archive_data)
@@ -1366,9 +1367,7 @@ class _RefGenConfV03(yacman.YacAttMap):
                             "Could not remove genome '{}' from the config; it "
                             "does not exist".format(genome)
                         )
-            _LOGGER.info(
-                "Successfully removed entities:\n- {}".format("\n- ".join(removed))
-            )
+            _LOGGER.info(f"Successfully removed entities:{block_iter_repr(remove)})")
         else:
             if self.file_path:
                 with self as r:

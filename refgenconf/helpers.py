@@ -7,6 +7,7 @@ import shutil
 from copy import copy
 from functools import partial
 from re import sub
+from typing import Iterable
 
 import requests
 from requests import ConnectionError, get
@@ -329,3 +330,23 @@ def replace_str_in_obj(object, x, y):
     if isinstance(object, str):
         obj = object.replace(x, y)
     return obj
+
+
+def block_iter_repr(input_obj, numbered=False):
+    """
+    Create a human readable string representation of an iterable. Either as a bulleted or numbered list.
+
+    :param Iterable input_obj: object to create a representation for
+    :param bool numbered: whether a numbered list should be created
+    :param str: the representation
+    """
+    if isinstance(input_obj, str):
+        input_obj = [input_obj]
+    if not isinstance(input_obj, Iterable):
+        raise TypeError("Input object has to be an Iterable")
+    return (
+        "\n"
+        + "\n".join([" {}. {}".format(i + 1, val) for i, val in (enumerate(input_obj))])
+        if numbered
+        else "\n - {}".format("\n - ".join(input_obj))
+    )

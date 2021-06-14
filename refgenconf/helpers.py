@@ -9,7 +9,6 @@ from functools import partial
 from re import sub
 from typing import Iterable
 
-import requests
 from requests import ConnectionError, get
 from ubiquerg import is_command_callable
 from yacman import select_config
@@ -20,7 +19,7 @@ from .seqcol import SeqColClient
 
 _LOGGER = logging.getLogger(__name__)
 
-__all__ = ["select_genome_config", "get_dir_digest"]
+__all__ = ["select_genome_config", "get_dir_digest", "block_iter_repr"]
 
 
 def select_genome_config(filename=None, conf_env_vars=CFG_ENV_VARS, **kwargs):

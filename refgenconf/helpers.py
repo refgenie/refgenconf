@@ -7,8 +7,8 @@ import shutil
 from copy import copy
 from functools import partial
 from re import sub
+from typing import Iterable
 
-import requests
 from requests import ConnectionError, get
 from ubiquerg import is_command_callable
 from yacman import select_config
@@ -19,7 +19,7 @@ from .seqcol import SeqColClient
 
 _LOGGER = logging.getLogger(__name__)
 
-__all__ = ["select_genome_config", "get_dir_digest"]
+__all__ = ["select_genome_config", "get_dir_digest", "block_iter_repr"]
 
 
 def select_genome_config(filename=None, conf_env_vars=CFG_ENV_VARS, **kwargs):
@@ -329,3 +329,23 @@ def replace_str_in_obj(object, x, y):
     if isinstance(object, str):
         obj = object.replace(x, y)
     return obj
+
+
+def block_iter_repr(input_obj, numbered=False):
+    """
+    Create a human readable string representation of an iterable. Either as a bulleted or numbered list.
+
+    :param Iterable input_obj: object to create a representation for
+    :param bool numbered: whether a numbered list should be created
+    :param str: the representation
+    """
+    if isinstance(input_obj, str):
+        input_obj = [input_obj]
+    if not isinstance(input_obj, Iterable):
+        raise TypeError("Input object has to be an Iterable")
+    return (
+        "\n"
+        + "\n".join([" {}. {}".format(i + 1, val) for i, val in (enumerate(input_obj))])
+        if numbered
+        else "\n - {}".format("\n - ".join(input_obj))
+    )

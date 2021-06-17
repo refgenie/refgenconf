@@ -2,6 +2,12 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
+## [0.11.2] - unreleased
+
+## [0.11.1] - 2021-06-01
+### Fixed
+- issue with missing `assets` section in `RefGenConf.list` method. This situation occured after setting genome identity for nonexistent genome
+
 ## [0.11.0] - 2021-04-27
 ### Added
 - `RefGenConf.populate` function to support `refgenie populate`

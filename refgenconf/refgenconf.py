@@ -34,6 +34,7 @@ from .const import *
 from .exceptions import *
 from .helpers import (
     asciify_json_dict,
+    block_iter_repr,
     get_dir_digest,
     select_genome_config,
     send_data_request,
@@ -296,8 +297,9 @@ class RefGenConf(yacman.YacAttMap):
         os.makedirs(self.data_dir, exist_ok=True)
         os.makedirs(self.alias_dir, exist_ok=True)
         _LOGGER.info(
-            f"Created directories:\n - {self.data_dir}" f"\n - {self.alias_dir}"
+            f"Created directories:{block_iter_repr([self.data_dir, self.alias_dir])}"
         )
+
         return filepath
 
     def list(self, genome=None, order=None, include_tags=False):
@@ -326,6 +328,7 @@ class RefGenConf(yacman.YacAttMap):
                         ),
                     )
                     for g in refgens
+                    if CFG_ASSETS_KEY in self[CFG_GENOMES_KEY][g]
                 ]
             )
         self.run_plugins(POST_LIST_HOOK)
@@ -338,6 +341,7 @@ class RefGenConf(yacman.YacAttMap):
                     ),
                 )
                 for g in refgens
+                if CFG_ASSETS_KEY in self[CFG_GENOMES_KEY][g]
             ]
         )
 
@@ -620,9 +624,7 @@ class RefGenConf(yacman.YacAttMap):
                             continue
                 created.append(path)
         if created:
-            _LOGGER.info(
-                "Created alias directories: \n - {}".format("\n - ".join(created))
-            )
+            _LOGGER.info(f"Created alias directories:{block_iter_repr(created)}")
 
     @staticmethod
     def _remove_symlink_alias(symlink_dict, aliases_to_remove):
@@ -761,7 +763,12 @@ class RefGenConf(yacman.YacAttMap):
             fullpaths[p] for p in [i for i, x in enumerate(paths_existence) if not x]
         ]
         msg = "For genome '{}' path to the asset '{}/{}:{}' doesn't exist: {}".format(
-            genome_name, genome_name, asset_name, seek_key, tag_name, ", ".join(nonexistent_pths)
+            genome_name,
+            genome_name,
+            asset_name,
+            seek_key,
+            tag_name,
+            ", ".join(nonexistent_pths),
         )
         if strict_exists is None:
             _LOGGER.debug(msg)
@@ -1969,7 +1976,7 @@ class RefGenConf(yacman.YacAttMap):
         :param str genome: genome to be added/updated
         :param str asset: asset to be added/updated
         :param str tag: tag to be added/updated
-        :param list data: asset parents to be added/updated
+        :param list data: asset parents or children to be added/updated
         :param bool children: a logical indicating whether the relationship to be
             added is 'children'
         :return RefGenConf: updated object
@@ -1979,15 +1986,12 @@ class RefGenConf(yacman.YacAttMap):
         if _check_insert_data(data, list, "data"):
             # creates/asserts the genome/asset:tag combination
             self.update_tags(genome, asset, tag)
-            self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][
-                tag
-            ].setdefault(relationship, list())
-            self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][
-                tag
-            ][relationship] = _extend_unique(
-                self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][
-                    CFG_ASSET_TAGS_KEY
-                ][tag][relationship],
+            tag_data = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][
+                CFG_ASSET_TAGS_KEY
+            ][tag]
+            tag_data.setdefault(relationship, list())
+            tag_data[relationship] = _extend_unique(
+                tag_data[relationship],
                 data,
             )
 
@@ -2180,9 +2184,7 @@ class RefGenConf(yacman.YacAttMap):
                             "Could not remove genome '{}' from the config; it "
                             "does not exist".format(genome)
                         )
-            _LOGGER.info(
-                "Successfully removed entities:\n- {}".format("\n- ".join(removed))
-            )
+            _LOGGER.info(f"Successfully removed entities:{block_iter_repr(removed)}")
         else:
             if self.file_path:
                 with self as r:

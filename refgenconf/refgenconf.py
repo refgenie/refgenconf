@@ -746,10 +746,13 @@ class RefGenConf(yacman.YacAttMap):
             try:
                 seek_val = asset_tag_data[CFG_SEEK_KEYS_KEY][seek_key]
             except KeyError:
-                raise MissingSeekKeyError(
-                    f"Seek key '{seek_key}' not defined for: "
-                    f"'{genome_name}.{asset_name}:{tag_name}'"
-                )
+                if seek_key == "dir":
+                    seek_val = "."
+                else:
+                    raise MissingSeekKeyError(
+                        f"Seek key '{seek_key}' not defined for: "
+                        f"'{genome_name}.{asset_name}:{tag_name}'"
+                    )
         if enclosing_dir:
             seek_val = ""
         fullpath = os.path.join(

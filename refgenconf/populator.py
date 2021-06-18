@@ -51,27 +51,30 @@ def looper_refgenie_populate(namespaces):
             )
             raise KeyError
 
-        complete_seek_key_dict = rgc.list_seek_keys_values(
-            genomes=namespaces["sample"]["genome"]
-        )
+        genome = namespaces["sample"]["genome"]
 
-        genome_seek_key_dict = complete_seek_key_dict[namespaces["sample"]["genome"]]
+        genome_seek_key_dict = rgc.list_seek_keys_values(genomes=genome)[genome]
         paths_dict = {}
 
         # This function allows you to specify tags for specific assets to use
         # in the project config like:
         # refgenie_asset_tags:
         #   asset_name: tag_name
-        def get_asset_tag(asset):
+        def get_asset_tag(genome, asset):
             try:
                 return namespaces["project"]["refgenie_asset_tags"][asset]
-            except:
-                return "default"
+            except KeyError:
+                default_tag = rgc.get_default_tag(genome=genome, asset=asset)
+                _LOGGER.info(
+                    f"Refgenie asset ({genome}/{asset}) tag not specified in `refgenie_asset_tags` section. "
+                    f"Using the default tag: {default_tag}"
+                )
+                return default_tag
 
         # Restructure the seek key paths to make them accessible with
         # {refgenie.asset_name.seek_key} in command templates
         for k, v in genome_seek_key_dict.items():
-            tag = get_asset_tag(k)
+            tag = get_asset_tag(genome=genome, asset=k)
             # print(k,v)
             try:
                 paths_dict[k] = v[tag]

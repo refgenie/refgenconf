@@ -4,10 +4,13 @@ import mock
 import pytest
 
 from refgenconf import RefGenConf
+from refgenconf.exceptions import MissingGenomeError
 from refgenconf.populator import looper_refgenie_populate
 
 __author__ = "Michal Stolarczyk"
 __email__ = "michal@virginia.edu"
+
+GENOMES_TO_TEST = ["rCRSd", "human_repeats", "mouse_chrM2x"]
 
 
 def get_flag_pth(rgc):
@@ -64,7 +67,7 @@ class TestPlugins:
         in current Python environment. Properly defined ones are included in
         the plugins property return value
         """
-        assert any([len(fun) > 0 for plugin, fun in ro_rgc.plugins.items()])
+        assert any([len(fun) > 0 for _, fun in ro_rgc.plugins.items()])
 
 
 class TestLooperPlugins:
@@ -80,6 +83,13 @@ class TestLooperPlugins:
                 {"pipeline": {"var_templates": {"refgenie_config": "faulty_path"}}},
                 FileNotFoundError,
             ),
+            (
+                {
+                    "pipeline": {"var_templates": {"refgenie_config": ""}},
+                    "sample": {"genome": "missinggenome"},
+                },
+                MissingGenomeError,
+            ),
         ],
     )
     def test_faulty_input_namespaces(self, namespaces, ErrorClass):
@@ -88,3 +98,26 @@ class TestLooperPlugins:
         """
         with pytest.raises(ErrorClass):
             looper_refgenie_populate(namespaces=namespaces)
+
+    @pytest.mark.parametrize(
+        "namespaces",
+        [
+            {
+                "pipeline": {"var_templates": {"refgenie_config": ""}},
+                "sample": {"genome": None},
+            }
+        ],
+    )
+    @pytest.mark.parametrize("genome", GENOMES_TO_TEST)
+    def test_correct_namespaces(self, namespaces, genome, cfg_file):
+        namespaces["pipeline"]["var_templates"]["refgenie_config"] = cfg_file
+        namespaces["sample"]["genome"] = genome
+        ret = looper_refgenie_populate(namespaces=namespaces)
+        assert "refgenie" in ret
+        rgc = RefGenConf(filepath=cfg_file)
+        assert all(
+            [
+                asset in ret["refgenie"].keys()
+                for asset in rgc.list_assets_by_genome(genome=genome)
+            ]
+        )

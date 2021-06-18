@@ -2,6 +2,7 @@
 
 import logging
 import re
+from collections.abc import Mapping
 
 from attmap import AttMap
 from ubiquerg import parse_registry_path as prp
@@ -21,20 +22,28 @@ def looper_refgenie_populate(namespaces):
     This is useful for example for CWL pipelines, which are built to have
     paths resolved outside the workflow.
 
-    :param dict namespaces: variable namespaces dict
+    The namespaces structure required to run the plugin is:
+    `namespaces["pipeline"]["var_templates"]["refgenie_config"]`
+
+    :param Mapping namespaces: a nested variable namespaces dict
     :return dict: sample namespace dict
+    :raises TypeError: if the input namespaces is not a mapping
+    :raises KeyError: if the namespaces mapping does not include 'pipeline'
+    :raises NotImplementedError: if 'var_templates' key is missing in the 'pipeline' namespace or
+        'refgenie_config' is missing in 'var_templates' section.
     """
+    if not isinstance(namespaces, Mapping):
+        raise TypeError("Namespaces must be a Mapping")
+    if "pipeline" not in namespaces:
+        raise KeyError(
+            "Namespaces do not include 'pipeline'. The job is misconfigured."
+        )
     if (
         "var_templates" in namespaces["pipeline"]
         and "refgenie_config" in namespaces["pipeline"]["var_templates"]
     ):
         rgc_path = namespaces["pipeline"]["var_templates"]["refgenie_config"]
         rgc = refgenconf.RefGenConf(rgc_path)
-
-        # Populate a dict with paths for the given sample's genome
-        # paths_dict = {}
-        # for a in rgc.list_assets_by_genome(g):
-        #     paths_dict[a] = rgc.seek(g, a, "default")
 
         if not "genome" in namespaces["sample"]:
             _LOGGER.error(

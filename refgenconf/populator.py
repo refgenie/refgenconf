@@ -3,8 +3,9 @@
 import logging
 import re
 
-from ubiquerg import parse_registry_path as prp
 from attmap import AttMap
+from ubiquerg import parse_registry_path as prp
+
 import refgenconf
 
 _LOGGER = logging.getLogger(__name__)
@@ -36,7 +37,9 @@ def looper_refgenie_populate(namespaces):
         #     paths_dict[a] = rgc.seek(g, a, "default")
 
         if not "genome" in namespaces["sample"]:
-            _LOGGER.error("Refgenie plugin requires samples to have a 'genome' attribute.")
+            _LOGGER.error(
+                "Refgenie plugin requires samples to have a 'genome' attribute."
+            )
             raise KeyError
 
         complete_seek_key_dict = rgc.list_seek_keys_values(

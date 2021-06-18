@@ -1,8 +1,10 @@
 import os
 
 import mock
+import pytest
 
 from refgenconf import RefGenConf
+from refgenconf.populator import looper_refgenie_populate
 
 __author__ = "Michal Stolarczyk"
 __email__ = "michal@virginia.edu"
@@ -63,3 +65,26 @@ class TestPlugins:
         the plugins property return value
         """
         assert any([len(fun) > 0 for plugin, fun in ro_rgc.plugins.items()])
+
+
+class TestLooperPlugins:
+    @pytest.mark.parametrize(
+        ["namespaces", "ErrorClass"],
+        [
+            ("testvalue", TypeError),
+            ({}, KeyError),
+            ({"test": 1}, KeyError),
+            ({"pipeline": {"test": 1}}, NotImplementedError),
+            ({"pipeline": {"var_templates": {"test": 1}}}, NotImplementedError),
+            (
+                {"pipeline": {"var_templates": {"refgenie_config": "faulty_path"}}},
+                FileNotFoundError,
+            ),
+        ],
+    )
+    def test_faulty_input_namespaces(self, namespaces, ErrorClass):
+        """
+        Test whether the plugin approprietly reacts to faulty input objects
+        """
+        with pytest.raises(ErrorClass):
+            looper_refgenie_populate(namespaces=namespaces)

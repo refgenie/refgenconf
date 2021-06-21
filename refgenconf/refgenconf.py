@@ -775,7 +775,7 @@ class RefGenConf(yacman.YacAttMap):
         )
         if strict_exists is None:
             _LOGGER.debug(msg)
-        if strict_exists is True:
+        elif strict_exists is True:
             raise OSError(msg)
         else:
             warnings.warn(msg, RuntimeWarning)

@@ -2,9 +2,11 @@
 
 import logging
 import re
+from collections.abc import Mapping
 
-from ubiquerg import parse_registry_path as prp
 from attmap import AttMap
+from ubiquerg import parse_registry_path as prp
+
 import refgenconf
 
 _LOGGER = logging.getLogger(__name__)
@@ -20,9 +22,22 @@ def looper_refgenie_populate(namespaces):
     This is useful for example for CWL pipelines, which are built to have
     paths resolved outside the workflow.
 
-    :param dict namespaces: variable namespaces dict
+    The namespaces structure required to run the plugin is:
+    `namespaces["pipeline"]["var_templates"]["refgenie_config"]`
+
+    :param Mapping namespaces: a nested variable namespaces dict
     :return dict: sample namespace dict
+    :raises TypeError: if the input namespaces is not a mapping
+    :raises KeyError: if the namespaces mapping does not include 'pipeline'
+    :raises NotImplementedError: if 'var_templates' key is missing in the 'pipeline' namespace or
+        'refgenie_config' is missing in 'var_templates' section.
     """
+    if not isinstance(namespaces, Mapping):
+        raise TypeError("Namespaces must be a Mapping")
+    if "pipeline" not in namespaces:
+        raise KeyError(
+            "Namespaces do not include 'pipeline'. The job is misconfigured."
+        )
     if (
         "var_templates" in namespaces["pipeline"]
         and "refgenie_config" in namespaces["pipeline"]["var_templates"]
@@ -30,12 +45,44 @@ def looper_refgenie_populate(namespaces):
         rgc_path = namespaces["pipeline"]["var_templates"]["refgenie_config"]
         rgc = refgenconf.RefGenConf(rgc_path)
 
-        # Populate a dict with paths for the given sample's genome
-        g = namespaces["sample"]["genome"]
-        paths_dict = {}
-        for a in rgc.list_assets_by_genome(g):
-            paths_dict[a] = rgc.seek(g, a, "default")
+        if not "genome" in namespaces["sample"]:
+            _LOGGER.error(
+                "Refgenie plugin requires samples to have a 'genome' attribute."
+            )
+            raise KeyError
 
+        genome = namespaces["sample"]["genome"]
+
+        genome_seek_key_dict = rgc.list_seek_keys_values(genomes=genome)[genome]
+        paths_dict = {}
+
+        # This function allows you to specify tags for specific assets to use
+        # in the project config like:
+        # refgenie_asset_tags:
+        #   asset_name: tag_name
+        def get_asset_tag(genome, asset):
+            try:
+                return namespaces["project"]["refgenie_asset_tags"][asset]
+            except KeyError:
+                default_tag = rgc.get_default_tag(genome=genome, asset=asset)
+                _LOGGER.info(
+                    f"Refgenie asset ({genome}/{asset}) tag not specified in `refgenie_asset_tags` section. "
+                    f"Using the default tag: {default_tag}"
+                )
+                return default_tag
+
+        # Restructure the seek key paths to make them accessible with
+        # {refgenie.asset_name.seek_key} in command templates
+        for k, v in genome_seek_key_dict.items():
+            tag = get_asset_tag(genome=genome, asset=k)
+            # print(k,v)
+            try:
+                paths_dict[k] = v[tag]
+            except KeyError:
+                _LOGGER.warn(f"Can't find tag '{tag}' for asset '{k}'. Using default")
+                paths_dict[k] = v["default"]
+
+        # print(paths_dict)
         # Provide these values under the 'refgenie' namespace
         namespaces["refgenie"] = AttMap(paths_dict)
 

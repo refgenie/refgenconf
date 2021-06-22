@@ -2,11 +2,15 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
-## [0.11.2] - 2021-06-22
+## [0.12.0] - 2021-06-xx
 
 ### Added
 - `list_seek_keys_values` method that lists values for all seek keys for the specified genome and asset
 - `looper_refgenie_populate` looper plugin
+- automatic `dir` seek_key support in `RefGenConf.seek` -- if the seek_key does not exist, `.` is returned by default
+
+### Fixed
+- `RuntimeWarning` which has been raised when `strict_exists` was set to `None` in `RefGenConf.seek` method; [#131](https://github.com/refgenie/refgenconf/issues/131)
 
 ## [0.11.1] - 2021-06-01
 ### Fixed
@@ -139,7 +143,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - the way of distribution of `refgenieserver` endpoints operationIds. They are grouped and mapped to a short description
 
 ### Fixed
-- overloaded colon in progress bar descriptions; [#73](https://github.com/databio/refgenconf/issues/73)
+- overloaded colon in progress bar descriptions; [#73](https://github.com/refgenie/refgenconf/issues/73)
 
 ## [0.5.4] - 2019-11-05
 
@@ -212,7 +216,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [0.1.1] - 2019-06-11
 ### Fixed
-- [Double-slash bug](https://github.com/databio/refgenie/issues/51) in URLs
+- [Double-slash bug](https://github.com/refgenie/refgenie/issues/51) in URLs
 
 ## [0.1.0] -- 2019-06-10
 - Initial project release

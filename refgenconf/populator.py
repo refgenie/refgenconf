@@ -53,39 +53,51 @@ def looper_refgenie_populate(namespaces):
 
         genome = namespaces["sample"]["genome"]
 
-        genome_seek_key_dict = rgc.list_seek_keys_values(genomes=genome)[genome]
+        # genome_seek_key_dict = rgc.list_seek_keys_values(genomes=genome)[genome]
+        complete_sk_dict = rgc.list_seek_keys_values()
         paths_dict = {}
 
         # This function allows you to specify tags for specific assets to use
         # in the project config like:
         # refgenie_asset_tags:
-        #   asset_name: tag_name
+        #   genome:
+        #     asset_name: tag_name
         def get_asset_tag(genome, asset):
             try:
-                return namespaces["project"]["refgenie_asset_tags"][asset]
+                return namespaces["project"]["refgenie"]["tag_overrides"][genome][asset]
             except KeyError:
                 default_tag = rgc.get_default_tag(genome=genome, asset=asset)
                 _LOGGER.info(
-                    f"Refgenie asset ({genome}/{asset}) tag not specified in `refgenie_asset_tags` section. "
+                    f"Refgenie asset ({genome}/{asset}) tag not specified in `refgenie.tag_overrides` section. "
                     f"Using the default tag: {default_tag}"
                 )
                 return default_tag
 
         # Restructure the seek key paths to make them accessible with
         # {refgenie.asset_name.seek_key} in command templates
-        for k, v in genome_seek_key_dict.items():
-            tag = get_asset_tag(genome=genome, asset=k)
-            # print(k,v)
-            try:
-                paths_dict[k] = v[tag]
-            except KeyError:
-                _LOGGER.warn(f"Can't find tag '{tag}' for asset '{k}'. Using default")
-                paths_dict[k] = v["default"]
+        for g, gdict in complete_sk_dict.items():
+            _LOGGER.debug(f"Processing genome {g}")
+            paths_dict[g] = {}
+            for k, v in gdict.items():
+                tag = get_asset_tag(genome=g, asset=k)
+                # print(k,v)
+                try:
+                    paths_dict[g][k] = v[tag]
+                except KeyError:
+                    _LOGGER.warn(f"Can't find tag '{tag}' for asset '{g}/{k}', as specified in your project config. Using default.")
+                    paths_dict[g][k] = v["default"]
+
+        for po in namespaces["project"]["refgenie"]["path_overrides"]:
+            rp = prp(po["registry_path"])
+            _LOGGER.debug(f"Overriding {po['registry_path']} with {po['value']}.")
+            if not rp["subitem"]:
+                rp["subitem"] = rp["item"]
+            _LOGGER.debug(rp)
+            paths_dict[rp["namespace"]][rp["item"]][rp["subitem"]] = po["value"]
 
         # print(paths_dict)
         # Provide these values under the 'refgenie' namespace
         namespaces["refgenie"] = AttMap(paths_dict)
-
         return rgc.populate(namespaces)
     else:
         msg = """

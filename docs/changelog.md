@@ -2,7 +2,11 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
-## [0.11.2] - unreleased
+## [0.11.2] - 2021-06-22
+
+### Added
+- `list_seek_keys_values` method that lists values for all seek keys for the specified genome and asset
+- `looper_refgenie_populate` looper plugin
 
 ## [0.11.1] - 2021-06-01
 ### Fixed

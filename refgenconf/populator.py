@@ -84,7 +84,9 @@ def looper_refgenie_populate(namespaces):
                 try:
                     paths_dict[g][k] = v[tag]
                 except KeyError:
-                    _LOGGER.warn(f"Can't find tag '{tag}' for asset '{g}/{k}', as specified in your project config. Using default.")
+                    _LOGGER.warn(
+                        f"Can't find tag '{tag}' for asset '{g}/{k}', as specified in your project config. Using default."
+                    )
                     paths_dict[g][k] = v["default"]
 
         for po in namespaces["project"]["refgenie"]["path_overrides"]:

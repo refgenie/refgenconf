@@ -89,13 +89,14 @@ def looper_refgenie_populate(namespaces):
                     )
                     paths_dict[g][k] = v["default"]
 
-        for po in namespaces["project"]["refgenie"]["path_overrides"]:
-            rp = prp(po["registry_path"])
-            _LOGGER.debug(f"Overriding {po['registry_path']} with {po['value']}.")
-            if not rp["subitem"]:
-                rp["subitem"] = rp["item"]
-            _LOGGER.debug(rp)
-            paths_dict[rp["namespace"]][rp["item"]][rp["subitem"]] = po["value"]
+        if "refgenie" in namespaces["project"]:
+            for po in namespaces["project"]["refgenie"]["path_overrides"]:
+                rp = prp(po["registry_path"])
+                _LOGGER.debug(f"Overriding {po['registry_path']} with {po['value']}.")
+                if not rp["subitem"]:
+                    rp["subitem"] = rp["item"]
+                _LOGGER.debug(rp)
+                paths_dict[rp["namespace"]][rp["item"]][rp["subitem"]] = po["value"]
 
         # print(paths_dict)
         # Provide these values under the 'refgenie' namespace

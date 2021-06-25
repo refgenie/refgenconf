@@ -72,6 +72,10 @@ def looper_refgenie_populate(namespaces):
                     f"Using the default tag: {default_tag}"
                 )
                 return default_tag
+            except TypeError:
+                default_tag = rgc.get_default_tag(genome=genome, asset=asset)
+                _LOGGER.warn(f"tag_overrides section is malformed. Using default.")
+                return default_tag
 
         # Restructure the seek key paths to make them accessible with
         # {refgenie.asset_name.seek_key} in command templates
@@ -87,16 +91,23 @@ def looper_refgenie_populate(namespaces):
                     _LOGGER.warn(
                         f"Can't find tag '{tag}' for asset '{g}/{k}', as specified in your project config. Using default."
                     )
-                    paths_dict[g][k] = v["default"]
+                    paths_dict[g][k] = v[rgc.get_default_tag(genome=g, asset=k)]
+
 
         if "refgenie" in namespaces["project"]:
-            for po in namespaces["project"]["refgenie"]["path_overrides"]:
-                rp = prp(po["registry_path"])
-                _LOGGER.debug(f"Overriding {po['registry_path']} with {po['value']}.")
-                if not rp["subitem"]:
-                    rp["subitem"] = rp["item"]
-                _LOGGER.debug(rp)
-                paths_dict[rp["namespace"]][rp["item"]][rp["subitem"]] = po["value"]
+            try:
+                for po in namespaces["project"]["refgenie"]["path_overrides"]:
+                    rp = prp(po["registry_path"])
+                    _LOGGER.debug(f"Overriding {po['registry_path']} with {po['value']}.")
+                    if not rp["subitem"]:
+                        rp["subitem"] = rp["item"]
+                    _LOGGER.debug(rp)
+                    paths_dict[rp["namespace"]][rp["item"]][rp["subitem"]] = po["value"]
+            except KeyError: 
+                _LOGGER.debug("Did not find path_overrides section")
+            except TypeError:
+                _LOGGER.warn("Warning: path_overrides is not iterable")
+
 
         # print(paths_dict)
         # Provide these values under the 'refgenie' namespace

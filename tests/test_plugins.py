@@ -1,8 +1,11 @@
 import os
 
 import mock
+import pytest
 
 from refgenconf import RefGenConf
+from refgenconf.exceptions import MissingGenomeError
+from refgenconf.populator import looper_refgenie_populate
 
 __author__ = "Michal Stolarczyk"
 __email__ = "michal@virginia.edu"
@@ -62,4 +65,78 @@ class TestPlugins:
         in current Python environment. Properly defined ones are included in
         the plugins property return value
         """
-        assert any([len(fun) > 0 for plugin, fun in ro_rgc.plugins.items()])
+        assert any([len(fun) > 0 for _, fun in ro_rgc.plugins.items()])
+
+
+GENOMES_TO_TEST = ["rCRSd", "human_repeats", "mouse_chrM2x"]
+
+
+class TestLooperPlugins:
+    @pytest.mark.parametrize(
+        ["namespaces", "ErrorClass"],
+        [
+            ("testvalue", TypeError),
+            ({}, KeyError),
+            ({"test": 1}, KeyError),
+            ({"pipeline": {"test": 1}}, NotImplementedError),
+            ({"pipeline": {"var_templates": {"test": 1}}}, NotImplementedError),
+            (
+                {"pipeline": {"var_templates": {"refgenie_config": "faulty_path"}}},
+                FileNotFoundError,
+            ),
+        ],
+    )
+    def test_faulty_input_namespaces(self, namespaces, ErrorClass):
+        """
+        Test whether the plugin approprietly reacts to faulty input objects
+        """
+        with pytest.raises(ErrorClass):
+            looper_refgenie_populate(namespaces=namespaces)
+
+    @pytest.mark.parametrize(
+        "namespaces",
+        [
+            {
+                "pipeline": {"var_templates": {"refgenie_config": None}},
+            }
+        ],
+    )
+    @pytest.mark.parametrize("genome", GENOMES_TO_TEST)
+    def test_correct_namespaces(self, namespaces, genome, cfg_file):
+        namespaces["pipeline"]["var_templates"]["refgenie_config"] = cfg_file
+        ret = looper_refgenie_populate(namespaces=namespaces)
+        assert "refgenie" in ret
+        rgc = RefGenConf(filepath=cfg_file)
+        assert all(
+            [
+                asset in ret["refgenie"][genome].keys()
+                for asset in rgc.list_assets_by_genome(genome=genome)
+            ]
+        )
+
+    @pytest.mark.parametrize(
+        "namespaces",
+        [
+            {
+                "pipeline": {"var_templates": {"refgenie_config": None}},
+                "project": {
+                    "refgenie": {
+                        "path_overrides": [
+                            {"registry_path": None, "value": "REPLACEMENT"}
+                        ]
+                    }
+                },
+            }
+        ],
+    )
+    @pytest.mark.parametrize("genome", GENOMES_TO_TEST)
+    def test_path_overrides(self, namespaces, genome, cfg_file):
+        rgc = RefGenConf(filepath=cfg_file)
+        test_asset = rgc.list_assets_by_genome(genome=genome)[0]
+        namespaces["pipeline"]["var_templates"]["refgenie_config"] = cfg_file
+        namespaces["project"]["refgenie"]["path_overrides"][0][
+            "registry_path"
+        ] = f"{genome}/{test_asset}"
+        ret = looper_refgenie_populate(namespaces=namespaces)
+        assert "refgenie" in ret
+        assert ret["refgenie"][genome][test_asset][test_asset] == "REPLACEMENT"

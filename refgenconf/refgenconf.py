@@ -34,6 +34,7 @@ from .const import *
 from .exceptions import *
 from .helpers import (
     asciify_json_dict,
+    block_iter_repr,
     get_dir_digest,
     select_genome_config,
     send_data_request,
@@ -296,8 +297,9 @@ class RefGenConf(yacman.YacAttMap):
         os.makedirs(self.data_dir, exist_ok=True)
         os.makedirs(self.alias_dir, exist_ok=True)
         _LOGGER.info(
-            f"Created directories:\n - {self.data_dir}" f"\n - {self.alias_dir}"
+            f"Created directories:{block_iter_repr([self.data_dir, self.alias_dir])}"
         )
+
         return filepath
 
     def list(self, genome=None, order=None, include_tags=False):
@@ -622,9 +624,7 @@ class RefGenConf(yacman.YacAttMap):
                             continue
                 created.append(path)
         if created:
-            _LOGGER.info(
-                "Created alias directories: \n - {}".format("\n - ".join(created))
-            )
+            _LOGGER.info(f"Created alias directories:{block_iter_repr(created)}")
 
     @staticmethod
     def _remove_symlink_alias(symlink_dict, aliases_to_remove):
@@ -746,10 +746,13 @@ class RefGenConf(yacman.YacAttMap):
             try:
                 seek_val = asset_tag_data[CFG_SEEK_KEYS_KEY][seek_key]
             except KeyError:
-                raise MissingSeekKeyError(
-                    f"Seek key '{seek_key}' not defined for: "
-                    f"'{genome_name}.{asset_name}:{tag_name}'"
-                )
+                if seek_key == "dir":
+                    seek_val = "."
+                else:
+                    raise MissingSeekKeyError(
+                        f"Seek key '{seek_key}' not defined for: "
+                        f"'{genome_name}.{asset_name}:{tag_name}'"
+                    )
         if enclosing_dir:
             seek_val = ""
         fullpath = os.path.join(
@@ -763,11 +766,16 @@ class RefGenConf(yacman.YacAttMap):
             fullpaths[p] for p in [i for i, x in enumerate(paths_existence) if not x]
         ]
         msg = "For genome '{}' path to the asset '{}/{}:{}' doesn't exist: {}".format(
-            genome_name, asset_name, seek_key, tag_name, ", ".join(nonexistent_pths)
+            genome_name,
+            genome_name,
+            asset_name,
+            seek_key,
+            tag_name,
+            ", ".join(nonexistent_pths),
         )
         if strict_exists is None:
             _LOGGER.debug(msg)
-        if strict_exists is True:
+        elif strict_exists is True:
             raise OSError(msg)
         else:
             warnings.warn(msg, RuntimeWarning)
@@ -1082,6 +1090,48 @@ class RefGenConf(yacman.YacAttMap):
                 key=order,
             )
         )
+
+    def list_seek_keys_values(self, genomes=None, assets=None):
+        """
+        List values for all seek keys for the specified genome and asset.
+        Leave the arguments out to get all seek keys values managed by refgenie.
+
+        :param str | List[str] genome_names: optional list of genomes to include
+        :param str | List[str] asset_names: optional list of assets to include
+        :return dict: a nested dictionary with the seek key values
+        """
+        ret = {}
+
+        if genomes is None:
+            genome_names = self.genomes_list()
+        else:
+            genome_names = _make_list_of_str(genomes)
+
+        for genome_name in genome_names:
+            self._assert_gat_exists(genome_name)
+            ret[genome_name] = {}
+            if assets is None:
+                asset_names = self.list_assets_by_genome(genome_name)
+            else:
+                asset_names = _make_list_of_str(assets)
+            for asset_name in asset_names:
+                try:
+                    self._assert_gat_exists(genome_name, asset_name)
+                except MissingAssetError as e:
+                    _LOGGER.warning(f"Skipping {asset_name} asset: {str(e)}")
+                    continue
+                asset_mapping = self[CFG_GENOMES_KEY][genome_name][CFG_ASSETS_KEY][
+                    asset_name
+                ]
+                ret[genome_name][asset_name] = {}
+                for tag_name in get_asset_tags(asset_mapping):
+                    tag_mapping = asset_mapping[CFG_ASSET_TAGS_KEY][tag_name]
+                    ret[genome_name][asset_name][tag_name] = {}
+                    for seek_key_name in get_tag_seek_keys(tag_mapping):
+                        ret[genome_name][asset_name][tag_name][
+                            seek_key_name
+                        ] = self.seek(genome_name, asset_name, tag_name, seek_key_name)
+        return ret
 
     def get_local_data_str(self, genome=None, order=None):
         """
@@ -1971,7 +2021,7 @@ class RefGenConf(yacman.YacAttMap):
         :param str genome: genome to be added/updated
         :param str asset: asset to be added/updated
         :param str tag: tag to be added/updated
-        :param list data: asset parents to be added/updated
+        :param list data: asset parents or children to be added/updated
         :param bool children: a logical indicating whether the relationship to be
             added is 'children'
         :return RefGenConf: updated object
@@ -1981,15 +2031,12 @@ class RefGenConf(yacman.YacAttMap):
         if _check_insert_data(data, list, "data"):
             # creates/asserts the genome/asset:tag combination
             self.update_tags(genome, asset, tag)
-            self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][
-                tag
-            ].setdefault(relationship, list())
-            self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][
-                tag
-            ][relationship] = _extend_unique(
-                self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][
-                    CFG_ASSET_TAGS_KEY
-                ][tag][relationship],
+            tag_data = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][
+                CFG_ASSET_TAGS_KEY
+            ][tag]
+            tag_data.setdefault(relationship, list())
+            tag_data[relationship] = _extend_unique(
+                tag_data[relationship],
                 data,
             )
 
@@ -2182,9 +2229,7 @@ class RefGenConf(yacman.YacAttMap):
                             "Could not remove genome '{}' from the config; it "
                             "does not exist".format(genome)
                         )
-            _LOGGER.info(
-                "Successfully removed entities:\n- {}".format("\n- ".join(removed))
-            )
+            _LOGGER.info(f"Successfully removed entities:{block_iter_repr(removed)}")
         else:
             if self.file_path:
                 with self as r:

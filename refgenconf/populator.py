@@ -1,7 +1,6 @@
 # refgenie looper plugin
 
 import logging
-import re
 from collections.abc import Mapping
 
 from attmap import AttMap
@@ -45,15 +44,6 @@ def looper_refgenie_populate(namespaces):
         rgc_path = namespaces["pipeline"]["var_templates"]["refgenie_config"]
         rgc = refgenconf.RefGenConf(rgc_path)
 
-        if not "genome" in namespaces["sample"]:
-            _LOGGER.error(
-                "Refgenie plugin requires samples to have a 'genome' attribute."
-            )
-            raise KeyError
-
-        genome = namespaces["sample"]["genome"]
-
-        # genome_seek_key_dict = rgc.list_seek_keys_values(genomes=genome)[genome]
         complete_sk_dict = rgc.list_seek_keys_values()
         paths_dict = {}
 
@@ -93,21 +83,21 @@ def looper_refgenie_populate(namespaces):
                     )
                     paths_dict[g][k] = v[rgc.get_default_tag(genome=g, asset=k)]
 
-
-        if "refgenie" in namespaces["project"]:
+        if "project" in namespaces and "refgenie" in namespaces["project"]:
             try:
                 for po in namespaces["project"]["refgenie"]["path_overrides"]:
                     rp = prp(po["registry_path"])
-                    _LOGGER.debug(f"Overriding {po['registry_path']} with {po['value']}.")
+                    _LOGGER.debug(
+                        f"Overriding {po['registry_path']} with {po['value']}."
+                    )
                     if not rp["subitem"]:
                         rp["subitem"] = rp["item"]
                     _LOGGER.debug(rp)
                     paths_dict[rp["namespace"]][rp["item"]][rp["subitem"]] = po["value"]
-            except KeyError: 
+            except KeyError:
                 _LOGGER.debug("Did not find path_overrides section")
             except TypeError:
                 _LOGGER.warn("Warning: path_overrides is not iterable")
-
 
         # print(paths_dict)
         # Provide these values under the 'refgenie' namespace

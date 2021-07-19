@@ -1,0 +1,22 @@
+description: "refgenie asset class file schema"
+properties:
+  class_name:
+    type: string
+    pattern: "^\\S*$"
+  description:
+    type: string
+  seek_keys:
+    additionalProperties: false
+    patternProperties:
+      ^.*$: { "$ref": "#/definitions/seek_key" }
+  parents:
+    type: array
+    items:
+      type: string
+required:
+  - class_name
+  - seek_keys
+
+definitions:
+  seek_key:
+    type: string

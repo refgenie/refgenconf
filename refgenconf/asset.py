@@ -1,10 +1,9 @@
 import os
-from typing import Dict
-from jsonschema import validate
-from yacman import load_yaml
-from ubiquerg import is_url
+from typing import Dict, List
 
-from typing import List, Dict
+from jsonschema import validate
+from ubiquerg import is_url
+from yacman import load_yaml
 
 from .const import DEFAULT_ASSET_CLASS_SCHEMA
 

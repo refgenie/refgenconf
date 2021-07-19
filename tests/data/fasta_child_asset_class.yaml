@@ -1,6 +1,6 @@
 class_name: fasta_child
 description: Child FASTA with index and chrom sizes
-seek_keys: 
+seek_keys:
   map: "{genome}.fa.map"
 parents:
   - fasta

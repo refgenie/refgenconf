@@ -1,6 +1,6 @@
 class_name: fasta_child_child
 description: Child child FASTA with index and chrom sizes
-seek_keys: 
+seek_keys:
   dict: "{genome}.fa.dict"
   fai: "{genome}_new.fai"
 parents:

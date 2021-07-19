@@ -18,6 +18,9 @@ DEFAULT_TAG = "default"
 DEFAULT_CONFIG_SCHEMA = os.path.join(
     os.path.dirname(__file__), "schemas", "genome_config_schema.yaml"
 )
+DEFAULT_ASSET_CLASS_SCHEMA = os.path.join(
+    os.path.dirname(__file__), "schemas", "asset_class_schema.yaml"
+)
 
 # file or dir names
 TEMPLATE_RECIPE_JSON = "build_recipe_{}__{}.json"
@@ -256,6 +259,7 @@ __all__ = (
         "PRIVATE_API",
         "HOOKS",
         "DEFAULT_CONFIG_SCHEMA",
+        "DEFAULT_ASSET_CLASS_SCHEMA",
     ]
     + FILE_DIR_NAMES
     + CFG_CONST

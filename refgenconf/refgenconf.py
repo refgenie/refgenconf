@@ -25,10 +25,11 @@ from pkg_resources import iter_entry_points
 from requests import ConnectionError
 from requests.exceptions import MissingSchema
 from rich.progress import BarColumn, Progress, TextColumn
+from rich.prompt import Confirm
 from rich.table import Table
 from ubiquerg import checksum, is_url, is_writable
 from ubiquerg import parse_registry_path as prp
-from ubiquerg import query_yes_no, untar
+from ubiquerg import untar
 
 from .const import *
 from .exceptions import *
@@ -499,10 +500,9 @@ class RefGenConf(yacman.YacAttMap):
         except Exception:
             pass
         else:
-            if not force and not query_yes_no(
-                "'{}/{}:{}' exists. Do you want to overwrite?".format(
-                    genome, asset, tag
-                )
+            if not force and not Confirm.ask(
+                prompt=f"'{genome}/{asset}:{tag}' exists. Do you want to overwrite?",
+                default=False,
             ):
                 _LOGGER.info("Aborted by a user, asset no added")
                 return False
@@ -1337,7 +1337,7 @@ class RefGenConf(yacman.YacAttMap):
                 f"for '{genome}/{asset}' are: {ts}"
             )
         if new_tag in asset_mapping[CFG_ASSET_TAGS_KEY]:
-            if not force and not query_yes_no(
+            if not force and not Confirm.ask(
                 f"You already have a '{asset}' asset tagged as "
                 f"'{new_tag}', do you wish to override?"
             ):
@@ -1350,7 +1350,7 @@ class RefGenConf(yacman.YacAttMap):
         if CFG_ASSET_PARENTS_KEY in asset_mapping[CFG_ASSET_TAGS_KEY][tag]:
             parents = asset_mapping[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_PARENTS_KEY]
         if len(children) > 0 or len(parents) > 0:
-            if not force and not query_yes_no(
+            if not force and not Confirm.ask(
                 f"The asset '{genome}/{asset}:{tag}' has {len(children)} "
                 f"children and {len(parents)} parents. Refgenie will update"
                 f" the relationship data. Do you want to proceed?"
@@ -1527,7 +1527,7 @@ class RefGenConf(yacman.YacAttMap):
             s for s in self[CFG_SERVERS_KEY] if get_json_url(s, API_ID_DIGEST)
         ]
 
-        _LOGGER.info(f"Compatible refgenieserver instances: {good_servers}")
+        _LOGGER.debug(f"Compatible refgenieserver instances: {good_servers}")
 
         for server_url in good_servers:
             try:
@@ -1608,7 +1608,7 @@ class RefGenConf(yacman.YacAttMap):
                 if force is False:
                     return preserve()
                 elif force is None:
-                    if not query_yes_no(f"Replace existing ({tag_dir})?", "no"):
+                    if not Confirm.ask(f"Replace existing ({tag_dir})?", "no"):
                         return preserve()
                     else:
                         _LOGGER.debug(f"Overwriting: {tag_dir}")
@@ -1634,7 +1634,7 @@ class RefGenConf(yacman.YacAttMap):
                         "Skipping pull of {}/{}:{}; size: {}".format(*gat, archsize)
                     )
                     return _null_return()
-                if not query_yes_no(
+                if not Confirm.ask(
                     "This archive exceeds the size cutoff ({} > {:.1f}GB). "
                     "Do you want to proceed?".format(archsize, size_cutoff)
                 ):
@@ -2159,7 +2159,7 @@ class RefGenConf(yacman.YacAttMap):
                 "tag": tag,
             }
             _LOGGER.debug("Attempting removal: {}".format(req_dict))
-            if not force and not query_yes_no(
+            if not force and not Confirm.ask(
                 "Remove '{}/{}:{}'?".format(genome, asset, tag)
             ):
                 _LOGGER.info("Action aborted by the user")
@@ -2895,7 +2895,7 @@ def upgrade_config(
 
     # prompt the user
     url = "http://refgenie.databio.org/en/latest/upgrade_config/"
-    if not force and not query_yes_no(
+    if not force and not Confirm.ask(
         f"Upgrading config to v{target_version}. Current genome identifiers"
         f" will be replaced with sequence-derived digests and contents of "
         f"'{rgc[CFG_FOLDER_KEY]}' will be moved to '{DATA_DIR}' and "
@@ -2944,7 +2944,7 @@ def upgrade_config(
     if (
         not force
         and missing_digest
-        and not query_yes_no(
+        and not Confirm.ask(
             f"The following genomes will be lost due to the lack of local fasta "
             f"assets and remote genome digests: {', '.join(missing_digest)}. "
             f"Would you like to proceed?"

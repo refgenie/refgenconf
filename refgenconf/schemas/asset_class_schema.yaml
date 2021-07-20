@@ -1,6 +1,6 @@
 description: "refgenie asset class file schema"
 properties:
-  class_name:
+  name:
     type: string
     pattern: "^\\S*$"
   description:
@@ -9,12 +9,14 @@ properties:
     additionalProperties: false
     patternProperties:
       ^.*$: { "$ref": "#/definitions/seek_key" }
+    # required: should we require dir seek_keys to be explicitely defined in each asset class?
+      # - dir
   parents:
     type: array
     items:
       type: string
 required:
-  - class_name
+  - name
   - seek_keys
 
 definitions:

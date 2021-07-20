@@ -21,12 +21,17 @@ DEFAULT_CONFIG_SCHEMA = os.path.join(
 DEFAULT_ASSET_CLASS_SCHEMA = os.path.join(
     os.path.dirname(__file__), "schemas", "asset_class_schema.yaml"
 )
+DEFAULT_RECIPE_SCHEMA = os.path.join(
+    os.path.dirname(__file__), "schemas", "recipe_schema.yaml"
+)
 
 # file or dir names
 TEMPLATE_RECIPE_JSON = "build_recipe_{}__{}.json"
 TEMPLATE_TARGET = "{}_{}__{}.flag"
 TEMPLATE_LOG = "build_log_{}__{}.md"
 TEMPLATE_ASSET_DIR_CONTENTS = "asset_dir_contents_{}__{}.json"
+TEMPLATE_RECIPE_YAML = "{}_asset_recipe.yaml"
+TEMPLATE_ASSET_CLASS_YAML = "{}_asset_class.yaml"
 ORI_LOG_NAME = "refgenie_log.md"
 BUILD_STATS_DIR = "_refgenie_build"
 LOCKED_BUILD_MAP_CFG = "_locked_map_build.yaml"
@@ -36,6 +41,8 @@ DATA_DIR = "data"
 
 FILE_DIR_NAMES = [
     "TEMPLATE_RECIPE_JSON",
+    "TEMPLATE_RECIPE_YAML",
+    "TEMPLATE_ASSET_CLASS_YAML",
     "TEMPLATE_TARGET",
     "TEMPLATE_LOG",
     "TEMPLATE_ASSET_DIR_CONTENTS",
@@ -114,6 +121,8 @@ API_IDS = [
 ]
 
 CFG_FOLDER_KEY = "genome_folder"
+CFG_RECIPE_FOLDER_KEY = "recipe_folder"
+CFG_ASSET_CLASS_FOLDER_KEY = "asset_class_folder"
 CFG_SERVERS_KEY = "genome_servers"
 CFG_SERVER_KEY = "genome_server"
 CFG_ARCHIVE_KEY = "genome_archive_folder"
@@ -146,6 +155,8 @@ CFG_ASSET_RELATIVES_KEYS = [CFG_ASSET_CHILDREN_KEY, CFG_ASSET_PARENTS_KEY]
 
 CFG_TOP_LEVEL_KEYS = [
     CFG_FOLDER_KEY,
+    CFG_RECIPE_FOLDER_KEY,
+    CFG_ASSET_CLASS_FOLDER_KEY,
     CFG_SERVER_KEY,
     CFG_SERVERS_KEY,
     CFG_ARCHIVE_KEY,
@@ -168,10 +179,19 @@ CFG_SINGLE_ASSET_SECTION_KEYS = [
     CFG_GENOME_MASK_KEY,
 ]
 
-RGC_REQ_KEYS = [CFG_SERVERS_KEY, CFG_FOLDER_KEY, CFG_GENOMES_KEY, CFG_VERSION_KEY]
+RGC_REQ_KEYS = [
+    CFG_SERVERS_KEY,
+    CFG_FOLDER_KEY,
+    CFG_GENOMES_KEY,
+    CFG_VERSION_KEY,
+    CFG_RECIPE_FOLDER_KEY,
+    CFG_ASSET_CLASS_FOLDER_KEY,
+]
 
 CFG_KEY_NAMES = [
     "CFG_FOLDER_KEY",
+    "CFG_RECIPE_FOLDER_KEY",
+    "CFG_ASSET_CLASS_FOLDER_KEY",
     "CFG_SERVER_KEY",
     "CFG_SERVERS_KEY",
     "CFG_GENOMES_KEY",
@@ -272,6 +292,8 @@ CONF_STRUCTURE = """
 # example genome configuration structure
 {version}: {v}
 {folder}: $GENOMES
+{recipe_folder}: $GENOMES/recipes
+{asset_class_folder}: $GENOMES/asset_classes
 {server}: http://localhost
 {archive}: /path/to/archives
 
@@ -298,6 +320,8 @@ CONF_STRUCTURE = """
                             chrom_sizes: fcdd62cb90e86d03e45dcd05efa70d8bdc9577d5c6259cf5.chrom.sizes
 """.format(
     folder=CFG_FOLDER_KEY,
+    recipe_folder=CFG_RECIPE_FOLDER_KEY,
+    asset_class_folder=CFG_ASSET_CLASS_FOLDER_KEY,
     server=CFG_SERVERS_KEY,
     version=CFG_VERSION_KEY,
     assets=CFG_ASSETS_KEY,

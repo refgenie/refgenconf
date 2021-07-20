@@ -141,6 +141,21 @@ class RefGenConf(yacman.YacAttMap):
                 os.path.dirname(filepath) if filepath else os.getcwd()
             )
             _missing_key_msg(CFG_FOLDER_KEY, self[CFG_FOLDER_KEY])
+
+        # initialize "recipe_folder"
+        if CFG_RECIPE_FOLDER_KEY not in self:
+            self[CFG_RECIPE_FOLDER_KEY] = os.path.join(self[CFG_FOLDER_KEY], "recipes")
+            _missing_key_msg(CFG_RECIPE_FOLDER_KEY, self[CFG_RECIPE_FOLDER_KEY])
+
+        # initialize "asset_class_folder"
+        if CFG_ASSET_CLASS_FOLDER_KEY not in self:
+            self[CFG_ASSET_CLASS_FOLDER_KEY] = os.path.join(
+                self[CFG_FOLDER_KEY], "asset_classes"
+            )
+            _missing_key_msg(
+                CFG_ASSET_CLASS_FOLDER_KEY, self[CFG_ASSET_CLASS_FOLDER_KEY]
+            )
+
         # initialize "genome_servers"
         if CFG_SERVERS_KEY not in self and CFG_SERVER_KEY in self:
             # backwards compatibility after server config key change
@@ -255,6 +270,24 @@ class RefGenConf(yacman.YacAttMap):
         :return str: path to the directory where the assets are stored
         """
         return os.path.abspath(os.path.join(self[CFG_FOLDER_KEY], ALIAS_DIR))
+
+    @property
+    def recipe_dir(self):
+        """
+        Path to the recipe directory
+
+        :return str: path to the directory where the recipes are stored
+        """
+        return os.path.abspath(self[CFG_RECIPE_FOLDER_KEY])
+
+    @property
+    def asset_class_dir(self):
+        """
+        Path to the asset class directory
+
+        :return str: path to the directory where the asset classes are stored
+        """
+        return os.path.abspath(self[CFG_ASSET_CLASS_FOLDER_KEY])
 
     @property
     def file_path(self):

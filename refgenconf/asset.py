@@ -5,7 +5,7 @@ from jsonschema import validate
 from ubiquerg import is_url
 from yacman import load_yaml
 
-from .const import DEFAULT_ASSET_CLASS_SCHEMA
+from .const import DEFAULT_ASSET_CLASS_SCHEMA, TEMPLATE_ASSET_CLASS_YAML
 
 
 class AssetClass:
@@ -15,30 +15,31 @@ class AssetClass:
 class AssetClass:
     def __init__(
         self,
-        class_name: str,
+        name: str,
         seek_keys: Dict[str, str],
         description: str = None,
         parents: List[AssetClass] = None,
     ):
-        self.class_name = class_name
+        self.name = name
         self.parents = parents or []
         self.seek_keys = {}
         if self.parents:
             for parent in self.parents:
                 self.seek_keys.update(parent.seek_keys)
         self.seek_keys.update(seek_keys)
-        self.description = description or self.class_name
+        self.seek_keys.update({"dir": "."})
+        self.description = description or self.name
 
     def __str__(self) -> str:
         from textwrap import indent
 
-        repr = f"{self.__class__.__name__}: {self.class_name}"
+        repr = f"{self.__class__.__name__}: {self.name}"
         repr += f"\nDescription: {self.description}"
         repr += f"\nSeek keys:"
         for key, value in self.seek_keys.items():
             repr += indent(f"\n{key}: {value}", "  ")
         if self.parents:
-            repr += f"\nParents: {', '.join([parent.class_name for parent in self.parents])}"
+            repr += f"\nParents: {', '.join([parent.name for parent in self.parents])}"
         return repr
 
 
@@ -78,7 +79,7 @@ def asset_class_factory(
     if asset_class_parents:
         parent_objects = [
             asset_class_factory(
-                asset_class_definition_file=make_class_path(
+                asset_class_definition_file=make_asset_class_path(
                     class_src=asset_class_parent, dir=file_dir
                 ),
                 asset_class_schema_file=asset_class_schema_file,
@@ -89,7 +90,7 @@ def asset_class_factory(
     return AssetClass(parents=parent_objects, **asset_class_data)
 
 
-def make_class_path(class_src: str, dir: str = None) -> str:
+def make_asset_class_path(class_src: str, dir: str = None) -> str:
     """
     Return and absolute path/URL of an asset class definition file
 
@@ -100,8 +101,8 @@ def make_class_path(class_src: str, dir: str = None) -> str:
         return class_src
     class_file_name = (
         class_src
-        if class_src.endswith("_asset_class.yaml")
-        else f"{class_src}_asset_class.yaml"
+        if class_src.endswith(TEMPLATE_ASSET_CLASS_YAML.replace("{}", ""))
+        else TEMPLATE_ASSET_CLASS_YAML.format(class_src)
     )
     if os.path.isabs(class_file_name):
         return class_file_name

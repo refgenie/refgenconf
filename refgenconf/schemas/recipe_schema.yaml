@@ -1,0 +1,43 @@
+description: "refgenie recipe file schema"
+properties:
+  name:
+    type: string
+    pattern: "^\\S*$"
+  description:
+    type: string
+  inputs:
+    type: object
+    # additionalProperties: false
+    # patternProperties:
+    #   ^.*$: { "$ref": "#/definitions/input" }
+  output_class:
+    type: string
+  container:
+    type: string
+  custom_properties:
+    type: object
+    additionalProperties: false
+    patternProperties:
+      ^.*$:
+        type: string
+  default_tag:
+    type: string
+  command_template:
+    type: array
+    items:
+      type: string
+
+# definitions:
+#   input:
+#     type: object
+#     properties:
+#       description:
+#         type: string
+#       aliases:
+#         type: array
+#         items:
+#           type: string
+#       assets:
+#         additionalProperties: false
+#         patternProperties:
+#           ^.*$: { "$ref": "#/definitions/input" }

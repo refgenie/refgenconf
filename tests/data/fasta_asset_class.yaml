@@ -1,4 +1,4 @@
-class_name: fasta
+name: fasta
 description: FASTA with index and chrom sizes
 seek_keys:
   fasta: "{genome}.fa"

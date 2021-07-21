@@ -11,7 +11,7 @@ CFG_NAME = "genome configuration"
 CFG_ENV_VARS = ["REFGENIE"]
 CFG_CONST = ["CFG_NAME", "CFG_ENV_VARS"]
 DEFAULT_SERVER = "http://refgenomes.databio.org"  # "http://rg.databio.org"
-TAG_NAME_BANNED_CHARS = [":", "/"]
+TAG_NAME_BANNED_CHARS = [":", "/", "\\", "*", "?", '"', " "]
 API_VERSION = "v3"
 API_VERSION_2 = "v2"
 DEFAULT_TAG = "default"
@@ -26,6 +26,7 @@ DEFAULT_RECIPE_SCHEMA = os.path.join(
 )
 
 # file or dir names
+TEMPLATE_RECIPE_INPUTS_JSON = "build_inputs_{}__{}.json"
 TEMPLATE_RECIPE_JSON = "build_recipe_{}__{}.json"
 TEMPLATE_TARGET = "{}_{}__{}.flag"
 TEMPLATE_LOG = "build_log_{}__{}.md"
@@ -40,6 +41,7 @@ ALIAS_DIR = "alias"
 DATA_DIR = "data"
 
 FILE_DIR_NAMES = [
+    "TEMPLATE_RECIPE_INPUTS_JSON",
     "TEMPLATE_RECIPE_JSON",
     "TEMPLATE_RECIPE_YAML",
     "TEMPLATE_ASSET_CLASS_YAML",

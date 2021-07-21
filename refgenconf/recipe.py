@@ -107,11 +107,24 @@ class Recipe:
         """
         return (
             {
-                key: check_output(commands, shell=True)
+                key: check_output(commands, shell=True).decode("utf-8").strip()
                 for key, commands in self.custom_properties.items()
             }
             if self.custom_properties
             else {}
+        )
+
+    def resolve_default_tag(self, namespaces: AttMap) -> str:
+        """
+        Resolve the default tag
+
+        :param attmap.Attmap namespaces: A mapping of template values organized in namespaces
+        :return str: The default tag
+        """
+        return (
+            jinja_render_template_strictly(self.default_tag, namespaces)
+            if self.default_tag
+            else None
         )
 
     @cached_property

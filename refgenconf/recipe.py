@@ -31,7 +31,12 @@ class Recipe:
         self.name = name
         self.output_class = output_asset_class
         self.command_template_list = command_template_list
-        self.inputs = inputs
+        # set up inputs dict, which accounts for missing keys in the recipe
+        self.inputs = {
+            "files": inputs.get("files"),
+            "params": inputs.get("params"),
+            "assets": inputs.get("assets"),
+        }
         self.description = description or self.name
         self.container = container
         self.custom_properties = custom_properties or {}
@@ -219,9 +224,8 @@ def jinja_render_template_strictly(template, namespaces):
     try:
         rendered = templ_obj.render(**namespaces)
     except jinja2.exceptions.UndefinedError as e:
-        _LOGGER.error("Error populating command template: " + str(e))
-        _LOGGER.debug(f"({', '.join(list(namespaces.keys()))}) missing for ")
-        _LOGGER.debug(f"Template: '{template}'")
+        _LOGGER.error(f"Error populating command template: {str(e)}")
+        _LOGGER.info(f"Template: '{template}'")
         raise e
-    _LOGGER.debug("rendered command: {}".format(rendered))
+    _LOGGER.debug(f"Rendered template: {rendered}")
     return rendered

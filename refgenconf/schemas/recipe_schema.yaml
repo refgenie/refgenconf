@@ -7,10 +7,14 @@ properties:
     type: string
   inputs:
     type: object
-    # additionalProperties: false
-    # patternProperties:
-    #   ^.*$: { "$ref": "#/definitions/input" }
-  output_class:
+    additionalProperties: false
+    patternProperties:
+      files|assets|params:
+        type: object
+        additionalProperties: false
+        patternProperties:
+          ^.*$: { "$ref": "#/definitions/input" }
+  output_asset_class:
     type: string
   container:
     type: string
@@ -22,22 +26,21 @@ properties:
         type: string
   default_tag:
     type: string
-  command_template:
+  command_template_list:
     type: array
     items:
       type: string
+required:
+  - name
+  - inputs
+  - output_asset_class
+  - command_template_list
 
-# definitions:
-#   input:
-#     type: object
-#     properties:
-#       description:
-#         type: string
-#       aliases:
-#         type: array
-#         items:
-#           type: string
-#       assets:
-#         additionalProperties: false
-#         patternProperties:
-#           ^.*$: { "$ref": "#/definitions/input" }
+definitions:
+  input:
+    type: object
+    properties:
+      description:
+        type: string
+    required:
+      - description

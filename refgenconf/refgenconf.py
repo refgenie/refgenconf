@@ -2010,6 +2010,43 @@ class RefGenConf(yacman.YacAttMap):
         """
         return os.path.join(self.data_dir, genome, f"{genome}__ASDs.json")
 
+    def get_recipe_inputs_path(self, genome, asset, tag=None):
+        """
+        Get path to the recipe inputs JSON file for a given genome and asset.
+
+        :param str genome: genome name
+        :param str asset: asset name
+        :param str tag: tag name
+        :return str: recipe inputs path
+        """
+        tag = tag or self.get_default_tag(genome=genome, asset=asset)
+        return os.path.join(
+            self.data_dir,
+            self.get_genome_alias_digest(alias=genome, fallback=True),
+            asset,
+            tag,
+            BUILD_STATS_DIR,
+            TEMPLATE_RECIPE_INPUTS_JSON.format(asset, tag),
+        )
+
+    def get_recipe_inputs(self, genome, asset, tag=None):
+        """
+        Get recipe inputs for a given genome and asset.
+
+        :param str genome: genome name
+        :param str asset: asset name
+        :param str tag: tag name
+        :return dict: recipe inputs
+        """
+        tag = tag or self.get_default_tag(genome=genome, asset=asset)
+        pth = self.get_recipe_inputs_path(genome, asset, tag)
+        if not os.path.isfile(pth):
+            raise FileNotFoundError(
+                f"Recipe inputs not found for '{genome}/{asset}:{tag}': {pth}"
+            )
+        with open(pth, "r") as ifp:
+            return json.load(ifp)
+
     def remove_asset_from_relatives(self, genome, asset, tag):
         """
         Remove any relationship links associated with the selected asset

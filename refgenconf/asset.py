@@ -55,7 +55,6 @@ def asset_class_factory(
     :return AssetClass: AssetClass object
     """
     # read asset class defintion
-    print(f"Reading asset class definition: {asset_class_definition_file}")
     asset_class_data = load_yaml(asset_class_definition_file)
     # check if file exists
     if not os.path.isfile(asset_class_definition_file):

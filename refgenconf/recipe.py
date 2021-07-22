@@ -1,5 +1,4 @@
 import logging
-import os
 from functools import cached_property
 from json import dump
 from subprocess import check_output
@@ -8,7 +7,6 @@ from typing import Dict, List
 import jinja2
 from attmap.attmap import AttMap
 from jsonschema.validators import validate
-from rich.console import Console
 from rich.table import Table
 from yacman.yacman import load_yaml
 
@@ -153,17 +151,15 @@ class Recipe:
         for input_type, input_element in self.inputs.items():
             if input_element is None:
                 continue
+
             for input_name, input_data in input_element.items():
                 table.add_row(
                     input_type,
                     input_name,
-                    input_data.get("description", ""),
-                    str(input_data.get("default", "")),
-                    f"--{input_type} {input_name}={input_data.get('default', 'value')}",
+                    input_data.get("description", "[dim]None[/dim]"),
+                    str(input_data.get("default", "[dim]None[/dim]")),
+                    f"--{input_type} {input_name}={input_data.get('default', '[dim]<value>[/dim]')}",
                 )
-        # comment out below
-        c = Console()
-        c.print(table)
         return table
 
     def populate_command_templates(self, namespaces: AttMap) -> List[str]:

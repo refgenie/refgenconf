@@ -399,7 +399,8 @@ class RefGenConf(yacman.YacAttMap):
             it = "([italic]{}[/italic])"
             table.add_column("genome")
             if genomes:
-                table.add_column("asset " + it.format("seek_keys"))
+                table.add_column("asset " + it.format(CFG_ASSET_CLASS_KEY))
+                table.add_column("seek_keys")
                 table.add_column("tags")
                 for g in genomes:
                     try:
@@ -429,7 +430,9 @@ class RefGenConf(yacman.YacAttMap):
                         )
                         table.add_row(
                             ", ".join(genome_dict[CFG_ALIASES_KEY]),
-                            "{} ".format(asset) + it.format(", ".join(seek_keys)),
+                            "{} ".format(asset)
+                            + it.format(asset_dict.get(CFG_ASSET_CLASS_KEY, "")),
+                            ", ".join(seek_keys),
                             ", ".join(tags),
                         )
             else:
@@ -1034,6 +1037,24 @@ class RefGenConf(yacman.YacAttMap):
             _raise_not_mapping(
                 self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset], "Asset section "
             )
+
+    def set_asset_class(self, genome, asset, asset_class):
+        """
+        Set the asset class to use for a particular asset.
+
+        :param str genome: identifier (digest) of a reference genome assembly of interest
+        :param str asset: name of the particular asset of interest
+        :param str asset_class: name of the class to use for the asset
+        """
+        self._assert_gat_exists(genome, asset)
+        asset_dict = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]
+        if CFG_ASSET_CLASS_KEY in asset_dict:
+            if asset_dict[CFG_ASSET_CLASS_KEY] != asset_class:
+                raise RefgenconfError(
+                    f"Asset class for asset '{genome}/{asset}' is already set to '{asset_dict['asset_class']}'"
+                )
+        else:
+            asset_dict[CFG_ASSET_CLASS_KEY] = asset_class
 
     def set_default_pointer(
         self,

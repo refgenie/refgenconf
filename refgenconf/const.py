@@ -149,6 +149,7 @@ CFG_SEEK_KEYS_KEY = "seek_keys"
 CFG_ASSET_PARENTS_KEY = "asset_parents"
 CFG_ASSET_CHILDREN_KEY = "asset_children"
 CFG_ASSET_DEFAULT_TAG_KEY = "default_tag"
+CFG_ASSET_CLASS_KEY = "asset_class"
 CFG_ASSET_TAGS_KEY = "tags"
 CFG_ASSET_CHECKSUM_KEY = "asset_digest"
 CFG_TAG_DESC_KEY = "tag_description"
@@ -260,6 +261,7 @@ __all__ = (
     [
         "DEFAULT_SERVER",
         "CFG_ASSET_DEFAULT_TAG_KEY",
+        "CFG_ASSET_CLASS_KEY",
         "CFG_KEY_NAMES",
         "CFG_GENOME_DESC_KEY",
         "REQ_CFG_VERSION",
@@ -306,6 +308,7 @@ CONF_STRUCTURE = """
         {assets}:
             fasta:
                 {default}: tag_name
+                {asset_class}: fasta
                 {desc_asset}: DNA sequences in the FASTA format, indexed FASTA (produced with samtools index) and chromosome sizes file
                 {tags}:
                     tag_name:
@@ -341,6 +344,7 @@ CONF_STRUCTURE = """
     asset_parents=CFG_ASSET_PARENTS_KEY,
     asset_children=CFG_ASSET_CHILDREN_KEY,
     default=CFG_ASSET_DEFAULT_TAG_KEY,
+    asset_class=CFG_ASSET_CLASS_KEY,
     tags=CFG_ASSET_TAGS_KEY,
     asset_digest=CFG_ASSET_CHECKSUM_KEY,
     tag_description=CFG_TAG_DESC_KEY,

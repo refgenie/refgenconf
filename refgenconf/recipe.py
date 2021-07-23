@@ -27,6 +27,7 @@ class Recipe:
         container: str = None,
         custom_properties: Dict[str, str] = None,
         default_tag: str = None,
+        checksum_exclude_list: List[str] = None,
     ):
         self.name = name
         self.output_class = output_asset_class
@@ -41,6 +42,7 @@ class Recipe:
         self.container = container
         self.custom_properties = custom_properties or {}
         self.default_tag = default_tag
+        self.checksum_exclude_list = checksum_exclude_list or []
 
     def __str__(self) -> str:
         repr = f"{self.__class__.__name__}: {self.name} -> {self.output_class.name}"

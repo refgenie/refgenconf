@@ -55,14 +55,14 @@ def asciify_json_dict(json_dict):
     return asciify_dict(json_dict)
 
 
-def get_dir_digest(path, pm=None):
+def get_dir_digest(path, pm=None, exclude_files=[]):
     """
     Generate a MD5 digest that reflects just the contents of the
     files in the selected directory.
 
     :param str path: path to the directory to digest
     :param pypiper.PipelineManager pm: a pipeline object, optional.
-    The subprocess module will be used if not provided
+        The subprocess module will be used if not provided
     :return str: a digest, e.g. a3c46f201a3ce7831d85cf4a125aa334
     """
     if not is_command_callable("md5sum"):
@@ -72,18 +72,20 @@ def get_dir_digest(path, pm=None):
             "Install and try again, e.g on macOS: 'brew install "
             "md5sha1sum'"
         )
+    exclude_files.append(f"{BUILD_STATS_DIR}*")
+    exlusion_str = " ".join([f"-not -path './{ef}'" for ef in exclude_files])
     cmd = (
-        "cd {}; find . -type f -not -path './"
-        + BUILD_STATS_DIR
-        + "*' -exec md5sum {{}} \; | sort -k 2 | awk '{{print $1}}' | md5sum"
-    )
+        "cd {}; find . -type f "
+        + exlusion_str
+        + " -exec md5sum {{}} \; | sort -k 2 | awk '{{print $1}}' | md5sum"
+    ).format(path)
     try:
-        x = pm.checkprint(cmd.format(path))
+        digest = pm.checkprint(cmd)
     except AttributeError:
         try:
             from subprocess import check_output
 
-            x = check_output(cmd.format(path), shell=True).decode("utf-8")
+            digest = check_output(cmd, shell=True).decode("utf-8")
         except Exception as e:
             _LOGGER.warning(
                 "{}: could not calculate digest for '{}'".format(
@@ -91,7 +93,7 @@ def get_dir_digest(path, pm=None):
                 )
             )
             return
-    return str(sub(r"\W+", "", x))  # strips non-alphanumeric
+    return str(sub(r"\W+", "", digest))  # strips non-alphanumeric
 
 
 def format_config_03_04(rgc, get_json_url):

@@ -33,7 +33,7 @@ TEMPLATE_LOG = "build_log_{}__{}.md"
 TEMPLATE_ASSET_DIR_CONTENTS = "asset_dir_contents_{}__{}.json"
 TEMPLATE_RECIPE_YAML = "{}_asset_recipe.yaml"
 TEMPLATE_ASSET_CLASS_YAML = "{}_asset_class.yaml"
-ORI_LOG_NAME = "refgenie_log.md"
+ORI_LOG_NAME_REGEX = "*_log.md"
 BUILD_STATS_DIR = "_refgenie_build"
 LOCKED_BUILD_MAP_CFG = "_locked_map_build.yaml"
 BUILD_MAP_CFG = "_map_build.yaml"
@@ -48,7 +48,7 @@ FILE_DIR_NAMES = [
     "TEMPLATE_TARGET",
     "TEMPLATE_LOG",
     "TEMPLATE_ASSET_DIR_CONTENTS",
-    "ORI_LOG_NAME",
+    "ORI_LOG_NAME_REGEX",
     "BUILD_STATS_DIR",
     "BUILD_MAP_CFG",
     "LOCKED_BUILD_MAP_CFG",
@@ -143,6 +143,8 @@ CFG_GENOME_MASK_KEY = "genome_mask"
 CFG_ASSET_PATH_KEY = "asset_path"
 CFG_ASSET_SIZE_KEY = "asset_size"
 CFG_ASSET_DESC_KEY = "asset_description"
+CFG_ASSET_DATE_KEY = "date_built"
+CFG_ASSET_CUSTOM_PROPS_KEY = "custom_properties"
 CFG_ARCHIVE_SIZE_KEY = "archive_size"
 CFG_ARCHIVE_CHECKSUM_KEY = "archive_digest"
 CFG_SEEK_KEYS_KEY = "seek_keys"
@@ -175,6 +177,8 @@ CFG_GENOME_ATTRS_KEYS = [CFG_GENOME_DESC_KEY, CFG_CHECKSUM_KEY]
 CFG_SINGLE_ASSET_SECTION_KEYS = [
     CFG_ASSET_PATH_KEY,
     CFG_ASSET_DESC_KEY,
+    CFG_ASSET_DATE_KEY,
+    CFG_ASSET_CUSTOM_PROPS_KEY,
     CFG_ASSET_SIZE_KEY,
     CFG_ARCHIVE_SIZE_KEY,
     CFG_ARCHIVE_CHECKSUM_KEY,
@@ -202,6 +206,8 @@ CFG_KEY_NAMES = [
     "CFG_ALIASES_KEY",
     "CFG_ASSET_PATH_KEY",
     "CFG_ASSET_DESC_KEY",
+    "CFG_ASSET_DATE_KEY",
+    "CFG_ASSET_CUSTOM_PROPS_KEY",
     "CFG_ARCHIVE_KEY",
     "CFG_ARCHIVE_SIZE_KEY",
     "CFG_SEEK_KEYS_KEY",
@@ -248,6 +254,8 @@ REFGENIE_BY_CFG = {"0.4": "0.10.0", "0.3": "0.7.0", "0.2": "0.6.0"}
 CFG_UPGRADE = {"0.3": ["0.4"]}
 ATTRS_COPY_PULL = [
     CFG_ASSET_DESC_KEY,
+    CFG_ASSET_DATE_KEY,
+    CFG_ASSET_CUSTOM_PROPS_KEY,
     CFG_SEEK_KEYS_KEY,
     CFG_ASSET_PARENTS_KEY,
     CFG_ASSET_PATH_KEY,
@@ -317,6 +325,9 @@ CONF_STRUCTURE = """
                         {asset_digest}: 3aff393d290884336945534ea709d30e
                         {asset_size}: 3.0GB
                         {archive_size}: 938.3MB
+                        {custom_props}:
+                            prop1: value1
+                        {date_asset}: 2020-02-02
                         {asset_parents}:[]
                         {asset_children}: []
                         {seek_keys}:
@@ -337,6 +348,8 @@ CONF_STRUCTURE = """
     desc_genome=CFG_GENOME_DESC_KEY,
     asset_path=CFG_ASSET_PATH_KEY,
     desc_asset=CFG_ASSET_DESC_KEY,
+    date_asset=CFG_ASSET_DATE_KEY,
+    custom_props=CFG_ASSET_CUSTOM_PROPS_KEY,
     archive_digest=CFG_ARCHIVE_CHECKSUM_KEY,
     asset_size=CFG_ASSET_SIZE_KEY,
     archive_size=CFG_ARCHIVE_SIZE_KEY,

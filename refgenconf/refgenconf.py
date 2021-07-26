@@ -379,6 +379,36 @@ class RefGenConf(yacman.YacAttMap):
             ]
         )
 
+    def list_asset_classes(self, genome=None, order=None):
+        """
+        List local asset classes; map each namespace to a list of available asset classes
+
+        :param callable(str) -> object order: how to key genome IDs for sort
+        :param list[str] | str genome: genomes that the assets should be found for
+        :return Mapping[str, Iterable[str]]: mapping from assembly name to asset classes
+        """
+        refgens = self._select_genomes(genome=genome, order=order)
+        return OrderedDict(
+            [
+                (
+                    g,
+                    sorted(
+                        [
+                            self[CFG_GENOMES_KEY][g][CFG_ASSETS_KEY][a][
+                                CFG_ASSET_CLASS_KEY
+                            ]
+                            for a in self[CFG_GENOMES_KEY][g][CFG_ASSETS_KEY].keys()
+                            if CFG_ASSET_CLASS_KEY
+                            in self[CFG_GENOMES_KEY][g][CFG_ASSETS_KEY][a]
+                        ],
+                        key=order,
+                    ),
+                )
+                for g in refgens
+                if CFG_ASSETS_KEY in self[CFG_GENOMES_KEY][g]
+            ]
+        )
+
     def get_asset_table(
         self,
         genomes=None,
@@ -1038,7 +1068,26 @@ class RefGenConf(yacman.YacAttMap):
                 self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset], "Asset section "
             )
 
-    def set_asset_class(self, genome, asset, asset_class):
+    def get_asset_class(self, genome, asset):
+        """
+        Return the class of the asset,
+        if the 'asset_class' key exists in the config or None otherwise.
+
+        :param str genome: name of a reference genome assembly/digest of interest
+        :param str asset: name of the particular asset of interest
+        :return str: name of the class to use for the asset
+        """
+        self._assert_gat_exists(genome, asset)
+        return (
+            self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_CLASS_KEY]
+            if (
+                CFG_ASSET_CLASS_KEY
+                in self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]
+            )
+            else None
+        )
+
+    def set_asset_class(self, genome, asset, asset_class, description=None):
         """
         Set the asset class to use for a particular asset.
 
@@ -1055,6 +1104,7 @@ class RefGenConf(yacman.YacAttMap):
                 )
         else:
             asset_dict[CFG_ASSET_CLASS_KEY] = asset_class
+            asset_dict[CFG_ASSET_DESC_KEY] = description
 
     def set_default_pointer(
         self,

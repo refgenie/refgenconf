@@ -5,6 +5,10 @@ properties:
     type: [string, number]
   genome_folder:
     type: string
+  recipe_folder:
+    type: string
+  asset_class_folder:
+    type: string
   remote_url_base:
     type: string
   genome_archive_folder:
@@ -37,9 +41,9 @@ definitions:
   asset:
     type: object
     properties:
-      my_required_prop:
-        type: integer
-      asset_description:
+      asset_class:
+        type: string
+      default_tag:
         type: string
       tags:
         additionalProperties: false
@@ -56,14 +60,8 @@ definitions:
         additionalProperties: false
         patternProperties:
           ^.*$: { "$ref": "#/definitions/seek_key" }
-      asset_parents:
-        type: array
-        items:
-          type: string
-      asset_children:
-        type: array
-        items:
-          type: string
+      asset_parents: { "$ref": "#/definitions/relatives" }
+      asset_children: { "$ref": "#/definitions/relatives" }
   seek_key:
     type: string
   relatives:

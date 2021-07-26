@@ -333,16 +333,22 @@ def replace_str_in_obj(object, x, y):
     return obj
 
 
-def block_iter_repr(input_obj, numbered=False):
+def block_iter_repr(input_obj, numbered=False, flatten=False):
     """
     Create a human readable string representation of an iterable. Either as a bulleted or numbered list.
 
     :param Iterable input_obj: object to create a representation for
     :param bool numbered: whether a numbered list should be created
+    :param bool flatten: whether the list should be flattened
     :param str: the representation
     """
+
+    def _flatten(t):
+        return [item for sublist in t for item in sublist]
+
     if isinstance(input_obj, str):
         input_obj = [input_obj]
+    input_obj = _flatten(input_obj) if flatten else input_obj
     if not isinstance(input_obj, Iterable):
         raise TypeError("Input object has to be an Iterable")
     return (

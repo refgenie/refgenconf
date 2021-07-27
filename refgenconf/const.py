@@ -134,6 +134,8 @@ CFG_REMOTE_URL_BASE_KEY = "remote_url_base"
 CFG_VERSION_KEY = "config_version"
 CFG_GENOMES_KEY = "genomes"
 CFG_ALIASES_KEY = "aliases"
+CFG_RECIPES_KEY = "recipes"
+CFG_ASSET_CLASSES_KEY = "asset_classes"
 
 CFG_CHECKSUM_KEY = "genome_digest"
 CFG_GENOME_DESC_KEY = "genome_description"
@@ -166,6 +168,8 @@ CFG_TOP_LEVEL_KEYS = [
     CFG_SERVERS_KEY,
     CFG_ARCHIVE_KEY,
     CFG_GENOMES_KEY,
+    CFG_ASSET_CLASSES_KEY,
+    CFG_RECIPES_KEY,
     CFG_ALIASES_KEY,
     CFG_VERSION_KEY,
     CFG_ARCHIVE_CONFIG_KEY,
@@ -190,6 +194,8 @@ RGC_REQ_KEYS = [
     CFG_SERVERS_KEY,
     CFG_FOLDER_KEY,
     CFG_GENOMES_KEY,
+    CFG_ASSET_CLASSES_KEY,
+    CFG_RECIPES_KEY,
     CFG_VERSION_KEY,
     CFG_RECIPE_FOLDER_KEY,
     CFG_ASSET_CLASS_FOLDER_KEY,
@@ -202,6 +208,8 @@ CFG_KEY_NAMES = [
     "CFG_SERVER_KEY",
     "CFG_SERVERS_KEY",
     "CFG_GENOMES_KEY",
+    "CFG_ASSET_CLASSES_KEY",
+    "CFG_RECIPES_KEY",
     "CFG_GENOME_MASK_KEY",
     "CFG_ALIASES_KEY",
     "CFG_ASSET_PATH_KEY",
@@ -249,8 +257,8 @@ HOOK_NAMES = [
 HOOKS = [eval(x) for x in HOOK_NAMES]
 
 # other consts
-REQ_CFG_VERSION = 0.4
-REFGENIE_BY_CFG = {"0.4": "0.10.0", "0.3": "0.7.0", "0.2": "0.6.0"}
+REQ_CFG_VERSION = 0.5
+REFGENIE_BY_CFG = {"0.5": "0.13.0", "0.4": "0.10.0", "0.3": "0.7.0", "0.2": "0.6.0"}
 CFG_UPGRADE = {"0.3": ["0.4"]}
 ATTRS_COPY_PULL = [
     CFG_ASSET_DESC_KEY,
@@ -334,6 +342,16 @@ CONF_STRUCTURE = """
                             fasta: fcdd62cb90e86d03e45dcd05efa70d8bdc9577d5c6259cf5.fa.gz
                             fai: fcdd62cb90e86d03e45dcd05efa70d8bdc9577d5c6259cf5.fa.fai
                             chrom_sizes: fcdd62cb90e86d03e45dcd05efa70d8bdc9577d5c6259cf5.chrom.sizes
+
+{recipes}:
+    fasta:
+        version: 0.1.0
+        source: 'self-added'
+{asset_classes}:
+    fasta:
+        version: 0.1.0
+        source: 'self-added'
+
 """.format(
     folder=CFG_FOLDER_KEY,
     recipe_folder=CFG_RECIPE_FOLDER_KEY,
@@ -344,6 +362,8 @@ CONF_STRUCTURE = """
     archive=CFG_ARCHIVE_KEY,
     digest=CFG_CHECKSUM_KEY,
     genomes=CFG_GENOMES_KEY,
+    recipes=CFG_RECIPES_KEY,
+    asset_classes=CFG_ASSET_CLASSES_KEY,
     aliases=CFG_ALIASES_KEY,
     desc_genome=CFG_GENOME_DESC_KEY,
     asset_path=CFG_ASSET_PATH_KEY,

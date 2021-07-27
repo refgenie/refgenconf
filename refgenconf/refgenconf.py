@@ -30,6 +30,7 @@ from rich.table import Table
 from ubiquerg import checksum, is_url, is_writable
 from ubiquerg import parse_registry_path as prp
 from ubiquerg import untar
+from yaml import dump
 
 from .const import *
 from .exceptions import *
@@ -147,6 +148,11 @@ class RefGenConf(yacman.YacAttMap):
             self[CFG_RECIPE_FOLDER_KEY] = os.path.join(self[CFG_FOLDER_KEY], "recipes")
             _missing_key_msg(CFG_RECIPE_FOLDER_KEY, self[CFG_RECIPE_FOLDER_KEY])
 
+        # initialize "recipes"
+        if CFG_RECIPES_KEY not in self:
+            self[CFG_RECIPES_KEY] = None
+            _missing_key_msg(CFG_RECIPES_KEY, self[CFG_RECIPES_KEY])
+
         # initialize "asset_class_folder"
         if CFG_ASSET_CLASS_FOLDER_KEY not in self:
             self[CFG_ASSET_CLASS_FOLDER_KEY] = os.path.join(
@@ -155,6 +161,11 @@ class RefGenConf(yacman.YacAttMap):
             _missing_key_msg(
                 CFG_ASSET_CLASS_FOLDER_KEY, self[CFG_ASSET_CLASS_FOLDER_KEY]
             )
+
+        # initialize "asset_classes"
+        if CFG_ASSET_CLASSES_KEY not in self:
+            self[CFG_ASSET_CLASSES_KEY] = None
+            _missing_key_msg(CFG_ASSET_CLASSES_KEY, self[CFG_ASSET_CLASSES_KEY])
 
         # initialize "genome_servers"
         if CFG_SERVERS_KEY not in self and CFG_SERVER_KEY in self:
@@ -600,6 +611,80 @@ class RefGenConf(yacman.YacAttMap):
                 rgc.set_default_pointer(genome, asset, tag)
                 _LOGGER.info(msg)
         self._symlink_alias(genome, asset, tag)
+        return True
+
+    def add_recipe(
+        self,
+        recipe_dict=None,
+        recipe_path=None,
+        source=None,
+        force=False,
+    ):
+        """
+        Add a recipe to the config
+
+        :param str recipe_name: a name for the recipe
+        :param dict recipe_dict: a dictionary of recipe contents,
+            check the recipe specification for details
+        :param str recipe_path: a path to the recipe file
+        :param str source: the source of the recipe
+        :param bool force: whether to force existing recipe overwrite
+        """
+
+        def _get_val_from_recipe(recipe_dict, key):
+            """
+            Get a value from the recipe dictionary, if it exists.
+
+            :param dict recipe_dict: a dictionary of recipe contents
+            :param str key: a key to get from the recipe dictionary
+            :return: the value from the recipe dictionary
+            :raises: KeyError if the key is not found
+            """
+            if key not in recipe_dict:
+                raise KeyError(
+                    f"Required key '{key}' not found in recipe. "
+                    f"Defined keys: {', '.join(recipe_dict.keys())}"
+                )
+            return recipe_dict[key]
+
+        if recipe_dict is None:
+            if recipe_path is None:
+                raise ValueError("recipe_dict or recipe_path must be provided")
+            if not os.path.exists(recipe_path) and not is_url(recipe_path):
+                recipe_path = os.path.join(self.recipe_dir, recipe_path)
+            recipe_dict = yacman.load_yaml(recipe_path)
+
+        recipe_name = _get_val_from_recipe(recipe_dict, "name")
+        # write file to recipe folder
+        if not os.path.exists(self.recipe_dir):
+            os.makedirs(self.recipe_dir)
+        target_recipe_path = os.path.join(
+            self.recipe_dir, TEMPLATE_RECIPE_YAML.format(recipe_name)
+        )
+        if os.path.exists(target_recipe_path) and not force:
+            if not Confirm.ask(
+                prompt=f"Recipe '{recipe_name}' already exists. Overwrite?",
+                default=False,
+            ):
+                _LOGGER.info("Aborted, recipe not added")
+                return False
+        with open(target_recipe_path, "w") as f:
+            dump(recipe_dict, f, default_flow_style=False)
+
+        # update recipe metadata in config
+        recipe_metadata = {
+            "name": recipe_name,
+            "path": os.path.relpath(target_recipe_path, self.recipe_dir),
+            "source": source or "self-added",
+            "version": _get_val_from_recipe(recipe_dict, "version"),
+            "output_asset_class": _get_val_from_recipe(
+                recipe_dict, "output_asset_class"
+            ),
+        }
+        self[CFG_RECIPES_KEY] = self[CFG_RECIPES_KEY] or {}
+        self[CFG_RECIPES_KEY].setdefault(recipe_name, {})
+        self[CFG_RECIPES_KEY][recipe_name].update(recipe_metadata)
+        _LOGGER.info(f"Added recipe: {recipe_name} ({target_recipe_path})")
         return True
 
     def get_symlink_paths(self, genome, asset=None, tag=None, all_aliases=False):

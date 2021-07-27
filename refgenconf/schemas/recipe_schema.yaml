@@ -3,6 +3,9 @@ properties:
   name:
     type: string
     pattern: "^\\S*$"
+  version:
+    type: string
+    pattern: "^\\S*$"
   description:
     type: string
   inputs:
@@ -39,6 +42,7 @@ properties:
       type: string
 required:
   - name
+  - version
   - inputs
   - output_asset_class
   - command_template_list

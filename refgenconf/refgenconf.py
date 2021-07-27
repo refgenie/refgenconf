@@ -1087,7 +1087,7 @@ class RefGenConf(yacman.YacAttMap):
             else None
         )
 
-    def set_asset_class(self, genome, asset, asset_class, description=None):
+    def set_asset_class(self, genome, asset, asset_class):
         """
         Set the asset class to use for a particular asset.
 
@@ -1104,7 +1104,6 @@ class RefGenConf(yacman.YacAttMap):
                 )
         else:
             asset_dict[CFG_ASSET_CLASS_KEY] = asset_class
-            asset_dict[CFG_ASSET_DESC_KEY] = description
 
     def set_default_pointer(
         self,

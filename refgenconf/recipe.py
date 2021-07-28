@@ -1,17 +1,19 @@
 import logging
 from functools import cached_property
-from json import dump
+from json import dump as jdump
 from subprocess import check_output
-from typing import Dict, List
+from typing import Any, Dict, List
 
 import jinja2
 from attmap.attmap import AttMap
 from jsonschema.validators import validate
 from rich.table import Table
 from yacman.yacman import load_yaml
+from yaml import dump as ydump
 
 from .asset import AssetClass, asset_class_factory, make_asset_class_path
 from .const import DEFAULT_RECIPE_SCHEMA
+from .exceptions import MissingAssetClassError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -20,6 +22,7 @@ class Recipe:
     def __init__(
         self,
         name: str,
+        version: str,
         output_asset_class: AssetClass,
         command_template_list: List[str],
         inputs: Dict[Dict[Dict[str, str], str], str],
@@ -30,6 +33,7 @@ class Recipe:
         checksum_exclude_list: List[str] = None,
     ):
         self.name = name
+        self.version = version
         self.output_class = output_asset_class
         self.command_template_list = command_template_list
         # set up inputs dict, which accounts for missing keys in the recipe
@@ -58,7 +62,8 @@ class Recipe:
         # TODO: should we include the seek_keys as it was before? They are a part of asset class now.
         return {
             "name": self.name,
-            "output_class": self.output_class.name,
+            "version": self.version,
+            "output_asset_class": self.output_class.name,
             "description": self.description,
             "inputs": self.inputs,
             "container": self.container,
@@ -74,7 +79,16 @@ class Recipe:
         :param str filepath: The filepath to save the recipe to
         """
         with open(filepath, "w") as f:
-            dump(self.to_dict(), f, indent=4)
+            jdump(self.to_dict(), f, indent=4)
+
+    def to_yaml(self, filepath) -> None:
+        """
+        Save the recipe to a YAML file
+
+        :param str filepath: The filepath to save the recipe to
+        """
+        with open(filepath, "w") as f:
+            ydump(self.to_dict(), f, default_flow_style=False)
 
     @cached_property
     def required_assets(self) -> Dict[str, Dict[str, str]]:
@@ -186,20 +200,36 @@ def recipe_factory(
     recipe_definition_file: str,
     recipe_schema_file: str = DEFAULT_RECIPE_SCHEMA,
     asset_class_definition_file_dir: str = None,
+    recipe_definition_dict: Dict[str, Any] = None,
 ) -> Recipe:
-    # read recipe definition file
-    recipe_data = load_yaml(recipe_definition_file)
+    """
+    Factory method to create a recipe from a definition file
+
+    :param str recipe_definition_file: The recipe definition file
+    :param str recipe_schema_file: The recipe schema file
+    :param str asset_class_definition_file_dir: The directory containing the asset class definition files
+    :param Dict[str, Dict[str, Any]] recipe_definition_dict: A dictionary of recipe definition
+    :return refgenconf.recipe.Recipe: A recipe
+    :raises MissingAssetClassError: If the asset class definition file is missing
+    """
+    # read recipe definition file or use a provided dictionary
+    recipe_data = recipe_definition_dict or load_yaml(recipe_definition_file)
     # read recipe schema
     recipe_schema = load_yaml(recipe_schema_file)
     # validate recipe definition file
     validate(recipe_data, recipe_schema)
     # remove output_class from recipe data
     asset_class_name = recipe_data.pop("output_asset_class", None)
-    asset_class = asset_class_factory(
-        asset_class_definition_file=make_asset_class_path(
-            asset_class_name, asset_class_definition_file_dir
+    try:
+        asset_class = asset_class_factory(
+            asset_class_definition_file=make_asset_class_path(
+                asset_class_name, asset_class_definition_file_dir
+            )
         )
-    )
+    except FileNotFoundError:
+        raise MissingAssetClassError(
+            f"Asset class '{asset_class_name}' not found. You need to add/pull the asset class first."
+        )
     return Recipe(output_asset_class=asset_class, **recipe_data)
 
 

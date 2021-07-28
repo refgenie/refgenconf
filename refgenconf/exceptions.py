@@ -7,6 +7,7 @@ __all__ = [
     "GenomeConfigFormatError",
     "MissingAssetError",
     "MissingRecipeError",
+    "MissingAssetClassError",
     "MissingConfigDataError",
     "MissingGenomeError",
     "MissingSeekKeyError",
@@ -65,6 +66,12 @@ class MissingSeekKeyError(RefgenconfError):
 
 class MissingRecipeError(RefgenconfError):
     """Error type for request of an unavailable recipe."""
+
+    pass
+
+
+class MissingAssetClassError(RefgenconfError):
+    """Error type for request of an unavailable asset class."""
 
     pass
 

@@ -1,9 +1,11 @@
 import os
-from typing import Dict, List
+from json import dump as jdump
+from typing import Any, Dict, List
 
 from jsonschema import validate
 from ubiquerg import is_url
 from yacman import load_yaml
+from yaml import dump as ydump
 
 from .const import DEFAULT_ASSET_CLASS_SCHEMA, TEMPLATE_ASSET_CLASS_YAML
 
@@ -16,11 +18,13 @@ class AssetClass:
     def __init__(
         self,
         name: str,
+        version: str,
         seek_keys: Dict[str, str],
         description: str = None,
         parents: List[AssetClass] = None,
     ):
         self.name = name
+        self.version = version
         self.parents = parents or []
         self.seek_keys = {}
         if self.parents:
@@ -42,10 +46,41 @@ class AssetClass:
             repr += f"\nParents: {', '.join([parent.name for parent in self.parents])}"
         return repr
 
+    def to_dict(self) -> Dict[str, Any]:
+        # don't include the automatic dir seek key
+        temp_seek_keys = self.seek_keys.copy()
+        temp_seek_keys.pop("dir", None)
+        return {
+            "name": self.name,
+            "version": self.version,
+            "description": self.description,
+            "seek_keys": temp_seek_keys,
+            "parents": [parent.name for parent in self.parents],
+        }
+
+    def to_json(self, filepath) -> None:
+        """
+        Save the asset class to a JSON file
+
+        :param str filepath: The filepath to save the asset class to
+        """
+        with open(filepath, "w") as f:
+            jdump(self.to_dict(), f, indent=4)
+
+    def to_yaml(self, filepath) -> None:
+        """
+        Save the asset class to a YAML file
+
+        :param str filepath: The filepath to save the asset class to
+        """
+        with open(filepath, "w") as f:
+            ydump(self.to_dict(), f, default_flow_style=False)
+
 
 def asset_class_factory(
     asset_class_definition_file: str,
     asset_class_schema_file: str = DEFAULT_ASSET_CLASS_SCHEMA,
+    asset_class_definition_dict: Dict[str, Any] = None,
 ) -> AssetClass:
     """
     Read yaml file and return a AssetClass object
@@ -53,14 +88,26 @@ def asset_class_factory(
     :param str asset_class_definition_file: path/URL to yaml file that defines the asset class
     :param str asset_class_schema_file: path/URL to schema file to validate against (optional)
     :return AssetClass: AssetClass object
+    :raises FileNotFoundError: if asset_class_definition_file does not exist
     """
-    # read asset class defintion
-    asset_class_data = load_yaml(asset_class_definition_file)
-    # check if file exists
-    if not os.path.isfile(asset_class_definition_file):
+    # check asset class definition if file exists
+    if not os.path.isfile(asset_class_definition_file) and not is_url(
+        asset_class_definition_file
+    ):
         raise FileNotFoundError(
             f"Asset class definition file not found: {asset_class_definition_file}"
         )
+
+    if not os.path.isfile(asset_class_schema_file) and not is_url(
+        asset_class_schema_file
+    ):
+        raise FileNotFoundError(
+            f"Asset class schema file not found: {asset_class_schema_file}"
+        )
+    # read asset class defintion file or use provided dict
+    asset_class_data = asset_class_definition_dict or load_yaml(
+        asset_class_definition_file
+    )
     # read schema file
     asset_class_schema = load_yaml(asset_class_schema_file)
     # validate asset class definition

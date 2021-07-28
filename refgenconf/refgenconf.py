@@ -32,6 +32,7 @@ from ubiquerg import parse_registry_path as prp
 from ubiquerg import untar
 from yaml import dump
 
+from .asset import asset_class_factory
 from .const import *
 from .exceptions import *
 from .helpers import (
@@ -42,6 +43,7 @@ from .helpers import (
     send_data_request,
 )
 from .progress_bar import _DownloadColumn, _TimeRemainingColumn, _TransferSpeedColumn
+from .recipe import recipe_factory
 from .seqcol import SeqColClient
 
 _LOGGER = logging.getLogger(__name__)
@@ -347,18 +349,40 @@ class RefGenConf(yacman.YacAttMap):
 
         return filepath
 
-    def list(self, genome=None, order=None, include_tags=False):
+    def list(self, genome=None, order=None, include_tags=False, asset_classes=False):
         """
         List local assets; map each namespace to a list of available asset names
 
         :param callable(str) -> object order: how to key genome IDs for sort
         :param list[str] | str genome: genomes that the assets should be found for
         :param bool include_tags: whether asset tags should be included in the returned dict
+        :param bool asset_classes: whether asset classes should be listed instead of asset names
         :return Mapping[str, Iterable[str]]: mapping from assembly name to
             collection of available asset names.
         """
         self.run_plugins(PRE_LIST_HOOK)
         refgens = self._select_genomes(genome=genome, order=order)
+        if asset_classes:
+            return OrderedDict(
+                [
+                    (
+                        g,
+                        sorted(
+                            [
+                                self[CFG_GENOMES_KEY][g][CFG_ASSETS_KEY][a][
+                                    CFG_ASSET_CLASS_KEY
+                                ]
+                                for a in self[CFG_GENOMES_KEY][g][CFG_ASSETS_KEY].keys()
+                                if CFG_ASSET_CLASS_KEY
+                                in self[CFG_GENOMES_KEY][g][CFG_ASSETS_KEY][a]
+                            ],
+                            key=order,
+                        ),
+                    )
+                    for g in refgens
+                    if CFG_ASSETS_KEY in self[CFG_GENOMES_KEY][g]
+                ]
+            )
         if include_tags:
             self.run_plugins(POST_LIST_HOOK)
             return OrderedDict(
@@ -390,34 +414,28 @@ class RefGenConf(yacman.YacAttMap):
             ]
         )
 
-    def list_asset_classes(self, genome=None, order=None):
+    def list_asset_classes(self):
         """
-        List local asset classes; map each namespace to a list of available asset classes
+        List locally available asset classes
 
-        :param callable(str) -> object order: how to key genome IDs for sort
-        :param list[str] | str genome: genomes that the assets should be found for
-        :return Mapping[str, Iterable[str]]: mapping from assembly name to asset classes
+        :return List[str]: list of available asset classes
         """
-        refgens = self._select_genomes(genome=genome, order=order)
-        return OrderedDict(
-            [
-                (
-                    g,
-                    sorted(
-                        [
-                            self[CFG_GENOMES_KEY][g][CFG_ASSETS_KEY][a][
-                                CFG_ASSET_CLASS_KEY
-                            ]
-                            for a in self[CFG_GENOMES_KEY][g][CFG_ASSETS_KEY].keys()
-                            if CFG_ASSET_CLASS_KEY
-                            in self[CFG_GENOMES_KEY][g][CFG_ASSETS_KEY][a]
-                        ],
-                        key=order,
-                    ),
-                )
-                for g in refgens
-                if CFG_ASSETS_KEY in self[CFG_GENOMES_KEY][g]
-            ]
+        return (
+            list(self[CFG_ASSET_CLASSES_KEY].keys())
+            if CFG_ASSET_CLASSES_KEY in self and self[CFG_ASSET_CLASSES_KEY] is not None
+            else []
+        )
+
+    def list_recipes(self):
+        """
+        List locally available recipes
+
+        :return List[str]: list of available recipes
+        """
+        return (
+            list(self[CFG_RECIPES_KEY].keys())
+            if CFG_RECIPES_KEY in self and self[CFG_RECIPES_KEY] is not None
+            else []
         )
 
     def get_asset_table(
@@ -623,68 +641,121 @@ class RefGenConf(yacman.YacAttMap):
         """
         Add a recipe to the config
 
-        :param str recipe_name: a name for the recipe
         :param dict recipe_dict: a dictionary of recipe contents,
             check the recipe specification for details
         :param str recipe_path: a path to the recipe file
         :param str source: the source of the recipe
         :param bool force: whether to force existing recipe overwrite
         """
-
-        def _get_val_from_recipe(recipe_dict, key):
-            """
-            Get a value from the recipe dictionary, if it exists.
-
-            :param dict recipe_dict: a dictionary of recipe contents
-            :param str key: a key to get from the recipe dictionary
-            :return: the value from the recipe dictionary
-            :raises: KeyError if the key is not found
-            """
-            if key not in recipe_dict:
-                raise KeyError(
-                    f"Required key '{key}' not found in recipe. "
-                    f"Defined keys: {', '.join(recipe_dict.keys())}"
-                )
-            return recipe_dict[key]
-
+        args = {"asset_class_definition_file_dir": self.asset_class_dir}
         if recipe_dict is None:
             if recipe_path is None:
-                raise ValueError("recipe_dict or recipe_path must be provided")
-            if not os.path.exists(recipe_path) and not is_url(recipe_path):
-                recipe_path = os.path.join(self.recipe_dir, recipe_path)
-            recipe_dict = yacman.load_yaml(recipe_path)
+                raise ValueError("Either recipe_dict or recipe_path must be provided")
+            if is_url(recipe_path):
+                source = recipe_path
+            else:
+                if not os.path.exists(recipe_path):
+                    recipe_path = os.path.join(self.recipe_dir, recipe_path)
+            args.update({"recipe_definition_file": recipe_path})
+        else:
+            args.update({"recipe_definition_dict": recipe_dict})
+        recipe = recipe_factory(**args)  # creates and validates the recipe
 
-        recipe_name = _get_val_from_recipe(recipe_dict, "name")
         # write file to recipe folder
         if not os.path.exists(self.recipe_dir):
             os.makedirs(self.recipe_dir)
         target_recipe_path = os.path.join(
-            self.recipe_dir, TEMPLATE_RECIPE_YAML.format(recipe_name)
+            self.recipe_dir, TEMPLATE_RECIPE_YAML.format(recipe.name)
         )
         if os.path.exists(target_recipe_path) and not force:
             if not Confirm.ask(
-                prompt=f"Recipe '{recipe_name}' already exists. Overwrite?",
+                prompt=f"Recipe '{recipe.name}' already exists. Overwrite?",
                 default=False,
             ):
                 _LOGGER.info("Aborted, recipe not added")
                 return False
-        with open(target_recipe_path, "w") as f:
-            dump(recipe_dict, f, default_flow_style=False)
+
+        # save the recipe to the recipe dir
+        recipe.to_yaml(target_recipe_path)
 
         # update recipe metadata in config
         recipe_metadata = {
-            "name": recipe_name,
             "path": os.path.relpath(target_recipe_path, self.recipe_dir),
             "source": source or "self-added",
-            "version": _get_val_from_recipe(recipe_dict, "version"),
-            "output_asset_class": _get_val_from_recipe(
-                recipe_dict, "output_asset_class"
-            ),
+            "version": recipe.version,
+            "output_asset_class": recipe.output_class.name,
         }
-        self[CFG_RECIPES_KEY] = self[CFG_RECIPES_KEY] or {}
-        self[CFG_RECIPES_KEY].setdefault(recipe_name, {})
-        self[CFG_RECIPES_KEY][recipe_name].update(recipe_metadata)
-        _LOGGER.info(f"Added recipe: {recipe_name} ({target_recipe_path})")
+        with self as rgc:
+            rgc[CFG_RECIPES_KEY] = rgc[CFG_RECIPES_KEY] or {}
+            rgc[CFG_RECIPES_KEY].setdefault(recipe.name, {})
+            rgc[CFG_RECIPES_KEY][recipe.name].update(recipe_metadata)
+        _LOGGER.info(f"Added recipe: {recipe.name} ({target_recipe_path})")
+        return True
+
+    def add_asset_class(
+        self,
+        asset_class_dict=None,
+        asset_class_path=None,
+        source=None,
+        force=False,
+    ):
+        """
+        Add a asset_class to the config
+
+        :param str asset_class_name: a name for the asset_class
+        :param dict asset_class_dict: a dictionary of asset_class contents,
+            check the asset_class specification for details
+        :param str asset_class_path: a path to the asset_class file
+        :param str source: the source of the asset_class
+        :param bool force: whether to force existing asset_class overwrite
+        """
+        args = {}
+        if asset_class_dict is None:
+            if asset_class_path is None:
+                raise ValueError(
+                    "Either asset_class_path or asset_class_dict must be provided"
+                )
+            if is_url(asset_class_path):
+                source = asset_class_path
+            else:
+                if not os.path.exists(asset_class_path):
+                    asset_class_path = os.path.join(
+                        self.asset_class_dir, asset_class_path
+                    )
+            args.update({"asset_class_definition_file": asset_class_path})
+        else:
+            args.update({"asset_class_definition_dict": asset_class_dict})
+        asset_class = asset_class_factory(**args)  # creates and validates the recipe
+
+        # write file to asset_class folder
+        if not os.path.exists(self.asset_class_dir):
+            os.makedirs(self.asset_class_dir)
+        target_asset_class_path = os.path.join(
+            self.asset_class_dir, TEMPLATE_ASSET_CLASS_YAML.format(asset_class.name)
+        )
+        if os.path.exists(target_asset_class_path) and not force:
+            if not Confirm.ask(
+                prompt=f"Asset class '{asset_class.name}' already exists. Overwrite?",
+                default=False,
+            ):
+                _LOGGER.info("Aborted, asset class not added")
+                return False
+
+        # save the recipe to the recipe dir
+        asset_class.to_yaml(target_asset_class_path)
+        # update asset_class metadata in config
+        asset_class_metadata = {
+            "path": os.path.relpath(target_asset_class_path, self.asset_class_dir),
+            "source": source or "self-added",
+            "version": asset_class.version,
+        }
+        with self as rgc:
+            rgc[CFG_ASSET_CLASSES_KEY] = rgc[CFG_ASSET_CLASSES_KEY] or {}
+            rgc[CFG_ASSET_CLASSES_KEY].setdefault(asset_class.name, {})
+            rgc[CFG_ASSET_CLASSES_KEY][asset_class.name].update(asset_class_metadata)
+        _LOGGER.info(
+            f"Added asset class: {asset_class.name} ({target_asset_class_path})"
+        )
         return True
 
     def get_symlink_paths(self, genome, asset=None, tag=None, all_aliases=False):
@@ -1170,6 +1241,57 @@ class RefGenConf(yacman.YacAttMap):
                 in self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]
             )
             else None
+        )
+
+    def get_asset_class_file(self, asset_class_name):
+        """
+        Return the absolute path to the recipe file
+        for the given recipe name.
+
+        :param str recipe_name: name of the recipe to get the recipe file for
+        :return str: absolute path to the recipe file
+        """
+        if asset_class_name is None:
+            raise MissingAssetClassError("No asset class name provided")
+        if os.path.exists(asset_class_name) or is_url(asset_class_name):
+            _LOGGER.debug("Provided asset class name is a file or a URL")
+            return asset_class_name
+        if asset_class_name not in self.list_asset_classes():
+            raise MissingAssetClassError(
+                f"Could not find '{asset_class_name}' asset class"
+            )
+        return os.path.join(
+            self.asset_class_dir, self.asset_classes[asset_class_name]["path"]
+        )
+
+    def get_recipe_file(self, recipe_name):
+        """
+        Return the absolute path to the recipe file
+        for the given recipe name.
+
+        :param str recipe_name: name of the recipe to get the recipe file for
+        :return str: absolute path to the recipe file
+        """
+        if recipe_name is None:
+            raise MissingRecipeError("No recipe name provided")
+        if os.path.exists(recipe_name) or is_url(recipe_name):
+            _LOGGER.debug("Provided recipe name is a file or a URL")
+            return recipe_name
+        if recipe_name not in self.list_recipes():
+            raise MissingRecipeError(f"Could not find '{recipe_name}' recipe")
+        return os.path.join(self.recipe_dir, self.recipes[recipe_name]["path"])
+
+    def get_recipe(self, recipe_name):
+        """
+        Return the recipe with the given name, if it exists.
+        Alternatively, the recipe can be created from a file, if the recipe_name is a file path or a URL.
+
+        :param str recipe_name: name of the recipe to return
+        :return refgenconf.recipe.Recipe: the recipe with the given name
+        """
+        return recipe_factory(
+            recipe_definition_file=self.get_recipe_file(recipe_name),
+            asset_class_definition_file_dir=self.asset_class_dir,
         )
 
     def set_asset_class(self, genome, asset, asset_class):

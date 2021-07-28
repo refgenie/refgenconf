@@ -3,6 +3,9 @@ properties:
   name:
     type: string
     pattern: "^\\S*$"
+  version:
+    type: string
+    pattern: "^\\S*$"
   description:
     type: string
   seek_keys:

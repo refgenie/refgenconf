@@ -647,6 +647,7 @@ class RefGenConf(yacman.YacAttMap):
         :param str source: the source of the recipe
         :param bool force: whether to force existing recipe overwrite
         """
+        # TODO: asset classes and recipes add/remove methods could be DRYed
         args = {"asset_class_definition_file_dir": self.asset_class_dir}
         if recipe_dict is None:
             if recipe_path is None:
@@ -691,6 +692,34 @@ class RefGenConf(yacman.YacAttMap):
             rgc[CFG_RECIPES_KEY][recipe.name].update(recipe_metadata)
         _LOGGER.info(f"Added recipe: {recipe.name} ({target_recipe_path})")
         return True
+
+    def remove_recipe(self, recipe_name, force=False):
+        """
+        Remove a recipe from the config
+
+        :param str recipe_name: the name of the recipe to remove
+        :param bool force: whether to force existing recipe removal
+        """
+        recipe_file = self.get_recipe_file(recipe_name)
+        if not os.path.exists(recipe_file):
+            raise MissingRecipeError(
+                f"Recipe '{recipe_name}' file not exist: {recipe_file}"
+            )
+        if not force and not Confirm.ask(
+            prompt=f"Are you sure you want to remove recipe '{recipe_name}'?",
+            default=False,
+        ):
+            _LOGGER.info("Aborted, recipe not removed")
+            return False
+        os.remove(recipe_file)
+
+        with self as rgc:
+            if recipe_name not in rgc[CFG_RECIPES_KEY]:
+                raise MissingRecipeError(
+                    f"Recipe '{recipe_name}' does not exist in the config"
+                )
+            rgc[CFG_RECIPES_KEY].pop(recipe_name)
+        _LOGGER.info(f"Removed recipe: {recipe_name}")
 
     def add_asset_class(
         self,
@@ -757,6 +786,34 @@ class RefGenConf(yacman.YacAttMap):
             f"Added asset class: {asset_class.name} ({target_asset_class_path})"
         )
         return True
+
+    def remove_asset_class(self, asset_class_name, force=False):
+        """
+        Remove an asset class from the config
+
+        :param str asset_class: the name of the asset class to remove
+        :param bool force: whether to force existing asset class removal
+        """
+        asset_class_file = self.get_asset_class_file(asset_class_name)
+        if not os.path.exists(asset_class_file):
+            raise MissingRecipeError(
+                f"Asset class '{asset_class_name}' file not exist: {asset_class_file}"
+            )
+        if not force and not Confirm.ask(
+            prompt=f"Are you sure you want to remove asset class '{asset_class_name}'?",
+            default=False,
+        ):
+            _LOGGER.info("Aborted, recipe not removed")
+            return False
+        os.remove(asset_class_file)
+
+        with self as rgc:
+            if asset_class_name not in rgc[CFG_ASSET_CLASSES_KEY]:
+                raise MissingRecipeError(
+                    f"Asset class '{asset_class_name}' does not exist in the config"
+                )
+            rgc[CFG_ASSET_CLASSED_KEY].pop(asset_class_name)
+        _LOGGER.info(f"Removed asset class: {asset_class_name}")
 
     def get_symlink_paths(self, genome, asset=None, tag=None, all_aliases=False):
         """

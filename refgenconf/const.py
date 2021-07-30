@@ -77,6 +77,10 @@ API_ID_ARCHIVE_DIGEST = CUSTOM_PFX + "_asset_archive_digest"
 API_ID_SPLASH = CUSTOM_PFX + "_asset_splash"
 API_ID_GENOMES_DICT = CUSTOM_PFX + "_genomes_dict"
 API_ID_CONTENTS = CUSTOM_PFX + "_asset_dir_contents"
+API_ID_RECIPE_CONTENTS = CUSTOM_PFX + "_recipe_contents"
+API_ID_ASSET_CLASS_CONTENTS = CUSTOM_PFX + "_asset_class_contents"
+API_ID_RECIPES_DICT = CUSTOM_PFX + "_recipes_dict"
+API_ID_ASSET_CLASSES_DICT = CUSTOM_PFX + "_asset_classes_dict"
 
 PRIVATE_API = "_private_api"
 
@@ -120,6 +124,10 @@ API_IDS = [
     "API_ID_ALIAS_DIGEST",
     "API_ID_GENOME_ATTRS",
     "API_ID_GENOMES_DICT",
+    "API_ID_RECIPES_DICT",
+    "API_ID_RECIPE_CONTENTS",
+    "API_ID_ASSET_CLASS_CONTENTS",
+    "API_ID_ASSET_CLASSES_DICT",
 ]
 
 CFG_FOLDER_KEY = "genome_folder"

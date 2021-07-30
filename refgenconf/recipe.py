@@ -197,7 +197,7 @@ class Recipe:
 
 
 def recipe_factory(
-    recipe_definition_file: str,
+    recipe_definition_file: str = None,
     recipe_schema_file: str = DEFAULT_RECIPE_SCHEMA,
     asset_class_definition_file_dir: str = None,
     recipe_definition_dict: Dict[str, Any] = None,

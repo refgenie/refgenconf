@@ -43,7 +43,7 @@ from .helpers import (
     send_data_request,
 )
 from .progress_bar import _DownloadColumn, _TimeRemainingColumn, _TransferSpeedColumn
-from .recipe import recipe_factory
+from .recipe import Recipe, recipe_factory
 from .seqcol import SeqColClient
 
 _LOGGER = logging.getLogger(__name__)
@@ -1324,6 +1324,31 @@ class RefGenConf(yacman.YacAttMap):
             self.asset_class_dir, self.asset_classes[asset_class_name]["path"]
         )
 
+    def pull_asset_class(
+        self,
+        asset_class_name,
+        get_url=lambda server, id: construct_request_url(server, id),
+    ):
+        """
+        Pull the asset class with the given name from the remote server.
+
+        :param str recipe_name: name of the asset_class to pull
+        :param function(serverUrl, operationId) -> str get_url: how to determine
+            URL request, given server URL and endpoint operationID
+        """
+        for url in self[CFG_SERVERS_KEY]:
+            asset_class_conents_url = get_url(url, API_ID_ASSET_CLASS_CONTENTS).format(
+                asset_class=asset_class_name
+            )
+            if asset_class_conents_url is None:
+                continue
+            _LOGGER.info(
+                f"Pulling '{asset_class_name}' recipe from '{asset_class_conents_url}'"
+            )
+            asset_class_contents = send_data_request(url=asset_class_conents_url)
+            self.add_asset_class(asset_class_dict=asset_class_contents)
+            break
+
     def get_recipe_file(self, recipe_name):
         """
         Return the absolute path to the recipe file
@@ -1353,6 +1378,29 @@ class RefGenConf(yacman.YacAttMap):
             recipe_definition_file=self.get_recipe_file(recipe_name),
             asset_class_definition_file_dir=self.asset_class_dir,
         )
+
+    def pull_recipe(
+        self,
+        recipe_name,
+        get_url=lambda server, id: construct_request_url(server, id),
+    ):
+        """
+        Pull the recipe with the given name from the remote server.
+
+        :param str recipe_name: name of the recipe to pull
+        :param function(serverUrl, operationId) -> str get_url: how to determine
+            URL request, given server URL and endpoint operationID
+        """
+        for url in self[CFG_SERVERS_KEY]:
+            recipe_conents_url = get_url(url, API_ID_RECIPE_CONTENTS).format(
+                recipe=recipe_name
+            )
+            if recipe_conents_url is None:
+                continue
+            _LOGGER.info(f"Pulling '{recipe_name}' recipe from '{recipe_conents_url}'")
+            recipe_contents = send_data_request(url=recipe_conents_url)
+            self.add_recipe(recipe_dict=recipe_contents)
+            break
 
     def get_asset_class(self, asset_class_name):
         """

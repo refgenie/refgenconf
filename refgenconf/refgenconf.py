@@ -325,7 +325,7 @@ class RefGenConf(yacman.YacAttMap):
         """
 
         def _write_fail_err(reason):
-            raise OSError("Can't initialize, {}: {} ".format(reason, filepath))
+            raise OSError(f"Can't initialize, {reason}: {filepath}")
 
         filepath = select_genome_config(filepath, check_exist=False)
         if not isinstance(filepath, str):
@@ -341,12 +341,15 @@ class RefGenConf(yacman.YacAttMap):
         self.write()
         self.make_readonly()
         _LOGGER.info(f"Initialized genome configuration file: {filepath}")
-        os.makedirs(self.data_dir, exist_ok=True)
-        os.makedirs(self.alias_dir, exist_ok=True)
-        _LOGGER.info(
-            f"Created directories:{block_iter_repr([self.data_dir, self.alias_dir])}"
-        )
-
+        dirs_to_create = [
+            self.data_dir,
+            self.alias_dir,
+            self.recipe_dir,
+            self.asset_class_dir,
+        ]
+        for d in dirs_to_create:
+            os.makedirs(d, exist_ok=True)
+        _LOGGER.info(f"Created directories:{block_iter_repr(dirs_to_create)}")
         return filepath
 
     def list(self, genome=None, order=None, include_tags=False, asset_classes=False):
@@ -1281,7 +1284,7 @@ class RefGenConf(yacman.YacAttMap):
                 self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset], "Asset section "
             )
 
-    def get_asset_class(self, genome, asset):
+    def get_assets_asset_class(self, genome, asset):
         """
         Return the class of the asset,
         if the 'asset_class' key exists in the config or None otherwise.
@@ -1349,6 +1352,18 @@ class RefGenConf(yacman.YacAttMap):
         return recipe_factory(
             recipe_definition_file=self.get_recipe_file(recipe_name),
             asset_class_definition_file_dir=self.asset_class_dir,
+        )
+
+    def get_asset_class(self, asset_class_name):
+        """
+        Return the asset class with the given name, if it exists.
+        Alternatively, the asset class can be created from a file, if the asset_class_name is a file path or a URL.
+
+        :param str recipe_name: name of the asset class to return
+        :return refgenconf.asset.AssetClass: the asset class with the given name
+        """
+        return asset_class_factory(
+            asset_class_definition_file=self.get_asset_class_file(asset_class_name)
         )
 
     def set_asset_class(self, genome, asset, asset_class):

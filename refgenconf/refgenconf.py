@@ -441,6 +441,92 @@ class RefGenConf(yacman.YacAttMap):
             else []
         )
 
+    def get_asset_class_table(
+        self,
+        server_url=None,
+        get_json_url=lambda s, i: construct_request_url(s, i, PRIVATE_API),
+    ):
+        """
+        Get a table of availalbe asset classes
+
+        :param str server_url: url of the server to query
+        :param callable(str, str) -> str get_json_url: a function that returns
+            a url to a json file
+        :return rich.Table: table of asset classes
+        """
+
+        def _fill_table_with_asset_class_data(asset_class_data, table):
+            table.add_column("Asset class")
+            table.add_column("Version")
+            table.add_column("Description")
+            for asset_class_name, asset_class_metadata in asset_class_data.items():
+                table.add_row(
+                    asset_class_name,
+                    asset_class_metadata.get("version", ""),
+                    f"[italic]{asset_class_metadata.get('description', '')}[/italic]",
+                )
+            return table
+
+        if server_url is None:
+            asset_class_data = self[CFG_ASSET_CLASSES_KEY]
+            title = (
+                f"Local refgenie asset classes\nServer subscriptions: "
+                f"{', '.join(self[CFG_SERVERS_KEY])}"
+            )
+        else:
+            asset_class_data = send_data_request(
+                get_json_url(server_url, API_ID_ASSET_CLASSES_DICT)
+            )
+            title = f"Remote refgenie asset classes\nServer URL: {server_url}"
+        c = f"To learn more about a asset class, use [bold]refgenie asset_class show <recipe>[/bold]"
+        return _fill_table_with_asset_class_data(
+            asset_class_data, Table(title=title, min_width=90, caption=c)
+        )
+
+    def get_recipe_table(
+        self,
+        server_url=None,
+        get_json_url=lambda s, i: construct_request_url(s, i, PRIVATE_API),
+    ):
+        """
+        Get a table of recipes
+
+        :param str server_url: url of the server to query
+        :param callable(str, str) -> str get_json_url: a function that returns
+            a url to a json file
+        :return rich.Table: table of recipes
+        """
+
+        def _fill_table_with_recipe_data(recipes_data, table):
+            table.add_column("Recipe")
+            table.add_column("Version")
+            table.add_column("Output asset class")
+            table.add_column("Description")
+            for recipe_name, recipe_metadata in recipes_data.items():
+                table.add_row(
+                    recipe_name,
+                    recipe_metadata.get("version", ""),
+                    recipe_metadata.get("output_asset_class", ""),
+                    f"[italic]{recipe_metadata.get('description', '')}[/italic]",
+                )
+            return table
+
+        if server_url is None:
+            recipes_data = self[CFG_RECIPES_KEY]
+            title = (
+                f"Local refgenie recipes\nServer subscriptions: "
+                f"{', '.join(self[CFG_SERVERS_KEY])}"
+            )
+        else:
+            recipes_data = send_data_request(
+                get_json_url(server_url, API_ID_RECIPES_DICT)
+            )
+            title = f"Remote refgenie recipes\nServer URL: {server_url}"
+        c = f"To learn more about a recipe, use [bold]refgenie recipe show <recipe>[/bold]"
+        return _fill_table_with_recipe_data(
+            recipes_data, Table(title=title, min_width=90, caption=c)
+        )
+
     def get_asset_table(
         self,
         genomes=None,
@@ -448,22 +534,22 @@ class RefGenConf(yacman.YacAttMap):
         get_json_url=lambda s, i: construct_request_url(s, i, PRIVATE_API),
     ):
         """
-        Get a rich.Table object representing assets available locally
+        Get a rich.Table object representing available assets
 
         :param list[str] genomes: genomes to restrict the results with
         :param str server_url: server URL to query for the remote genome data
         :param function(str, str) -> str get_json_url: how to build URL from
             genome server URL base, genome, and asset
-        :return rich.table.Table: table of assets available locally
+        :return rich.table.Table: table of available assets
         """
 
         def _fill_table_with_genomes_data(rgc, genomes_data, table, genomes=None):
             it = "([italic]{}[/italic])"
             table.add_column("genome")
             if genomes:
-                table.add_column("asset " + it.format(CFG_ASSET_CLASS_KEY))
-                table.add_column("seek_keys")
-                table.add_column("tags")
+                table.add_column("Asset " + it.format(CFG_ASSET_CLASS_KEY))
+                table.add_column("Seek keys")
+                table.add_column("Tags")
                 for g in genomes:
                     try:
                         genome = rgc.get_genome_alias_digest(alias=g, fallback=True)
@@ -498,7 +584,7 @@ class RefGenConf(yacman.YacAttMap):
                             ", ".join(tags),
                         )
             else:
-                table.add_column("assets")
+                table.add_column("Assets")
                 for genome in list(genomes_data.keys()):
                     genome_dict = genomes_data[genome]
                     if CFG_ASSETS_KEY not in genome_dict:
@@ -521,8 +607,8 @@ class RefGenConf(yacman.YacAttMap):
             )
             title = f"Remote refgenie assets\nServer URL: {server_url}"
         c = (
-            f"use refgenie list{'r' if server_url is not None else ''} "
-            f"-g <genome> for more detailed view"
+            f"use refgenie [bold]list{'r' if server_url is not None else ''} "
+            f"-g <genome>[/bold] for more detailed view"
             if genomes is None
             else ""
         )
@@ -688,6 +774,7 @@ class RefGenConf(yacman.YacAttMap):
             "source": source or "self-added",
             "version": recipe.version,
             "output_asset_class": recipe.output_class.name,
+            "description": recipe.description,
         }
         with self as rgc:
             rgc[CFG_RECIPES_KEY] = rgc[CFG_RECIPES_KEY] or {}
@@ -756,7 +843,12 @@ class RefGenConf(yacman.YacAttMap):
                     )
             args.update({"asset_class_definition_file": asset_class_path})
         else:
-            args.update({"asset_class_definition_dict": asset_class_dict})
+            args.update(
+                {
+                    "asset_class_definition_dict": asset_class_dict,
+                    "asset_class_definition_file_dir": self.asset_class_dir,
+                }
+            )
         asset_class = asset_class_factory(**args)  # creates and validates the recipe
 
         # write file to asset_class folder
@@ -780,6 +872,7 @@ class RefGenConf(yacman.YacAttMap):
             "path": os.path.relpath(target_asset_class_path, self.asset_class_dir),
             "source": source or "self-added",
             "version": asset_class.version,
+            "description": asset_class.description,
         }
         with self as rgc:
             rgc[CFG_ASSET_CLASSES_KEY] = rgc[CFG_ASSET_CLASSES_KEY] or {}

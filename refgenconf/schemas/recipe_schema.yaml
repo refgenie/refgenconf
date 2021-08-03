@@ -12,12 +12,27 @@ properties:
     type: object
     additionalProperties: false
     patternProperties:
-      files|assets|params:
-        anyOf: [
-          {type: object, additionalProperties: false,  patternProperties: {^.*$: { "$ref": "#/definitions/input" }}},
-          {type: "null"}
-        ]
-
+      files|params:
+        anyOf:
+          [
+            {
+              type: object,
+              additionalProperties: false,
+              patternProperties: { ^.*$: { "$ref": "#/definitions/input" } },
+            },
+            { type: "null" },
+          ]
+      assets:
+        anyOf:
+          [
+            {
+              type: object,
+              additionalProperties: false,
+              patternProperties:
+                { ^.*$: { "$ref": "#/definitions/input_asset" } },
+            },
+            { type: "null" },
+          ]
 
   output_asset_class:
     type: string
@@ -55,6 +70,16 @@ definitions:
         type: string
     required:
       - description
+  input_asset:
+    type: object
+    properties:
+      description:
+        type: string
+      asset_class:
+        type: string
+    required:
+      - description
+      - asset_class
   inputs:
     type: object
     additionalProperties: false

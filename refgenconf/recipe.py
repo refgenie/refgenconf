@@ -249,8 +249,8 @@ def jinja_render_template_strictly(template, namespaces):
     """
     env = jinja2.Environment(
         undefined=jinja2.StrictUndefined,
-        variable_start_string="{",
-        variable_end_string="}",
+        # variable_start_string="{",
+        # variable_end_string="}",
     )
     templ_obj = env.from_string(template)
     try:

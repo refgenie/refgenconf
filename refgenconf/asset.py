@@ -78,9 +78,10 @@ class AssetClass:
 
 
 def asset_class_factory(
-    asset_class_definition_file: str,
+    asset_class_definition_file: str = None,
     asset_class_schema_file: str = DEFAULT_ASSET_CLASS_SCHEMA,
     asset_class_definition_dict: Dict[str, Any] = None,
+    asset_class_definition_file_dir: str = None,
 ) -> AssetClass:
     """
     Read yaml file and return a AssetClass object
@@ -91,8 +92,10 @@ def asset_class_factory(
     :raises FileNotFoundError: if asset_class_definition_file does not exist
     """
     # check asset class definition if file exists
-    if not os.path.isfile(asset_class_definition_file) and not is_url(
-        asset_class_definition_file
+    if (
+        asset_class_definition_file is not None
+        and not os.path.isfile(asset_class_definition_file)
+        and not is_url(asset_class_definition_file)
     ):
         raise FileNotFoundError(
             f"Asset class definition file not found: {asset_class_definition_file}"
@@ -114,15 +117,24 @@ def asset_class_factory(
     validate(schema=asset_class_schema, instance=asset_class_data)
     # remove parents from asset class definition
     asset_class_parents = asset_class_data.pop("parents", None)
-    # get file directory to look for parent asset classes in
-    file_dir = (
-        os.path.dirname(asset_class_definition_file)
-        if not is_url(asset_class_definition_file)
-        else None
-    )
     # recursively create asset class parent objects
     parent_objects = []
     if asset_class_parents:
+        # get file directory to look for parent asset classes in
+        if (
+            asset_class_definition_file_dir is None
+            and asset_class_definition_file is None
+        ):
+            raise ValueError(
+                f"Must provide asset class definition file or file directory since "
+                f"{asset_class_data['name']} asset class has parents"
+            )
+
+        file_dir = asset_class_definition_file_dir or (
+            os.path.dirname(asset_class_definition_file)
+            if not is_url(asset_class_definition_file)
+            else None
+        )
         parent_objects = [
             asset_class_factory(
                 asset_class_definition_file=make_asset_class_path(

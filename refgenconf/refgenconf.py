@@ -1432,16 +1432,19 @@ class RefGenConf(yacman.YacAttMap):
         :param bool force: whether to overwrite existing asset class file
         """
         for url in self[CFG_SERVERS_KEY]:
-            asset_class_conents_url = get_url(url, API_ID_ASSET_CLASS_CONTENTS).format(
+            asset_class_conents_url_template = get_url(url, API_ID_ASSET_CLASS_CONTENTS)
+            if asset_class_conents_url_template is None:
+                continue
+            asset_class_conents_url = asset_class_conents_url_template.format(
                 asset_class=asset_class_name
             )
-            if asset_class_conents_url is None:
-                continue
             _LOGGER.info(
                 f"Pulling '{asset_class_name}' recipe from '{asset_class_conents_url}'"
             )
             asset_class_contents = send_data_request(url=asset_class_conents_url)
-            self.add_asset_class(asset_class_dict=asset_class_contents, force=force)
+            self.add_asset_class(
+                asset_class_dict=asset_class_contents, force=force, source=url
+            )
             break
 
     def get_recipe_file(self, recipe_name):
@@ -1495,7 +1498,7 @@ class RefGenConf(yacman.YacAttMap):
             recipe_conents_url = recipe_conents_url_template.format(recipe=recipe_name)
             _LOGGER.info(f"Pulling '{recipe_name}' recipe from '{recipe_conents_url}'")
             recipe_contents = send_data_request(url=recipe_conents_url)
-            self.add_recipe(recipe_dict=recipe_contents, force=force)
+            self.add_recipe(recipe_dict=recipe_contents, force=force, source=url)
             break
 
     def get_asset_class(self, asset_class_name):

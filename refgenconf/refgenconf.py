@@ -3206,6 +3206,42 @@ class RefGenConf(yacman.YacAttMap):
             remote_class=remote_class or "http",
         )
 
+    def get_build_groups(self):
+        """
+        Generate a list of build groups from the local refgenie recipe registry.
+        The build order is determined based on the recipes' dependencies.
+
+        :return List[Set[str]]: a list of sets that represent the build order
+        """
+        # get a collection of required asset classes by each asset to build
+        reqs_dict_set = {}
+        for _, recipe_metadata in self.recipes.items():
+            recipe = recipe_factory(
+                recipe_definition_file=os.path.join(
+                    self.recipe_dir, recipe_metadata["path"]
+                ),
+                asset_class_definition_file_dir=self.asset_class_dir,
+            )
+            reqs_dict_set[recipe.output_class.name] = []
+            if recipe.inputs["assets"]:
+                reqs_dict_set[recipe.output_class.name] = [
+                    asset_dict["asset_class"]
+                    for asset_dict in recipe.inputs["assets"].values()
+                ]
+        reqs_dict_set = {k: set(v) for k, v in reqs_dict_set.items()}
+        build_groups = []
+        while reqs_dict_set:
+            # values not in keys, assets without depenencies
+            build_group = set(i for v in reqs_dict_set.values() for i in v) - set(
+                reqs_dict_set.keys()
+            )
+            # and keys without value, assets without depenencies
+            build_group.update(k for k, v in reqs_dict_set.items() if not v)
+            build_groups.append(build_group)
+            # remove the completed items
+            reqs_dict_set = {k: v - build_group for k, v in reqs_dict_set.items() if v}
+        return build_groups
+
     def run_plugins(self, hook):
         """
         Runs all installed plugins for the specified hook.

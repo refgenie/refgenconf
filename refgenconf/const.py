@@ -77,6 +77,7 @@ API_ID_ARCHIVE_DIGEST = CUSTOM_PFX + "_asset_archive_digest"
 API_ID_SPLASH = CUSTOM_PFX + "_asset_splash"
 API_ID_GENOMES_DICT = CUSTOM_PFX + "_genomes_dict"
 API_ID_CONTENTS = CUSTOM_PFX + "_asset_dir_contents"
+API_ID_BUILD_INPUTS = CUSTOM_PFX + "_build_inputs"
 API_ID_RECIPE_CONTENTS = CUSTOM_PFX + "_recipe_contents"
 API_ID_ASSET_CLASS_CONTENTS = CUSTOM_PFX + "_asset_class_contents"
 API_ID_RECIPES_DICT = CUSTOM_PFX + "_recipes_dict"
@@ -103,6 +104,7 @@ OPERATION_IDS = {
         API_VERSION + API_ID_RECIPE: "build recipe",
         API_VERSION + API_ID_LOG: "build log",
         API_VERSION + API_ID_CONTENTS: "asset directory contents",
+        API_VERSION + API_ID_BUILD_INPUTS: "build inputs",
     },
 }
 
@@ -112,6 +114,7 @@ API_IDS = [
     "API_ID_DEFAULT_TAG",
     "API_ID_LOG",
     "API_ID_CONTENTS",
+    "API_ID_BUILD_INPUTS",
     "API_ID_ASSET_FILE",
     "API_ID_ASSET_PATH",
     "API_ID_DIGEST",

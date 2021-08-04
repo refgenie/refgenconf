@@ -478,7 +478,7 @@ class RefGenConf(yacman.YacAttMap):
                 get_json_url(server_url, API_ID_ASSET_CLASSES_DICT)
             )
             title = f"Remote refgenie asset classes\nServer URL: {server_url}"
-        c = f"To learn more about a asset class, use [bold]refgenie asset_class show <recipe>[/bold]"
+        c = f"To learn more about an asset class, use [bold]refgenie asset_class show <asset_class>[/bold]"
         return _fill_table_with_asset_class_data(
             asset_class_data, Table(title=title, min_width=90, caption=c)
         )
@@ -1421,6 +1421,7 @@ class RefGenConf(yacman.YacAttMap):
         self,
         asset_class_name,
         get_url=lambda server, id: construct_request_url(server, id),
+        force=False,
     ):
         """
         Pull the asset class with the given name from the remote server.
@@ -1428,6 +1429,7 @@ class RefGenConf(yacman.YacAttMap):
         :param str recipe_name: name of the asset_class to pull
         :param function(serverUrl, operationId) -> str get_url: how to determine
             URL request, given server URL and endpoint operationID
+        :param bool force: whether to overwrite existing asset class file
         """
         for url in self[CFG_SERVERS_KEY]:
             asset_class_conents_url = get_url(url, API_ID_ASSET_CLASS_CONTENTS).format(
@@ -1439,7 +1441,7 @@ class RefGenConf(yacman.YacAttMap):
                 f"Pulling '{asset_class_name}' recipe from '{asset_class_conents_url}'"
             )
             asset_class_contents = send_data_request(url=asset_class_conents_url)
-            self.add_asset_class(asset_class_dict=asset_class_contents)
+            self.add_asset_class(asset_class_dict=asset_class_contents, force=force)
             break
 
     def get_recipe_file(self, recipe_name):
@@ -1476,6 +1478,7 @@ class RefGenConf(yacman.YacAttMap):
         self,
         recipe_name,
         get_url=lambda server, id: construct_request_url(server, id),
+        force=False,
     ):
         """
         Pull the recipe with the given name from the remote server.
@@ -1483,16 +1486,16 @@ class RefGenConf(yacman.YacAttMap):
         :param str recipe_name: name of the recipe to pull
         :param function(serverUrl, operationId) -> str get_url: how to determine
             URL request, given server URL and endpoint operationID
+        :param bool force: whether to overwrite existing recipe file
         """
         for url in self[CFG_SERVERS_KEY]:
-            recipe_conents_url = get_url(url, API_ID_RECIPE_CONTENTS).format(
-                recipe=recipe_name
-            )
-            if recipe_conents_url is None:
+            recipe_conents_url_template = get_url(url, API_ID_RECIPE_CONTENTS)
+            if recipe_conents_url_template is None:
                 continue
+            recipe_conents_url = recipe_conents_url_template.format(recipe=recipe_name)
             _LOGGER.info(f"Pulling '{recipe_name}' recipe from '{recipe_conents_url}'")
             recipe_contents = send_data_request(url=recipe_conents_url)
-            self.add_recipe(recipe_dict=recipe_contents)
+            self.add_recipe(recipe_dict=recipe_contents, force=force)
             break
 
     def get_asset_class(self, asset_class_name):

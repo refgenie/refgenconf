@@ -26,11 +26,12 @@ class AssetClass:
         self.name = name
         self.version = version
         self.parents = parents or []
+        self._ori_seek_keys = seek_keys
         self.seek_keys = {}
         if self.parents:
             for parent in self.parents:
                 self.seek_keys.update(parent.seek_keys)
-        self.seek_keys.update(seek_keys)
+        self.seek_keys.update(self._ori_seek_keys)
         self.seek_keys.update({"dir": "."})
         self.description = description or self.name
 
@@ -54,7 +55,7 @@ class AssetClass:
             "name": self.name,
             "version": self.version,
             "description": self.description,
-            "seek_keys": temp_seek_keys,
+            "seek_keys": self._ori_seek_keys,
             "parents": [parent.name for parent in self.parents],
         }
 
@@ -141,11 +142,11 @@ def asset_class_factory(
                     class_src=asset_class_parent, dir=file_dir
                 ),
                 asset_class_schema_file=asset_class_schema_file,
-            )
+            )[0]
             for asset_class_parent in asset_class_parents
         ]
     # create top asset class object
-    return AssetClass(parents=parent_objects, **asset_class_data)
+    return AssetClass(parents=parent_objects, **asset_class_data), parent_objects
 
 
 def make_asset_class_path(class_src: str, dir: str = None) -> str:

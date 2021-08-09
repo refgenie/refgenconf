@@ -32,7 +32,7 @@ from ubiquerg import parse_registry_path as prp
 from ubiquerg import untar
 from yaml import dump
 
-from .asset import asset_class_factory
+from .asset_class import asset_class_factory
 from .const import *
 from .exceptions import *
 from .helpers import (
@@ -843,45 +843,49 @@ class RefGenConf(yacman.YacAttMap):
                     )
             args.update({"asset_class_definition_file": asset_class_path})
         else:
-            args.update(
-                {
-                    "asset_class_definition_dict": asset_class_dict,
-                    "asset_class_definition_file_dir": self.asset_class_dir,
-                }
+            args.update({"asset_class_definition_dict": asset_class_dict})
+        args.update({"asset_class_definition_file_dir": self.asset_class_dir})
+        asset_class, parent_asset_classes = asset_class_factory(
+            **args
+        )  # creates and validates the asset class and parents
+        if len(parent_asset_classes) > 0:
+            nms = [ac.name for ac in parent_asset_classes]
+            _LOGGER.info(f"Adding parent asset classes: {block_iter_repr(nms)}")
+
+        any_added = False
+        # process the requested asset_class and all the parent_asset_classes
+        # so that all dependencies are added to the config
+        for ac in parent_asset_classes + [asset_class]:
+            # write file to asset_class folder
+            if not os.path.exists(self.asset_class_dir):
+                os.makedirs(self.asset_class_dir)
+            target_asset_class_path = os.path.join(
+                self.asset_class_dir, TEMPLATE_ASSET_CLASS_YAML.format(ac.name)
             )
-        asset_class = asset_class_factory(**args)  # creates and validates the recipe
+            if os.path.exists(target_asset_class_path) and not force:
+                if not Confirm.ask(
+                    prompt=f"Asset class '{ac.name}' already exists. Overwrite?",
+                    default=False,
+                ):
+                    _LOGGER.info("Aborted, asset class not added")
+                    continue
 
-        # write file to asset_class folder
-        if not os.path.exists(self.asset_class_dir):
-            os.makedirs(self.asset_class_dir)
-        target_asset_class_path = os.path.join(
-            self.asset_class_dir, TEMPLATE_ASSET_CLASS_YAML.format(asset_class.name)
-        )
-        if os.path.exists(target_asset_class_path) and not force:
-            if not Confirm.ask(
-                prompt=f"Asset class '{asset_class.name}' already exists. Overwrite?",
-                default=False,
-            ):
-                _LOGGER.info("Aborted, asset class not added")
-                return False
-
-        # save the recipe to the recipe dir
-        asset_class.to_yaml(target_asset_class_path)
-        # update asset_class metadata in config
-        asset_class_metadata = {
-            "path": os.path.relpath(target_asset_class_path, self.asset_class_dir),
-            "source": source or "self-added",
-            "version": asset_class.version,
-            "description": asset_class.description,
-        }
-        with self as rgc:
-            rgc[CFG_ASSET_CLASSES_KEY] = rgc[CFG_ASSET_CLASSES_KEY] or {}
-            rgc[CFG_ASSET_CLASSES_KEY].setdefault(asset_class.name, {})
-            rgc[CFG_ASSET_CLASSES_KEY][asset_class.name].update(asset_class_metadata)
-        _LOGGER.info(
-            f"Added asset class: {asset_class.name} ({target_asset_class_path})"
-        )
-        return True
+            # save the recipe to the recipe dir
+            ac.to_yaml(target_asset_class_path)
+            # update asset_class metadata in config
+            asset_class_metadata = {
+                "path": os.path.relpath(target_asset_class_path, self.asset_class_dir),
+                "source": source or "self-added",
+                "version": ac.version,
+                "description": ac.description,
+            }
+            with self as rgc:
+                rgc[CFG_ASSET_CLASSES_KEY] = rgc[CFG_ASSET_CLASSES_KEY] or {}
+                rgc[CFG_ASSET_CLASSES_KEY].setdefault(ac.name, {})
+                rgc[CFG_ASSET_CLASSES_KEY][ac.name].update(asset_class_metadata)
+            _LOGGER.info(f"Added asset class: {ac.name} ({target_asset_class_path})")
+            any_added = True
+        return any_added
 
     def remove_asset_class(self, asset_class_name, force=False):
         """
@@ -908,7 +912,7 @@ class RefGenConf(yacman.YacAttMap):
                 raise MissingRecipeError(
                     f"Asset class '{asset_class_name}' does not exist in the config"
                 )
-            rgc[CFG_ASSET_CLASSED_KEY].pop(asset_class_name)
+            rgc[CFG_ASSET_CLASSES_KEY].pop(asset_class_name)
         _LOGGER.info(f"Removed asset class: {asset_class_name}")
 
     def get_symlink_paths(self, genome, asset=None, tag=None, all_aliases=False):
@@ -1511,7 +1515,7 @@ class RefGenConf(yacman.YacAttMap):
         """
         return asset_class_factory(
             asset_class_definition_file=self.get_asset_class_file(asset_class_name)
-        )
+        )[0]
 
     def set_asset_class(self, genome, asset, asset_class):
         """

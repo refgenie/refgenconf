@@ -1,17 +1,21 @@
 import logging
+import os
 from functools import cached_property
 from json import dump as jdump
 from subprocess import check_output
 from typing import Any, Dict, List
 
 import jinja2
+import requests
 from attmap.attmap import AttMap
+from jsonschema import ValidationError
 from jsonschema.validators import validate
 from rich.table import Table
+from ubiquerg.web import is_url
 from yacman.yacman import load_yaml
 from yaml import dump as ydump
 
-from .asset import AssetClass, asset_class_factory, make_asset_class_path
+from .asset_class import AssetClass, asset_class_factory, make_asset_class_path
 from .const import DEFAULT_RECIPE_SCHEMA
 from .exceptions import MissingAssetClassError
 
@@ -52,6 +56,9 @@ class Recipe:
         repr = f"{self.__class__.__name__}: {self.name} -> {self.output_class.name}"
         repr += f"\nDescription: {self.description}"
         return repr
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__} '{self.name}'\n{self.to_dict()}"
 
     def to_dict(self) -> Dict[str, str]:
         """
@@ -217,11 +224,15 @@ def recipe_factory(
     # read recipe schema
     recipe_schema = load_yaml(recipe_schema_file)
     # validate recipe definition file
-    validate(recipe_data, recipe_schema)
+    try:
+        validate(recipe_data, recipe_schema)
+    except ValidationError as e:
+        _LOGGER.error(f"Invalid recipe definition file!")
+        raise
     # remove output_class from recipe data
     asset_class_name = recipe_data.pop("output_asset_class", None)
     try:
-        asset_class = asset_class_factory(
+        asset_class, _ = asset_class_factory(
             asset_class_definition_file=make_asset_class_path(
                 asset_class_name, asset_class_definition_file_dir
             )

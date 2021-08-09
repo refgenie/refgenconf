@@ -1,5 +1,7 @@
+from rich.traceback import install
+
 from ._version import __version__
-from .asset import AssetClass, asset_class_factory
+from .asset_class import AssetClass, asset_class_factory
 from .const import *
 from .exceptions import *
 from .helpers import *
@@ -8,6 +10,8 @@ from .populator import looper_refgenie_populate
 from .recipe import Recipe, recipe_factory
 from .refgenconf import *
 from .refgenconf import RefGenConf, upgrade_config
+
+install()
 
 __all__ = (
     [

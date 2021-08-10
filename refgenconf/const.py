@@ -79,6 +79,8 @@ API_ID_GENOMES_DICT = CUSTOM_PFX + "_genomes_dict"
 API_ID_CONTENTS = CUSTOM_PFX + "_asset_dir_contents"
 API_ID_BUILD_INPUTS = CUSTOM_PFX + "_build_inputs"
 API_ID_RECIPE_CONTENTS = CUSTOM_PFX + "_recipe_contents"
+API_ID_RECIPE_ATTRS = CUSTOM_PFX + "_recipe_attrs"
+API_ID_ASSET_CLASS_ATTRS = CUSTOM_PFX + "_asset_class_attrs"
 API_ID_ASSET_CLASS_CONTENTS = CUSTOM_PFX + "_asset_class_contents"
 API_ID_RECIPES_DICT = CUSTOM_PFX + "_recipes_dict"
 API_ID_ASSET_CLASSES_DICT = CUSTOM_PFX + "_asset_classes_dict"
@@ -106,6 +108,14 @@ OPERATION_IDS = {
         API_VERSION + API_ID_CONTENTS: "asset directory contents",
         API_VERSION + API_ID_BUILD_INPUTS: "build inputs",
     },
+    "v3_recipe": {
+        API_VERSION + API_ID_RECIPE_CONTENTS: "contents",
+        API_VERSION + API_ID_RECIPE_ATTRS: "attributes",
+    },
+    "v3_asset_class": {
+        API_VERSION + API_ID_ASSET_CLASS_CONTENTS: "contents",
+        API_VERSION + API_ID_ASSET_CLASS_ATTRS: "attributes",
+    },
 }
 
 API_IDS = [
@@ -129,7 +139,9 @@ API_IDS = [
     "API_ID_GENOMES_DICT",
     "API_ID_RECIPES_DICT",
     "API_ID_RECIPE_CONTENTS",
+    "API_ID_RECIPE_ATTRS",
     "API_ID_ASSET_CLASS_CONTENTS",
+    "API_ID_ASSET_CLASS_ATTRS",
     "API_ID_ASSET_CLASSES_DICT",
 ]
 

@@ -23,6 +23,14 @@ properties:
     additionalProperties: false
     patternProperties:
       ^.*$: { "$ref": "#/definitions/genome" }
+  recipes:
+    additionalProperties: false
+    patternProperties:
+      ^.*$: { "$ref": "#/definitions/recipe" }
+  asset_classes:
+    additionalProperties: false
+    patternProperties:
+      ^.*$: { "$ref": "#/definitions/asset_class" }
 
 definitions:
   genome:
@@ -62,9 +70,52 @@ definitions:
           ^.*$: { "$ref": "#/definitions/seek_key" }
       asset_parents: { "$ref": "#/definitions/relatives" }
       asset_children: { "$ref": "#/definitions/relatives" }
+      custom_properties:
+        additionalProperties: false
+        patternProperties:
+          ^.*$:
+            type: string
+      date_built:
+        type: string
+
   seek_key:
     type: string
   relatives:
     type: array
     items:
       type: string
+  asset_class:
+    type: object
+    properties:
+      description:
+        type: string
+      version:
+        type: string
+      source:
+        type: string
+      path:
+        type: string
+    required:
+      - description
+      - version
+      - source
+      - path
+  recipe:
+    type: object
+    properties:
+      output_asset_class:
+        type: string
+      description:
+        type: string
+      version:
+        type: string
+      source:
+        type: string
+      path:
+        type: string
+    required:
+      - output_asset_class
+      - description
+      - version
+      - source
+      - path

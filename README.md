@@ -6,4 +6,4 @@
 
 Configuration object for [refgenie](https://doi.org/10.1093/gigascience/giz149) *et al.*
 
-Documentation for `refgenconf` can be found with the [primary documentation for refgenie](http://refgenie.databio.org).
+Documentation for `refgenconf` can be found with the [primary documentation for refgenie](http://refgenie.databio.org/en/latest/autodoc_build/refgenconf/).

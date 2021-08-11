@@ -282,7 +282,7 @@ HOOKS = [eval(x) for x in HOOK_NAMES]
 # other consts
 REQ_CFG_VERSION = 0.5
 REFGENIE_BY_CFG = {"0.5": "0.13.0", "0.4": "0.10.0", "0.3": "0.7.0", "0.2": "0.6.0"}
-CFG_UPGRADE = {"0.3": ["0.4"]}
+CFG_UPGRADE = {"0.3": ["0.4"], "0.4": ["0.5"]}
 ATTRS_COPY_PULL = [
     CFG_ASSET_DESC_KEY,
     CFG_ASSET_DATE_KEY,

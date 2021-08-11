@@ -10,7 +10,7 @@ import signal
 import sys
 import warnings
 from collections import OrderedDict
-from collections.abc import Iterable, Mapping
+from collections.abc import Mapping
 from functools import partial
 from inspect import getfullargspec as finspect
 from urllib.error import ContentTooShortError, HTTPError
@@ -30,10 +30,75 @@ from rich.table import Table
 from ubiquerg import checksum, is_url, is_writable
 from ubiquerg import parse_registry_path as prp
 from ubiquerg import untar
-from yaml import dump
 
 from .asset_class import asset_class_factory
-from .const import *
+from .const import (
+    ALIAS_DIR,
+    API_ID_ALIAS_DIGEST,
+    API_ID_ALIASES_DICT,
+    API_ID_ARCHIVE,
+    API_ID_ASSET_ATTRS,
+    API_ID_ASSET_CLASS_CONTENTS,
+    API_ID_ASSET_CLASSES_DICT,
+    API_ID_ASSET_PATH,
+    API_ID_ASSETS,
+    API_ID_DEFAULT_TAG,
+    API_ID_DIGEST,
+    API_ID_GENOME_ATTRS,
+    API_ID_GENOMES_DICT,
+    API_ID_RECIPE_CONTENTS,
+    API_ID_RECIPES_DICT,
+    API_VERSION,
+    ATTRS_COPY_PULL,
+    BUILD_STATS_DIR,
+    CFG_ALIASES_KEY,
+    CFG_ARCHIVE_CHECKSUM_KEY,
+    CFG_ARCHIVE_SIZE_KEY,
+    CFG_ASSET_CHECKSUM_KEY,
+    CFG_ASSET_CHILDREN_KEY,
+    CFG_ASSET_CLASS_FOLDER_KEY,
+    CFG_ASSET_CLASS_KEY,
+    CFG_ASSET_CLASSES_KEY,
+    CFG_ASSET_DATE_KEY,
+    CFG_ASSET_DEFAULT_TAG_KEY,
+    CFG_ASSET_PARENTS_KEY,
+    CFG_ASSET_PATH_KEY,
+    CFG_ASSET_RELATIVES_KEYS,
+    CFG_ASSET_TAGS_KEY,
+    CFG_ASSETS_KEY,
+    CFG_FOLDER_KEY,
+    CFG_GENOME_ATTRS_KEYS,
+    CFG_GENOMES_KEY,
+    CFG_RECIPE_FOLDER_KEY,
+    CFG_RECIPES_KEY,
+    CFG_SEEK_KEYS_KEY,
+    CFG_SERVER_KEY,
+    CFG_SERVERS_KEY,
+    CFG_UPGRADE,
+    CFG_VERSION_KEY,
+    DATA_DIR,
+    DEFAULT_CONFIG_SCHEMA,
+    DEFAULT_SERVER,
+    DEFAULT_TAG,
+    HOOKS,
+    POST_LIST_HOOK,
+    POST_PULL_HOOK,
+    POST_TAG_HOOK,
+    POST_UPDATE_HOOK,
+    PRE_LIST_HOOK,
+    PRE_PULL_HOOK,
+    PRE_TAG_HOOK,
+    PRE_UPDATE_HOOK,
+    PRIVATE_API,
+    REFGENIE_BY_CFG,
+    REQ_CFG_VERSION,
+    REQ_TAG_ATTRS,
+    RGC_REQ_KEYS,
+    TAG_NAME_BANNED_CHARS,
+    TEMPLATE_ASSET_CLASS_YAML,
+    TEMPLATE_RECIPE_INPUTS_JSON,
+    TEMPLATE_RECIPE_YAML,
+)
 from .exceptions import *
 from .helpers import (
     asciify_json_dict,
@@ -43,7 +108,7 @@ from .helpers import (
     send_data_request,
 )
 from .progress_bar import _DownloadColumn, _TimeRemainingColumn, _TransferSpeedColumn
-from .recipe import Recipe, recipe_factory
+from .recipe import recipe_factory
 from .seqcol import SeqColClient
 
 _LOGGER = logging.getLogger(__name__)
@@ -122,9 +187,9 @@ class RefGenConf(yacman.YacAttMap):
             else:
                 if version < REQ_CFG_VERSION:
                     msg = (
-                        "This genome config (v{}) is not compliant with v{} standards. \n"
-                        "To use current refgenconf, please use upgrade_config function to upgrade, or"
-                        "downgrade refgenconf: 'pip install \"refgenconf>={},<{}\"'. \n"
+                        "This genome config ({}) is not compliant with {} standards. \n"
+                        "To use current refgenconf, please use upgrade_config function to upgrade, or "
+                        "downgrade refgenconf Python package: 'pip install \"refgenconf>={},<{}\"'. \n"
                         "If refgenie is installed, you can use 'refgenie upgrade --target-version {}'".format(
                             self[CFG_VERSION_KEY],
                             str(REQ_CFG_VERSION),
@@ -459,6 +524,7 @@ class RefGenConf(yacman.YacAttMap):
             table.add_column("Asset class")
             table.add_column("Version")
             table.add_column("Description")
+            asset_class_data = asset_class_data or {}
             for asset_class_name, asset_class_metadata in asset_class_data.items():
                 table.add_row(
                     asset_class_name,
@@ -502,6 +568,7 @@ class RefGenConf(yacman.YacAttMap):
             table.add_column("Version")
             table.add_column("Output asset class")
             table.add_column("Description")
+            recipes_data = recipes_data or {}
             for recipe_name, recipe_metadata in recipes_data.items():
                 table.add_row(
                     recipe_name,
@@ -693,7 +760,7 @@ class RefGenConf(yacman.YacAttMap):
             remove = True
             _LOGGER.info("Will remove existing to overwrite")
         tag_data = {
-            CFG_ASSET_PATH_KEY: path,
+            CFG_ASSET_DATE_KEY: path,
             CFG_ASSET_CHECKSUM_KEY: get_dir_digest(abspath) or "",
         }
         msg = "Added asset: {}/{}:{} {}".format(
@@ -1182,7 +1249,7 @@ class RefGenConf(yacman.YacAttMap):
         :return str: path to the asset
         """
         good_servers = [
-            s for s in self[CFG_SERVERS_KEY] if get_url(s, API_ID_ASSET_PATH)
+            s for s in self[CFG_SERVERS_KEY] if get_url(s, API_ID_ASSET_ATTRS)
         ]
         _LOGGER.debug(f"Compatible refgenieserver instances: {good_servers}")
         for url in good_servers:
@@ -3372,7 +3439,7 @@ class RefGenConf(yacman.YacAttMap):
                     f"Genome '{gname}' exists, but asset '{aname}' is missing"
                 )
             except TypeError:
-                _raise_not_mapping(asset_data, "Asset section ")
+                _raise_not_mapping(genome[CFG_ASSETS_KEY], "Asset section ")
             if tname is not None:
                 try:
                     tag_data = asset_data[CFG_ASSET_TAGS_KEY][tname]
@@ -3475,7 +3542,8 @@ def upgrade_config(
     :param callable link_fun: function to use to link files, e.g os.symlink or os.link
     """
     # init rgc obj with provided config
-    current_version = yacman.YacAttMap(filepath=filepath)[CFG_VERSION_KEY]
+    current_config = yacman.YacAttMap(filepath=filepath)
+    current_version = current_config[CFG_VERSION_KEY]
 
     if current_version == 0.3:
         from .refgenconf_v03 import _RefGenConfV03 as OldRefGenConf
@@ -3485,6 +3553,12 @@ def upgrade_config(
         if target_version == "0.4":
             from .helpers import alter_file_tree_03_04 as alter_file_tree
             from .helpers import format_config_03_04 as format_config
+    elif current_version == 0.4:
+        from .helpers import format_config_04_05
+
+        rgc = RefGenConf(entries=format_config_04_05(current_config))
+        rgc.write(filepath=filepath)
+        return True
     else:
         raise NotImplementedError(
             f"Did not upgrade. Upgrade from v{current_version} config is not "
@@ -3528,7 +3602,7 @@ def upgrade_config(
 
     # check digest availability
     missing_digest = []
-    for genome, genome_v in rgc[CFG_GENOMES_KEY].items():
+    for genome in rgc[CFG_GENOMES_KEY].keys():
         try:
             tag = rgc.get_default_tag(genome, "fasta")
             asset_path = rgc.seek(genome, "fasta", tag, "fasta")
@@ -3704,7 +3778,7 @@ def _assert_gat_exists(genomes, gname, aname=None, tname=None, allow_incomplete=
                 f"Genome '{gname}' exists, but asset '{aname}' is missing"
             )
         except TypeError:
-            _raise_not_mapping(asset_data, "Asset section ")
+            _raise_not_mapping(genome[CFG_ASSETS_KEY], "Asset section ")
         if tname is not None:
             try:
                 tag_data = asset_data[CFG_ASSET_TAGS_KEY][tname]

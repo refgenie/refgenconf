@@ -13,7 +13,28 @@ from requests import ConnectionError, get
 from ubiquerg import is_command_callable
 from yacman import select_config
 
-from .const import *
+from .const import (
+    ALIAS_DIR,
+    API_ID_ALIAS_DIGEST,
+    API_VERSION,
+    BUILD_STATS_DIR,
+    CFG_ALIASES_KEY,
+    CFG_ASSET_CLASS_KEY,
+    CFG_ASSET_CLASSES_KEY,
+    CFG_ASSET_CUSTOM_PROPS_KEY,
+    CFG_ASSET_DATE_KEY,
+    CFG_ASSET_TAGS_KEY,
+    CFG_ASSETS_KEY,
+    CFG_CHECKSUM_KEY,
+    CFG_ENV_VARS,
+    CFG_FOLDER_KEY,
+    CFG_GENOMES_KEY,
+    CFG_RECIPES_KEY,
+    CFG_SERVERS_KEY,
+    CFG_VERSION_KEY,
+    DATA_DIR,
+    REQ_CFG_VERSION,
+)
 from .exceptions import DownloadJsonError, MissingAssetError
 from .seqcol import SeqColClient
 
@@ -105,7 +126,7 @@ def format_config_03_04(rgc, get_json_url):
     remove 'genome_digests' section from the config
     replace all aliases in keys/asset names with genome digests
 
-    :param obj rgc: RefGenConfV03 obj
+    :param obj refgenconf.RefGenConfV03: RefGenConfV03 obj
     :param function(str, str) -> str get_json_url: how to build URL from
             genome server URL base, genome, and asset
     """
@@ -168,6 +189,35 @@ def format_config_03_04(rgc, get_json_url):
             del rgc[CFG_GENOMES_KEY][digest][CFG_CHECKSUM_KEY]
         else:
             del rgc[CFG_GENOMES_KEY][genome]
+
+
+def format_config_04_05(config):
+    """
+    upgrade the v0.4 config file format to v0.5 format:
+        - add 'recipes' section to the config,
+        - add 'assset_classes' section to the config,
+
+    :param YacAttMap config: current config file as a YacAttMap
+    """
+    _LOGGER.info("Upgrading v0.4 config file format to v0.5.")
+    # add 'recipes' and 'asset_classes' sections to the config
+    config[CFG_RECIPES_KEY] = None
+    config[CFG_ASSET_CLASSES_KEY] = None
+    if CFG_GENOMES_KEY not in config:
+        return True
+    for _, genome_data in config[CFG_GENOMES_KEY].items():
+        if CFG_ASSETS_KEY not in genome_data:
+            continue
+        for asset, asset_data in genome_data[CFG_ASSETS_KEY].items():
+            asset_data.setdefault(CFG_ASSET_CLASS_KEY, asset)
+            if CFG_ASSET_TAGS_KEY not in asset_data:
+                continue
+            for _, tag_data in asset_data[CFG_ASSET_TAGS_KEY].items():
+                tag_data.setdefault(CFG_ASSET_DATE_KEY, None)
+                tag_data.setdefault(CFG_ASSET_CUSTOM_PROPS_KEY, None)
+
+    config[CFG_VERSION_KEY] = REQ_CFG_VERSION
+    return config
 
 
 def alter_file_tree_03_04(rgc, link_fun):

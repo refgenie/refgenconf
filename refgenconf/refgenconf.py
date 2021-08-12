@@ -1510,7 +1510,7 @@ class RefGenConf(yacman.YacAttMap):
                 asset_class=asset_class_name
             )
             _LOGGER.info(
-                f"Pulling '{asset_class_name}' recipe from '{asset_class_conents_url}'"
+                f"Pulling '{asset_class_name}' asset class from '{asset_class_conents_url}'"
             )
             asset_class_contents = send_data_request(url=asset_class_conents_url)
             self.add_asset_class(
@@ -1553,6 +1553,7 @@ class RefGenConf(yacman.YacAttMap):
         recipe_name,
         get_url=lambda server, id: construct_request_url(server, id),
         force=False,
+        pull_asset_class=False,
     ):
         """
         Pull the recipe with the given name from the remote server.
@@ -1569,6 +1570,17 @@ class RefGenConf(yacman.YacAttMap):
             recipe_conents_url = recipe_conents_url_template.format(recipe=recipe_name)
             _LOGGER.info(f"Pulling '{recipe_name}' recipe from '{recipe_conents_url}'")
             recipe_contents = send_data_request(url=recipe_conents_url)
+            acn = recipe_contents["output_asset_class"]
+            try:
+                self.get_asset_class(asset_class_name=acn)
+            except (MissingAssetClassError, FileNotFoundError) as e:
+                if pull_asset_class:
+                    _LOGGER.warn(f"{e}. Pulling...")
+                    self.pull_asset_class(
+                        asset_class_name=acn, get_url=get_url, force=force
+                    )
+                else:
+                    raise
             self.add_recipe(recipe_dict=recipe_contents, force=force, source=url)
             break
 

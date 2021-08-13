@@ -71,12 +71,9 @@ definitions:
       asset_parents: { "$ref": "#/definitions/relatives" }
       asset_children: { "$ref": "#/definitions/relatives" }
       custom_properties:
-        additionalProperties: false
-        patternProperties:
-          ^.*$:
-            type: string
+        type: object
       date_built:
-        type: string
+        type: [string, "null"]
 
   seek_key:
     type: string

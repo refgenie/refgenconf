@@ -1,6 +1,6 @@
 import os
 from json import dump as jdump
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 from jsonschema import validate
 from ubiquerg import is_url
@@ -83,13 +83,13 @@ def asset_class_factory(
     asset_class_schema_file: str = DEFAULT_ASSET_CLASS_SCHEMA,
     asset_class_definition_dict: Dict[str, Any] = None,
     asset_class_definition_file_dir: str = None,
-) -> AssetClass:
+) -> Tuple[AssetClass, List[AssetClass]]:
     """
-    Read yaml file and return a AssetClass object
+    Read yaml file and return a AssetClass object and a list of its parents.
 
     :param str asset_class_definition_file: path/URL to yaml file that defines the asset class
     :param str asset_class_schema_file: path/URL to schema file to validate against (optional)
-    :return AssetClass: AssetClass object
+    :return Tuple[AssetClass, List[AssetClass]]: AssetClass object and a list of its parents
     :raises FileNotFoundError: if asset_class_definition_file does not exist
     """
     # check asset class definition if file exists

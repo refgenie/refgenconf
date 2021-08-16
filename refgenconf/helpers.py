@@ -359,7 +359,7 @@ def send_data_request(url, params=None):
             if resp.encoding == "utf-8" or resp.apparent_encoding == "ascii":
                 _LOGGER.debug(f"Request returned pain text data: {resp.text}")
                 return resp.text
-    raise DownloadJsonError(resp)
+    raise DownloadJsonError(resp.text)
 
 
 def replace_str_in_obj(object, x, y):

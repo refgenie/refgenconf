@@ -32,7 +32,7 @@ class DownloadJsonError(RefgenconfError):
 
     def __init__(self, resp):
         super(DownloadJsonError, self).__init__(
-            "No response provided" if resp is None else "JSON: {}".format(resp.json())
+            "No response provided" if resp is None else f"Reason: {resp}"
         )
         self.response = resp
 

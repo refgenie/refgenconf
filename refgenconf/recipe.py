@@ -124,16 +124,37 @@ class Recipe:
         """
         return self.inputs["params"] or {}
 
-    @cached_property
-    def resolved_custom_properties(self):
+    def _run_cmd_in_container(self, cmd: str) -> str:
+        """
+        Run a command in the container
+
+        :param str cmd: The command to run
+        :return str: The output of the command
+        """
+        if self.container is None:
+            raise ValueError("Container not set")
+
+        get_id_cmd = f"docker run -itd --rm {self.container}"
+        container_id = check_output(get_id_cmd, shell=True).decode("utf-8").strip()
+        get_result_cmd = f"docker exec -it {container_id} {cmd}"
+        return check_output(get_result_cmd, shell=True)
+
+    def resolve_custom_properties(self, use_docker=False) -> Dict[str, Any]:
         """
         Resolve custom properties
 
-        :return Dict[str, str]: A dictionary of custom properties
+        :param bool use_docker: If True, resolve custom properties in the container
+        :return Dict[str, Any]: A dictionary of custom properties
         """
         return (
             {
-                key: check_output(commands, shell=True).decode("utf-8").strip()
+                key: (
+                    self._run_cmd_in_container(commands)
+                    if use_docker
+                    else check_output(commands, shell=True)
+                )
+                .decode("utf-8")
+                .strip()
                 for key, commands in self.custom_properties.items()
             }
             if self.custom_properties

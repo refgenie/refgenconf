@@ -15,6 +15,10 @@ class AssetClass:
 
 
 class AssetClass:
+    """
+    A representation of the asset class.
+    """
+
     def __init__(
         self,
         name: str,
@@ -23,6 +27,17 @@ class AssetClass:
         description: str = None,
         parents: List[AssetClass] = None,
     ):
+        """
+        Initialize the asset class
+
+        For convenience, use `asset_class_factory` to create asset classes.
+
+        :param str name: The name of the asset class
+        :param str version: The version of the asset class
+        :param Dict[str, str] seek_keys: The seek keys that the asset class defines
+        :param str description: The description of the asset class
+        :param List[AssetClass] parents: The parents of the asset class
+        """
         self.name = name
         self.version = version
         self.parents = parents or []
@@ -139,7 +154,7 @@ def asset_class_factory(
         parent_objects = [
             asset_class_factory(
                 asset_class_definition_file=make_asset_class_path(
-                    class_src=asset_class_parent, dir=file_dir
+                    class_src=asset_class_parent, custom_dir=file_dir
                 ),
                 asset_class_schema_file=asset_class_schema_file,
             )[0]
@@ -149,24 +164,29 @@ def asset_class_factory(
     return AssetClass(parents=parent_objects, **asset_class_data), parent_objects
 
 
-def make_asset_class_path(class_src: str, dir: str = None) -> str:
+def make_asset_class_path(class_src: str, custom_dir: str = None) -> str:
     """
-    Return and absolute path/URL of an asset class definition file
+    Return and absolute path/URL to an asset class definition file from various inputs.
 
     :param str path: path/URL to the asset class definition file
+    :param str custom_dir: directory to look for asset class definition file in
     :return str: absolute path/URL to the asset class definition file
     """
+    # if path is a URL, return unmolested
     if is_url(class_src):
         return class_src
+    # create an asset class file name, if not provided as an argument (can be just an asset class name)
     class_file_name = (
         class_src
         if class_src.endswith(TEMPLATE_ASSET_CLASS_YAML.replace("{}", ""))
         else TEMPLATE_ASSET_CLASS_YAML.format(class_src)
     )
+    # if the path is absolute, return it
     if os.path.isabs(class_file_name):
         return class_file_name
+    # if the path is relative, make absolute or create a path based on a custom directory, if provided
     return (
-        os.path.join(dir, os.path.basename(class_file_name))
-        if dir
+        os.path.join(custom_dir, os.path.basename(class_file_name))
+        if custom_dir
         else os.path.abspath(class_file_name)
     )

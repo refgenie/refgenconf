@@ -4,6 +4,8 @@ import logging
 import os
 from gzip import open as gzopen
 
+from rich.progress import track
+
 from .exceptions import RefgenconfError
 from .henge import ITEM_TYPE, Henge
 
@@ -104,8 +106,9 @@ class SeqColClient(Henge):
         init = False
         aslist = []
         openfun = gzopen if gzipped else open
+        total_lines = sum(1 for _ in open(fa_file))
         with openfun(fa_file, "rt") as f:
-            for line in f:
+            for line in track(f, description=f"Processing FASTA", total=total_lines):
                 line = line.strip("\n")
                 if line.startswith(">"):
                     if not init:

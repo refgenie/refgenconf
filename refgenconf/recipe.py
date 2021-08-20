@@ -23,6 +23,10 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class Recipe:
+    """
+    A representation of the recipe
+    """
+
     def __init__(
         self,
         name: str,
@@ -30,12 +34,29 @@ class Recipe:
         output_asset_class: AssetClass,
         command_template_list: List[str],
         inputs: Dict[Dict[Dict[str, str], str], str],
+        test: Dict[Dict[Dict[str, str], str], str] = None,
         description: str = None,
         container: str = None,
         custom_properties: Dict[str, str] = None,
         default_tag: str = None,
         checksum_exclude_list: List[str] = None,
     ):
+        """
+        Initialize a recipe
+
+        For convenience, use the `recipe_factory` function to create a recipes.
+
+        :param str name: The name of the recipe
+        :param str version: The version of the recipe
+        :param AssetClass output_asset_class: The output asset class that the recipe will produce
+        :param List[str] command_template_list: A list of command templates
+        :param Dict[Dict[Dict[str, str], str], str] inputs: A dictionary of input values organized in namespaces
+        :param str description: A description of the recipe
+        :param str container: The container to use for running the recipe, e.g. 'databio/refgenie'
+        :param Dict[str, str] custom_properties: A dictionary of custom properties to use/to resolve
+        :param str default_tag: The default tag to use for the recipe/to resolve
+        :param List[str] checksum_exclude_list: A list of filepaths to exclude from the checksum calculation
+        """
         self.name = name
         self.version = version
         self.output_class = output_asset_class
@@ -46,6 +67,7 @@ class Recipe:
             "params": inputs.get("params"),
             "assets": inputs.get("assets"),
         }
+        self.test = test
         self.description = description or self.name
         self.container = container
         self.custom_properties = custom_properties or {}
@@ -77,6 +99,7 @@ class Recipe:
             "command_template_list": self.command_template_list,
             "custom_properties": self.custom_properties,
             "default_tag": self.default_tag,
+            "test": self.test,
         }
 
     def to_json(self, filepath) -> None:
@@ -223,6 +246,90 @@ class Recipe:
             for cmd in self.command_template_list
         ]
 
+    def get_test_outputs(self) -> Dict[str, Dict[str, str]]:
+        """
+        Get all the outputs to test the recipe.
+
+        :return Dict[str, Dict[str, str]]: A dictionary of test outputs
+        """
+        return self.test["outputs"] or {}
+
+    def get_test_inputs(self, rgc=None) -> Dict[str, Dict[str, str]]:
+        """
+        Get all the inputs to test the recipe.
+
+        This requires the inputs files to be specified as URLs.
+        Asset and param type inputs cannot be overridden, the default values are used.
+
+        :param RefGenConf rgc: A RefGenConf object to store the test data in.
+            Conditionally required, if assets need to be pulled.
+        :return Dict[str, Dict[str, str]]: A dictionary of test data
+        """
+
+        def download_file(url: str, filepath: str) -> None:
+            """
+            Download a file from a URL
+
+            :param str url: The URL to download from
+            :param str filepath: The filepath to save the file to
+            :return str: The output filepath
+            :raises ValueError: If the URL is not a valid URL
+            """
+            _LOGGER.info(f"Downloading recipe input {url} and saving to '{filepath}'")
+            if url is None:
+                raise ValueError(
+                    f"No test URL provided for recipe input file: {file_id}"
+                )
+            if not is_url(url):
+                raise ValueError(
+                    f"'{url}' is not a valid URL. "
+                    f"Use a remotely accessible file so that the recipe is portable."
+                )
+            if not os.path.exists(filepath):
+                with open(filepath, "wb") as f:
+                    f.write(requests.get(url).content)
+            return filepath
+
+        if self.test is None:
+            raise ValueError(f"No tests specified for '{self.name}' recipe")
+
+        resolved_inputs = {"files": {}, "assets": {}, "params": {}}
+
+        if self.inputs["files"] is not None:
+            if "files" not in self.test["inputs"]:
+                raise ValueError(
+                    "Test inputs must include a 'files' key for top-level recipes."
+                )
+            test_dir = os.path.join(rgc.data_dir, "_recipe_test", self.name)
+            os.makedirs(test_dir, exist_ok=True)
+            # download the required test files
+            for file_id, url in self.test["inputs"]["files"].items():
+                resolved_inputs["files"][file_id] = download_file(
+                    url, os.path.join(test_dir, f"{file_id}_test_input")
+                )
+
+        if self.inputs["assets"] is not None:
+            if rgc is None:
+                raise ValueError(
+                    "Test data cannot be pulled without a RefGenConf object."
+                )
+            if "genome" not in self.test:
+                raise ValueError("Genome must be specified to test derived assets")
+            for asset_id, asset_data in self.inputs["assets"].items():
+                pth = rgc.seek(
+                    genome_name=self.test["genome"],
+                    asset_name=asset_data["default"],
+                    tag_name=None,
+                )
+                _LOGGER.info(f"Using input asset: {pth}")
+                resolved_inputs["assets"][asset_id] = pth
+
+        if self.inputs["params"] is not None:
+            for param_id, param_data in self.inputs["params"].items():
+                resolved_inputs[param_id] = param_data["default"]
+
+        return resolved_inputs
+
 
 def recipe_factory(
     recipe_definition_file: str = None,
@@ -233,10 +340,11 @@ def recipe_factory(
     """
     Factory method to create a recipe from a definition file
 
-    :param str recipe_definition_file: The recipe definition file
-    :param str recipe_schema_file: The recipe schema file
+    :param str recipe_definition_file: The recipe definition file. It can be a local file or a URL.
+    :param Dict[str, Any] recipe_definition_dict: A dictionary of recipe definition data,
+        overrides `recipe_definition_file` if specified.
+    :param str recipe_schema_file: The recipe schema file. Default schema is used if not specified.
     :param str asset_class_definition_file_dir: The directory containing the asset class definition files
-    :param Dict[str, Dict[str, Any]] recipe_definition_dict: A dictionary of recipe definition
     :return refgenconf.recipe.Recipe: A recipe
     :raises MissingAssetClassError: If the asset class definition file is missing
     """
@@ -248,7 +356,7 @@ def recipe_factory(
     try:
         validate(recipe_data, recipe_schema)
     except ValidationError as e:
-        _LOGGER.error(f"Invalid recipe definition file!")
+        _LOGGER.error(f"Invalid {recipe_data.get('name', '')} recipe definition!")
         raise
     # remove output_class from recipe data
     asset_class_name = recipe_data.pop("output_asset_class", None)

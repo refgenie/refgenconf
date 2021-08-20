@@ -612,7 +612,7 @@ class RefGenConf(yacman.YacAttMap):
 
         def _fill_table_with_genomes_data(rgc, genomes_data, table, genomes=None):
             it = "([italic]{}[/italic])"
-            table.add_column("genome")
+            table.add_column("Genome")
             if genomes:
                 table.add_column("Asset " + it.format(CFG_ASSET_CLASS_KEY))
                 table.add_column("Seek keys")

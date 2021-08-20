@@ -33,7 +33,6 @@ properties:
             },
             { type: "null" },
           ]
-
   output_asset_class:
     type: string
   container:
@@ -56,32 +55,8 @@ properties:
     items:
       type: string
   test:
-    type: object
-    properties:
-      genome:
-        type: string
-        description: "Genome DRUID to use for testing"
-      inputs:
-        type: object
-        properties:
-          files:
-            type: object
-            patternProperties:
-              ^.*$:
-                type: string
-            additionalProperties: false
-      outputs:
-        type: object
-        patternProperties:
-          ^.*$:
-            type: object
-            properties:
-              md5sum:
-                type: string
-              value:
-                type: ["number", "string", "boolean", "array", "null"]
-    required:
-      - genome
+    anyOf: [{ type: "null" }, { "$ref": "#/definitions/test" }]
+
 required:
   - name
   - version
@@ -112,3 +87,30 @@ definitions:
     additionalProperties: false
     patternProperties:
       ^.*$: { "$ref": "#/definitions/input" }
+  test:
+    type: object
+    properties:
+      genome:
+        type: string
+        description: "Genome DRUID to use for testing"
+      inputs:
+        type: object
+        properties:
+          files:
+            type: object
+            patternProperties:
+              ^.*$:
+                type: string
+            additionalProperties: false
+      outputs:
+        type: object
+        patternProperties:
+          ^.*$:
+            type: object
+            properties:
+              md5sum:
+                type: string
+              value:
+                type: ["number", "string", "boolean", "array", "null"]
+    required:
+      - genome

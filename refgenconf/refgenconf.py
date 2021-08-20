@@ -94,7 +94,7 @@ from .const import (
     REQ_CFG_VERSION,
     REQ_TAG_ATTRS,
     RGC_REQ_KEYS,
-    TAG_NAME_BANNED_CHARS,
+    TAG_NAME_CHAR_WHITELIST,
     TEMPLATE_ASSET_CLASS_YAML,
     TEMPLATE_RECIPE_INPUTS_JSON,
     TEMPLATE_RECIPE_YAML,
@@ -1870,9 +1870,9 @@ class RefGenConf(yacman.YacAttMap):
         :raise ValueError: when the original tag is not specified
         :return bool: a logical indicating whether the tagging was successful
         """
-        if any([c in new_tag for c in TAG_NAME_BANNED_CHARS]):
+        if not all([c in TAG_NAME_CHAR_WHITELIST for c in new_tag]):
             raise ValueError(
-                f"The tag name can't consist of characters: {TAG_NAME_BANNED_CHARS}"
+                f"The tag name can consist only of these characters: {TAG_NAME_CHAR_WHITELIST}"
             )
         self.run_plugins(PRE_TAG_HOOK)
         ori_path = self.seek_src(

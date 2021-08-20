@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from attmap import AttMap
 from ubiquerg import parse_registry_path as prp
 
-import refgenconf
+from refgenconf import RefGenConf
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -42,7 +42,7 @@ def looper_refgenie_populate(namespaces):
         and "refgenie_config" in namespaces["pipeline"]["var_templates"]
     ):
         rgc_path = namespaces["pipeline"]["var_templates"]["refgenie_config"]
-        rgc = refgenconf.RefGenConf(rgc_path)
+        rgc = RefGenConf(rgc_path)
 
         complete_sk_dict = rgc.list_seek_keys_values()
         paths_dict = {}

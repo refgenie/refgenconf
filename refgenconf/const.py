@@ -6,12 +6,13 @@ but they're also integral to both refgenie and to refgenieserver.
 """
 
 import os
+from string import ascii_letters, digits
 
 CFG_NAME = "genome configuration"
 CFG_ENV_VARS = ["REFGENIE"]
 CFG_CONST = ["CFG_NAME", "CFG_ENV_VARS"]
 DEFAULT_SERVER = "http://refgenomes.databio.org"  # "http://rg.databio.org"
-TAG_NAME_BANNED_CHARS = [":", "/", "\\", "*", "?", '"', " "]
+TAG_NAME_CHAR_WHITELIST = ascii_letters + digits + "-._~"
 API_VERSION = "v3"
 API_VERSION_2 = "v2"
 DEFAULT_TAG = "default"
@@ -315,7 +316,7 @@ __all__ = (
         "CUSTOM_BAR_FMT",
         "API_VERSION",
         "API_VERSION_2",
-        "TAG_NAME_BANNED_CHARS",
+        "TAG_NAME_CHAR_WHITELIST",
         "CONF_STRUCTURE",
         "OPERATION_IDS",
         "CUSTOM_PFX",

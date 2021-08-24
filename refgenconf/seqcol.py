@@ -106,7 +106,7 @@ class SeqColClient(Henge):
         init = False
         aslist = []
         openfun = gzopen if gzipped else open
-        total_lines = sum(1 for _ in open(fa_file))
+        total_lines = sum(1 for _ in openfun(fa_file))
         with openfun(fa_file, "rt") as f:
             for line in track(f, description=f"Processing FASTA", total=total_lines):
                 line = line.strip("\n")

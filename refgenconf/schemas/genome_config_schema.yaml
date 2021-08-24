@@ -52,7 +52,9 @@ definitions:
       asset_class:
         type: string
       default_tag:
-        type: string
+        anyOf:
+          - type: string
+          - type: number
       tags:
         additionalProperties: false
         patternProperties:

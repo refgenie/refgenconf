@@ -71,7 +71,7 @@ class Recipe:
         self.description = description or self.name
         self.container = container
         self.custom_properties = custom_properties or {}
-        self.default_tag = default_tag
+        self.default_tag = str(default_tag)
         self.checksum_exclude_list = checksum_exclude_list or []
 
     def __str__(self) -> str:
@@ -192,7 +192,7 @@ class Recipe:
         :return str: The default tag
         """
         return (
-            jinja_render_template_strictly(self.default_tag, namespaces)
+            str(jinja_render_template_strictly(self.default_tag, namespaces))
             if self.default_tag
             else None
         )

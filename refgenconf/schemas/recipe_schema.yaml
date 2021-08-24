@@ -55,7 +55,7 @@ properties:
     items:
       type: string
   test:
-    anyOf: [{ type: "null" }, { "$ref": "#/definitions/test" }]
+    anyOf: [{ "$ref": "#/definitions/test" }, { type: "null" }]
 
 required:
   - name
@@ -111,6 +111,4 @@ definitions:
               md5sum:
                 type: string
               value:
-                type: ["number", "string", "boolean", "array", "null"]
-    required:
-      - genome
+                type: ["number", "string", "boolean", "array"]

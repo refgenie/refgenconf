@@ -407,3 +407,17 @@ def block_iter_repr(input_obj, numbered=False, flatten=False):
         if numbered
         else "\n - {}".format("\n - ".join(input_obj))
     )
+
+
+def str_tag(tag):
+    """
+    Create a string representation of a tag.
+
+    This function should be used whenever a tag is provided to a function,
+    so that tags that can be interpreted as numbers are converted to strings.
+    Like 1.0, which might be inadvertently converted to float.
+
+    :param str tag: tag to convert
+    :return str: string representation of the tag
+    """
+    return None if tag is None else str(tag)

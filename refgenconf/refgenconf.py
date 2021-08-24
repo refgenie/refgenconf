@@ -94,7 +94,6 @@ from .const import (
     REQ_CFG_VERSION,
     REQ_TAG_ATTRS,
     RGC_REQ_KEYS,
-    TAG_NAME_CHAR_WHITELIST,
     TEMPLATE_ASSET_CLASS_YAML,
     TEMPLATE_RECIPE_INPUTS_JSON,
     TEMPLATE_RECIPE_YAML,
@@ -106,7 +105,7 @@ from .helpers import (
     get_dir_digest,
     select_genome_config,
     send_data_request,
-    str_tag,
+    validate_tag,
 )
 from .progress_bar import _DownloadColumn, _TimeRemainingColumn, _TransferSpeedColumn
 from .recipe import recipe_factory
@@ -739,7 +738,7 @@ class RefGenConf(yacman.YacAttMap):
                 " asset to initialize.".format(genome)
             )
             return False
-        tag = str_tag(tag) or self.get_default_tag(genome, asset)
+        tag = validate_tag(tag or self.get_default_tag(genome, asset))
         abspath = os.path.join(self[CFG_FOLDER_KEY], path)
         remove = False
         if not os.path.exists(abspath) or not os.path.isabs(abspath):
@@ -1002,7 +1001,7 @@ class RefGenConf(yacman.YacAttMap):
             return {}
         alias = _make_list_of_str(defined_aliases)
         if asset:
-            tag = str_tag(tag) or self.get_default_tag(genome, asset)
+            tag = validate_tag(tag or self.get_default_tag(genome, asset))
         return {
             a: os.path.join(self.alias_dir, a, asset, tag)
             if asset
@@ -1040,7 +1039,7 @@ class RefGenConf(yacman.YacAttMap):
         created = []
         genome_digest = self.get_genome_alias_digest(genome, fallback=True)
         if asset:
-            tag = str_tag(tag) or self.get_default_tag(genome, asset)
+            tag = validate_tag(tag or self.get_default_tag(genome, asset))
             src_path = self.seek_src(genome, asset, tag, enclosing_dir=True)
         else:
             src_path = os.path.join(self.data_dir, genome_digest)
@@ -1167,7 +1166,9 @@ class RefGenConf(yacman.YacAttMap):
         :raise refgenconf.MissingAssetError: if the names assembly is known to
             this configuration instance, but the requested asset is unknown
         """
-        tag_name = str_tag(tag_name) or self.get_default_tag(genome_name, asset_name)
+        tag_name = validate_tag(
+            tag_name or self.get_default_tag(genome_name, asset_name)
+        )
         try:
             genome_digest = self.get_genome_alias_digest(genome_name, fallback=True)
         except yacman.UndefinedAliasError:
@@ -1307,7 +1308,9 @@ class RefGenConf(yacman.YacAttMap):
         :raise refgenconf.MissingAssetError: if the names assembly is known to
             this configuration instance, but the requested asset is unknown
         """
-        tag_name = str_tag(tag_name) or self.get_default_tag(genome_name, asset_name)
+        tag_name = validate_tag(
+            tag_name or self.get_default_tag(genome_name, asset_name)
+        )
         _LOGGER.debug(
             "getting asset: '{}/{}.{}:{}'".format(
                 genome_name, asset_name, seek_key, tag_name
@@ -1412,7 +1415,7 @@ class RefGenConf(yacman.YacAttMap):
             )
             return DEFAULT_TAG
         try:
-            return str_tag(
+            return validate_tag(
                 self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][
                     CFG_ASSET_DEFAULT_TAG_KEY
                 ]
@@ -1443,7 +1446,7 @@ class RefGenConf(yacman.YacAttMap):
                         ),
                         RuntimeWarning,
                     )
-                return str_tag(alt)
+                return validate_tag(alt)
         except TypeError:
             _raise_not_mapping(
                 self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset], "Asset section "
@@ -1871,10 +1874,7 @@ class RefGenConf(yacman.YacAttMap):
         :raise ValueError: when the original tag is not specified
         :return bool: a logical indicating whether the tagging was successful
         """
-        if not all([c in TAG_NAME_CHAR_WHITELIST for c in new_tag]):
-            raise ValueError(
-                f"The tag name can consist only of these characters: {TAG_NAME_CHAR_WHITELIST}"
-            )
+        validate_tag(new_tag)
         self.run_plugins(PRE_TAG_HOOK)
         ori_path = self.seek_src(
             genome, asset, tag, enclosing_dir=True, strict_exists=True
@@ -1940,6 +1940,7 @@ class RefGenConf(yacman.YacAttMap):
         :raise ValueError: when the original tag is not specified
         :return bool: a logical indicating whether the tagging was successful
         """
+        tag = validate_tag(tag)
         self._assert_gat_exists(genome, asset, tag)
         asset_mapping = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]
         if tag is None:
@@ -2007,6 +2008,7 @@ class RefGenConf(yacman.YacAttMap):
         :param bool update_children: whether the children of the selected relatives
             should be updated.
         """
+        tag = validate_tag(tag)
         relative_key = (
             CFG_ASSET_CHILDREN_KEY if update_children else CFG_ASSET_PARENTS_KEY
         )
@@ -2155,7 +2157,7 @@ class RefGenConf(yacman.YacAttMap):
 
             num_servers += 1
             try:
-                determined_tag = str(
+                determined_tag = validate_tag(
                     send_data_request(
                         get_json_url(server_url, API_ID_DEFAULT_TAG).format(
                             genome=genome, asset=asset
@@ -2278,7 +2280,7 @@ class RefGenConf(yacman.YacAttMap):
                 else:
                     _LOGGER.info("Trying next server")
                     # set the tag value back to what user requested
-                    determined_tag = str_tag(tag)
+                    determined_tag = validate_tag(tag)
                     continue
             except ConnectionRefusedError as e:
                 _LOGGER.error(str(e))
@@ -2599,7 +2601,7 @@ class RefGenConf(yacman.YacAttMap):
         :param str tag: tag name
         :return str: recipe inputs path
         """
-        tag = str_tag(tag) or self.get_default_tag(genome=genome, asset=asset)
+        tag = validate_tag(tag or self.get_default_tag(genome=genome, asset=asset))
         return os.path.join(
             self.data_dir,
             self.get_genome_alias_digest(alias=genome, fallback=True),
@@ -2618,7 +2620,7 @@ class RefGenConf(yacman.YacAttMap):
         :param str tag: tag name
         :return dict: recipe inputs
         """
-        tag = str_tag(tag) or self.get_default_tag(genome=genome, asset=asset)
+        tag = validate_tag(tag or self.get_default_tag(genome=genome, asset=asset))
         pth = self.get_recipe_inputs_path(genome, asset, tag)
         if not os.path.isfile(pth):
             raise FileNotFoundError(
@@ -2676,7 +2678,7 @@ class RefGenConf(yacman.YacAttMap):
             added is 'children'
         :return RefGenConf: updated object
         """
-        tag = str_tag(tag) or self.get_default_tag(genome, asset)
+        tag = validate_tag(tag or self.get_default_tag(genome, asset))
         relationship = CFG_ASSET_CHILDREN_KEY if children else CFG_ASSET_PARENTS_KEY
         if _check_insert_data(data, list, "data"):
             # creates/asserts the genome/asset:tag combination
@@ -2703,7 +2705,7 @@ class RefGenConf(yacman.YacAttMap):
         :param Mapping keys: seek_keys to be added/updated
         :return RefGenConf: updated object
         """
-        tag = str_tag(tag) or self.get_default_tag(genome, asset)
+        tag = validate_tag(tag or self.get_default_tag(genome, asset))
         if _check_insert_data(keys, Mapping, "keys"):
             self.update_tags(genome, asset, tag, force_digest=force_digest)
             asset = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]
@@ -2801,7 +2803,9 @@ class RefGenConf(yacman.YacAttMap):
         :raise TypeError: if genome argument type is not a list or str
         :return RefGenConf: updated object
         """
-        tag = str_tag(tag) or self.get_default_tag(genome, asset, use_existing=False)
+        tag = validate_tag(
+            tag or self.get_default_tag(genome, asset, use_existing=False)
+        )
         if files:
             req_dict = {
                 "genome": self.get_genome_alias_digest(genome, fallback=True),
@@ -2923,7 +2927,7 @@ class RefGenConf(yacman.YacAttMap):
                     if alt[1] in alt[0]:
                         del alt[0][alt[1]]
 
-        tag = str_tag(tag) or self.get_default_tag(genome, asset)
+        tag = validate_tag(tag or self.get_default_tag(genome, asset))
         if _check_insert_data(genome, str, "genome"):
             if _check_insert_data(asset, str, "asset"):
                 if _check_insert_data(tag, str, "tag"):
@@ -3133,7 +3137,7 @@ class RefGenConf(yacman.YacAttMap):
         """
         remote_asset_data = prp(remote_asset_name)
         asset = remote_asset_data["item"]
-        tag = str(remote_asset_data["tag"])
+        tag = validate_tag(remote_asset_data["tag"])
         try:
             local_digest = self.id(genome, asset, tag)
             if remote_digest != local_digest:
@@ -3163,7 +3167,7 @@ class RefGenConf(yacman.YacAttMap):
         """
         remote_asset_data = prp(remote_asset_name)
         asset = remote_asset_data["item"]
-        tag = str(remote_asset_data["tag"])
+        tag = validate_tag(remote_asset_data["tag"])
         asset_digest_url = construct_request_url(server_url, API_ID_DIGEST).format(
             genome=genome, asset=asset, tag=tag
         )
@@ -3211,7 +3215,7 @@ class RefGenConf(yacman.YacAttMap):
         :return str: asset digest for the tag
         """
         self._assert_gat_exists(genome, asset, tag)
-        tag = str_tag(tag) or self.get_default_tag(genome, asset)
+        tag = validate_tag(tag or self.get_default_tag(genome, asset))
         a = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]
         if CFG_ASSET_CHECKSUM_KEY in a[CFG_ASSET_TAGS_KEY][tag]:
             return a[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_CHECKSUM_KEY]
@@ -3441,7 +3445,7 @@ class RefGenConf(yacman.YacAttMap):
             the structure of the given genomes mapping suggests that it was
             parsed from an improperly formatted/structured genome config file.
         """
-        tname = str_tag(tname)
+        tname = validate_tag(tname)
         _LOGGER.debug(f"checking existence of: {gname}/{aname}:{tname}")
         try:
             genome = self[CFG_GENOMES_KEY][gname]

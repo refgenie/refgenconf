@@ -34,6 +34,7 @@ from .const import (
     CFG_VERSION_KEY,
     DATA_DIR,
     REQ_CFG_VERSION,
+    TAG_NAME_CHAR_WHITELIST,
 )
 from .exceptions import DownloadJsonError, MissingAssetError
 from .seqcol import SeqColClient
@@ -409,15 +410,31 @@ def block_iter_repr(input_obj, numbered=False, flatten=False):
     )
 
 
-def str_tag(tag):
+def validate_tag(tag):
     """
-    Create a string representation of a tag.
+    Validates a tag
 
-    This function should be used whenever a tag is provided to a function,
-    so that tags that can be interpreted as numbers are converted to strings.
-    Like 1.0, which might be inadvertently converted to float.
+    Makes sure that the tag is a string that contains only characters
+    specified in a URL-safe whitelist. Additionally, makes sure that the tag is not
+    coercible to numeric types, so that issues with RefGenConf YAML serialization will not be occuring.
 
-    :param str tag: tag to convert
-    :return str: string representation of the tag
+    :param str tag: tag to validate
+    :return str: valid tag
     """
-    return None if tag is None else str(tag)
+    if tag is None:
+        return tag
+    if not isinstance(tag, str):
+        raise TypeError("Invalid tag: {tag}. Tag has to be a string")
+    if not all([c in TAG_NAME_CHAR_WHITELIST for c in tag]):
+        raise ValueError(
+            f"Invalid tag: {tag}. "
+            f"The tag name can consist only of these characters: {TAG_NAME_CHAR_WHITELIST}"
+        )
+    try:
+        float(tag)
+    except ValueError:
+        return tag
+    else:
+        raise ValueError(
+            f"Invalid tag: {tag}. The tag name cannot be coercible to numeric types!"
+        )

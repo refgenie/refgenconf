@@ -18,6 +18,7 @@ from yaml import dump as ydump
 from .asset_class import AssetClass, asset_class_factory, make_asset_class_path
 from .const import DEFAULT_RECIPE_SCHEMA
 from .exceptions import MissingAssetClassError
+from .helpers import validate_tag
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -71,7 +72,7 @@ class Recipe:
         self.description = description or self.name
         self.container = container
         self.custom_properties = custom_properties or {}
-        self.default_tag = str(default_tag)
+        self.default_tag = default_tag
         self.checksum_exclude_list = checksum_exclude_list or []
 
     def __str__(self) -> str:
@@ -192,7 +193,7 @@ class Recipe:
         :return str: The default tag
         """
         return (
-            str(jinja_render_template_strictly(self.default_tag, namespaces))
+            validate_tag(jinja_render_template_strictly(self.default_tag, namespaces))
             if self.default_tag
             else None
         )

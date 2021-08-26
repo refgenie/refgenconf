@@ -438,3 +438,9 @@ def validate_tag(tag):
         raise ValueError(
             f"Invalid tag: {tag}. The tag name cannot be coercible to numeric types!"
         )
+
+
+# looper run asset_pep/refgenie_build_cfg_auto.yaml -p bulker_slurm --sel-attr asset --sel-incl bwa_index
+# looper run asset_pep/refgenie_build_cfg_auto.yaml -p bulker_slurm --sel-attr asset --sel-incl bowtie2_index
+# looper run asset_pep/refgenie_build_cfg_auto.yaml -p bulker_slurm --sel-attr asset --sel-incl star_index
+# looper run asset_pep/refgenie_build_cfg_auto.yaml -p bulker_slurm --sel-attr asset --sel-incl bismark_bt2_index

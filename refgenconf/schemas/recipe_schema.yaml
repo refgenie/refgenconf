@@ -38,11 +38,7 @@ properties:
   container:
     type: string
   custom_properties:
-    type: object
-    additionalProperties: false
-    patternProperties:
-      ^.*$:
-        type: string
+    anyOf: [{ "$ref": "#/definitions/custom_properties" }, { type: "null" }]
   default_tag:
     type: string
   command_template_list:
@@ -112,3 +108,9 @@ definitions:
                 type: string
               value:
                 type: ["number", "string", "boolean", "array"]
+  custom_properties:
+    type: object
+    additionalProperties: false
+    patternProperties:
+      ^.*$:
+        type: string

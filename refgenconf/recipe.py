@@ -71,7 +71,7 @@ class Recipe:
         self.test = test
         self.description = description or self.name
         self.container = container
-        self.custom_properties = custom_properties or {}
+        self.custom_properties = custom_properties
         self.default_tag = default_tag
         self.checksum_exclude_list = checksum_exclude_list or []
 

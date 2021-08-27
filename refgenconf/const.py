@@ -37,7 +37,9 @@ TEMPLATE_ASSET_CLASS_YAML = "{}_asset_class.yaml"
 ORI_LOG_NAME_REGEX = "*_log.md"
 BUILD_STATS_DIR = "_refgenie_build"
 LOCKED_BUILD_MAP_CFG = "_locked_map_build.yaml"
+LOCKED_ARCHIVE_MAP_CFG = "_locked_map_archive.yaml"
 BUILD_MAP_CFG = "_map_build.yaml"
+ARCHIVE_MAP_CFG = "_map_archive.yaml"
 ALIAS_DIR = "alias"
 DATA_DIR = "data"
 
@@ -53,6 +55,8 @@ FILE_DIR_NAMES = [
     "BUILD_STATS_DIR",
     "BUILD_MAP_CFG",
     "LOCKED_BUILD_MAP_CFG",
+    "ARCHIVE_MAP_CFG",
+    "LOCKED_ARCHIVE_MAP_CFG",
     "ALIAS_DIR",
     "DATA_DIR",
 ]

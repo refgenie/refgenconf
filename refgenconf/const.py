@@ -72,6 +72,7 @@ API_ID_ASSETS = CUSTOM_PFX + "_assets"
 API_ID_ARCHIVE = CUSTOM_PFX + "_archive"
 API_ID_DEFAULT_TAG = CUSTOM_PFX + "_default_tag"
 API_ID_ASSET_ATTRS = CUSTOM_PFX + "_asset_attrs"
+API_ID_ASSETS_ASSET_CLASS = CUSTOM_PFX + "_assets_asset_class"
 API_ID_GENOME_ATTRS = CUSTOM_PFX + "_genome_attrs"
 API_ID_DIGEST = CUSTOM_PFX + "_asset_digest"
 API_ID_RECIPE = CUSTOM_PFX + "_asset_recipe"
@@ -135,6 +136,7 @@ API_IDS = [
     "API_ID_DIGEST",
     "API_ID_RECIPE",
     "API_ID_ASSET_ATTRS",
+    "API_ID_ASSETS_ASSET_CLASS",
     "API_ID_SPLASH",
     "API_ID_ALIASES_DICT",
     "API_ID_ARCHIVE_DIGEST",

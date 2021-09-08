@@ -12,6 +12,7 @@ import warnings
 from collections import OrderedDict
 from collections.abc import Mapping
 from functools import partial
+from glob import glob
 from inspect import getfullargspec as finspect
 from urllib.error import ContentTooShortError, HTTPError
 from urllib.parse import urlencode
@@ -20,6 +21,7 @@ from urllib.request import urlopen, urlretrieve
 import yacman
 from attmap import AttMap
 from attmap import PathExAttMap as PXAM
+from jsonschema import validate
 from jsonschema.exceptions import ValidationError
 from pkg_resources import iter_entry_points
 from requests import ConnectionError
@@ -42,6 +44,7 @@ from .const import (
     API_ID_ASSET_CLASSES_DICT,
     API_ID_ASSET_PATH,
     API_ID_ASSETS,
+    API_ID_ASSETS_ASSET_CLASS,
     API_ID_DEFAULT_TAG,
     API_ID_DIGEST,
     API_ID_GENOME_ATTRS,
@@ -61,6 +64,7 @@ from .const import (
     CFG_ASSET_CLASSES_KEY,
     CFG_ASSET_DATE_KEY,
     CFG_ASSET_DEFAULT_TAG_KEY,
+    CFG_ASSET_DESC_KEY,
     CFG_ASSET_PARENTS_KEY,
     CFG_ASSET_PATH_KEY,
     CFG_ASSET_RELATIVES_KEYS,
@@ -1600,7 +1604,7 @@ class RefGenConf(yacman.YacAttMap):
             asset_class_definition_file=self.get_asset_class_file(asset_class_name)
         )[0]
 
-    def set_asset_class(self, genome, asset, asset_class):
+    def set_asset_class(self, genome, asset, asset_class, description=None):
         """
         Set the asset class to use for a particular asset.
 
@@ -1617,6 +1621,8 @@ class RefGenConf(yacman.YacAttMap):
                 )
         else:
             asset_dict[CFG_ASSET_CLASS_KEY] = asset_class
+            if description is not None:
+                asset_dict[CFG_ASSET_DESC_KEY] = description
 
     def set_default_pointer(
         self,
@@ -2186,6 +2192,9 @@ class RefGenConf(yacman.YacAttMap):
             url_archive = get_json_url(server_url, API_ID_ARCHIVE).format(
                 genome=genome, asset=asset
             )
+            url_asset_class_name = get_json_url(
+                server_url, API_ID_ASSETS_ASSET_CLASS
+            ).format(genome=genome, asset=asset)
 
             try:
                 archive_data = send_data_request(
@@ -2223,7 +2232,7 @@ class RefGenConf(yacman.YacAttMap):
                 if force is False:
                     return preserve()
                 elif force is None:
-                    if not Confirm.ask(f"Replace existing ({tag_dir})?", "no"):
+                    if not Confirm.ask(f"Replace existing ({tag_dir})?"):
                         return preserve()
                     else:
                         _LOGGER.debug(f"Overwriting: {tag_dir}")
@@ -2330,6 +2339,11 @@ class RefGenConf(yacman.YacAttMap):
                         },
                     )
                     rgc.set_default_pointer(*gat)
+                    rgc.set_asset_class(
+                        genome=genome,
+                        asset=asset,
+                        asset_class=send_data_request(url_asset_class_name),
+                    )
                     rgc.update_genomes(genome=genome, data=genome_archive_data)
             else:
                 [
@@ -2348,6 +2362,11 @@ class RefGenConf(yacman.YacAttMap):
                     },
                 )
                 self.set_default_pointer(*gat)
+                self.set_asset_class(
+                    genome=genome,
+                    asset=asset,
+                    asset_class=send_data_request(url_asset_class_name),
+                )
                 self.update_genomes(genome=genome, data=genome_archive_data)
             if asset == "fasta":
                 self.initialize_genome(
@@ -2468,6 +2487,7 @@ class RefGenConf(yacman.YacAttMap):
         :param str digest: identifier to use
         :param bool overwrite: whether all the previously set aliases should be
             removed and just the current one stored
+        :param bool create_genome: whether to create the genome entry, if missing
         :param bool no_write: whether to skip writing the alias to the file
         :return bool: whether the alias has been established
         """
@@ -2964,6 +2984,86 @@ class RefGenConf(yacman.YacAttMap):
                     if len(self[CFG_GENOMES_KEY]) == 0:
                         self[CFG_GENOMES_KEY] = None
         return self
+
+    def validate_asset_seek_keys(self, genome, asset, tag, no_error=False):
+        """
+        Validate seek_keys with asset class-sourced schema
+
+        :param str genome: genome to be validated
+        :param str asset: asset to be validated
+        :param str tag: tag to be validated
+        :param bool no_error: whether to skip raising an error
+        :return bool: whether the seek keys are valid
+        """
+        asset_class_name = self.get_assets_asset_class(genome, asset)
+        if asset_class_name is None:
+            raise MissingConfigDataError(
+                f"Could not find asset class for asset {genome}/{asset}"
+            )
+        ac = self.get_asset_class(asset_class_name)
+        _assert_gat_exists(self.genomes, genome, asset, tag)
+        seek_keys = self.genomes[genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][
+            tag
+        ][CFG_SEEK_KEYS_KEY]
+        _LOGGER.info(f"Validating seek keys for '{genome}/{asset}:{tag}'")
+        # validate structure and types of seek_keys
+        validate(seek_keys, ac.seek_keys_canonical_schema)
+        # validate values of seek_keys. Types 'file', 'directory' and 'prefix' are special cases,
+        # since instead of comparing the literal value, files existence on disk is checked
+        if "properties" not in ac.seek_keys_schema:
+            raise ValueError("Auto-generated seek_keys schema is invalid")
+        for seek_key, values in ac.seek_keys_schema["properties"].items():
+            if "type" not in values:
+                continue
+            if values["type"] in ["file", "directory"]:
+                try:
+                    file_pth = self.seek_src(
+                        genome_name=genome,
+                        asset_name=asset,
+                        tag_name=tag,
+                        seek_key=seek_key,
+                        strict_exists=True,
+                    )
+                except (RefgenconfError, OSError) as e:
+                    if no_error:
+                        return False
+                    raise ValidationError(getattr(e, "message", str(e)))
+                _LOGGER.debug(
+                    f"File exists for {genome}/{asset}.{seek_key}:{tag} ({file_pth})"
+                )
+
+            if values["type"] == "prefix":
+                try:
+                    prefix = self.seek_src(
+                        genome_name=genome,
+                        asset_name=asset,
+                        tag_name=tag,
+                        seek_key=seek_key,
+                        strict_exists=None,
+                    )
+                    matched_files = glob(f"{prefix}*")
+                    if len(matched_files) == 0:
+                        raise ValidationError(
+                            f"No files found for {genome}/{asset}.{seek_key}:{tag}. Tried prefix: {prefix}*"
+                        )
+                except (RefgenconfError, OSError) as e:
+                    if no_error:
+                        return False
+                    raise ValidationError(getattr(e, "message", str(e)))
+                _LOGGER.debug(
+                    f"{len(matched_files)} files matched prefix for {genome}/{asset}.{seek_key}:{tag}: {block_iter_repr(matched_files)}"
+                )
+
+            if values["type"] in ["string", "number", "integer", "boolean"]:
+                if "value" in values:
+                    if seek_keys[seek_key] != values["value"]:
+                        if no_error:
+                            return False
+                        raise ValidationError(
+                            f"{seek_key} value does not match expected value"
+                            f" ({seek_keys[seek_key]}!={values['value']})"
+                        )
+        return True
 
     def update_genomes(self, genome, data=None, force_digest=None):
         """

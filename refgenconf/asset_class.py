@@ -1,4 +1,5 @@
 import os
+from copy import deepcopy
 from json import dump as jdump
 from typing import Any, Dict, List, Tuple
 
@@ -47,7 +48,15 @@ class AssetClass:
             for parent in self.parents:
                 self.seek_keys.update(parent.seek_keys)
         self.seek_keys.update(self._ori_seek_keys)
-        self.seek_keys.update({"dir": "."})
+        self.seek_keys.update(
+            {
+                "dir": {
+                    "value": ".",
+                    "type": "directory",
+                    "description": "Path to the asset directory",
+                }
+            }
+        )
         self.description = description or self.name
 
     def __str__(self) -> str:
@@ -91,6 +100,44 @@ class AssetClass:
         """
         with open(filepath, "w") as f:
             ydump(self.to_dict(), f, default_flow_style=False)
+
+    @property
+    def seek_keys_schema(self) -> Dict[str, Any]:
+        """
+        Convert the seek keys to a JSON schema
+
+        :return Dict[str, Any]: The JSON schema
+        """
+        return {
+            "type": "object",
+            "properties": {
+                seek_key: values for seek_key, values in self.seek_keys.items()
+            },
+            "additionalProperties": False,
+        }
+
+    @property
+    def seek_keys_canonical_schema(self) -> Dict[str, Any]:
+        """
+        Convert the seek keys to a canonical JSON schema.
+        File, directory and prefix types will be converted to strings.
+
+        :return Dict[str, Any]: The JSON schema
+        """
+        proprties = {}
+        seek_keys = deepcopy(self.seek_keys)
+        for seek_key, values in seek_keys.items():
+            if not isinstance(values, dict):
+                raise TypeError(f"'{seek_key}' seek_key schema must be a dict")
+            if "type" in values and values["type"] in ["file", "directory", "prefix"]:
+                values["type"] = "string"
+            proprties[seek_key] = values
+
+        return {
+            "type": "object",
+            "properties": proprties,
+            "additionalProperties": False,
+        }
 
 
 def asset_class_factory(

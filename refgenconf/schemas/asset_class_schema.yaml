@@ -8,12 +8,12 @@ properties:
     pattern: "^\\S*$"
   description:
     type: string
-  seek_keys:
-    additionalProperties: false
-    patternProperties:
-      ^.*$: { "$ref": "#/definitions/seek_key" }
-    # required: should we require dir seek_keys to be explicitely defined in each asset class?
-      # - dir
+  # seek_keys:
+  #   additionalProperties: false
+  #   patternProperties:
+  #     ^.*$: { "$ref": "#/definitions/seek_key" }
+  # required: should we require dir seek_keys to be explicitely defined in each asset class?
+  # - dir
   parents:
     type: array
     items:

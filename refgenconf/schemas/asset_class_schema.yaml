@@ -8,12 +8,10 @@ properties:
     pattern: "^\\S*$"
   description:
     type: string
-  # seek_keys:
-  #   additionalProperties: false
-  #   patternProperties:
-  #     ^.*$: { "$ref": "#/definitions/seek_key" }
-  # required: should we require dir seek_keys to be explicitely defined in each asset class?
-  # - dir
+  seek_keys:
+    additionalProperties: false
+    patternProperties:
+      ^.*$: { "$ref": "#/definitions/seek_key" }
   parents:
     type: array
     items:
@@ -24,4 +22,24 @@ required:
 
 definitions:
   seek_key:
-    type: string
+    type: object
+    properties:
+      value:
+        type: string
+      type:
+        type: string
+        enum:
+          [
+            "directory",
+            "file",
+            "prefix",
+            "number",
+            "string",
+            "boolean",
+            "array",
+          ]
+      description:
+        type: string
+    required:
+      - value
+      - type

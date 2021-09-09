@@ -1194,6 +1194,20 @@ class RefGenConf(yacman.YacAttMap):
                 seek_val = ""
         else:
             try:
+                asset_class_name = self.get_assets_asset_class(
+                    genome=genome_digest, asset=asset_name
+                )
+                seek_key_type = self.get_asset_class(
+                    asset_class_name=asset_class_name
+                ).seek_keys[seek_key]["type"]
+            except Exception as e:
+                _LOGGER.warn(
+                    "Could not determine seek key type due to an asset class issue."
+                    "A path will be returned. Caught exception: " + str(e)
+                )
+                seek_key_type = "file"
+            _LOGGER.debug(f"Determined '{seek_key}' seek key type: {seek_key_type}")
+            try:
                 seek_val = asset_tag_data[CFG_SEEK_KEYS_KEY][seek_key]
             except KeyError:
                 if seek_key == "dir":
@@ -1203,6 +1217,8 @@ class RefGenConf(yacman.YacAttMap):
                         f"Seek key '{seek_key}' not defined for: "
                         f"'{genome_name}.{asset_name}:{tag_name}'"
                     )
+            if seek_key_type not in ["file", "directory", "prefix"]:
+                return seek_val
         if enclosing_dir:
             seek_val = ""
         fullpath = os.path.join(

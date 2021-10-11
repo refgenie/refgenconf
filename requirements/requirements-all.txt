@@ -5,3 +5,4 @@ pyyaml
 requests
 rich>=9.0.1
 yacman>=0.8.2
+tqdm

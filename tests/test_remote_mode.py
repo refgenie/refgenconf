@@ -17,8 +17,8 @@ __email__ = "michal@virginia.edu"
 class RemoteModeTests:
     @pytest.mark.parametrize("remote_class", ["http", "s3"])
     @pytest.mark.parametrize(
-        "servers", ["http://http://refgenomes.databio.org"]
-    )  # TODO: change after release
+        "servers", ["http://refgenomes.databio.org"]
+    )
     @pytest.mark.parametrize("reset", [True, False])
     @pytest.mark.parametrize("genome", ["rCRSd", "mouse_chrM2x"])
     @pytest.mark.parametrize("asset", ["fasta", "bowtie2_index"])
@@ -34,8 +34,8 @@ class RemoteModeTests:
 
     @pytest.mark.parametrize("remote_class", ["http", "s3"])
     @pytest.mark.parametrize(
-        "servers", ["http://http://refgenomes.databio.org"]
-    )  # TODO: change after release
+        "servers", ["http://refgenomes.databio.org"]
+    )
     @pytest.mark.parametrize("reset", [True, False])
     @pytest.mark.parametrize("genome", ["rCRSd", "mouse_chrM2x"])
     @pytest.mark.parametrize("asset", ["fasta", "bowtie2_index"])

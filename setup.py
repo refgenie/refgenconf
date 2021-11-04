@@ -20,7 +20,7 @@ with open("refgenconf/_version.py", "r") as versionfile:
     version = versionfile.readline().split()[-1].strip("\"'\n")
 
 # Handle the pypi README formatting.
-with open('README.md') as f:
+with open("README.md") as f:
     long_description = f.read()
 
 setup(

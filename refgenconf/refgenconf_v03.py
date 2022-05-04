@@ -9,7 +9,8 @@ import signal
 import sys
 import urllib.request
 import warnings
-from collections.abc import Iterable, Mapping, OrderedDict
+from collections.abc import Iterable, Mapping
+from collections import OrderedDict
 from functools import partial
 from inspect import getfullargspec as finspect
 from tempfile import TemporaryDirectory

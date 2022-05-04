@@ -4,5 +4,6 @@ pyfaidx
 pyyaml
 requests
 rich>=9.0.1
-yacman>=0.8.2
-# ubiquerg>=0.6.2
+ubiquerg>=0.6.2
+yacman>=0.8.3
+tqdm

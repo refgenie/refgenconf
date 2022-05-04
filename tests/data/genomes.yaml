@@ -1,4 +1,9 @@
 genome_folder: /tmp
-genome_servers:
+genome_servers: 
  - http://refgenomes.databio.org
 genomes: null
+config_version: 0.5
+recipe_folder: /tmp/recipes
+recipes: null
+asset_class_folder: /tmp/asset_classes
+asset_classes: null

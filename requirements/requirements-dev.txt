@@ -1,1 +1,1 @@
--e git+git://github.com/pepkit/ubiquerg@dev#egg=ubiquerg
+-e git+https://github.com/pepkit/ubiquerg@dev#egg=ubiquerg

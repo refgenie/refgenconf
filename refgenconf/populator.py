@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from attmap import AttMap
 from ubiquerg import parse_registry_path as prp
 
-from refgenconf import RefGenConf
+from .refgenconf import RefGenConf
 
 _LOGGER = logging.getLogger(__name__)
 

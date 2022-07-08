@@ -29,9 +29,8 @@ from requests.exceptions import MissingSchema
 from rich.progress import BarColumn, Progress, TextColumn
 from rich.prompt import Confirm
 from rich.table import Table
-from ubiquerg import checksum, is_url, is_writable
+from ubiquerg import checksum, is_url, is_writable, untar, query_yes_no
 from ubiquerg import parse_registry_path as prp
-from ubiquerg import untar
 
 from .asset_class import asset_class_factory
 from .const import (
@@ -102,7 +101,21 @@ from .const import (
     TEMPLATE_RECIPE_INPUTS_JSON,
     TEMPLATE_RECIPE_YAML,
 )
-from .exceptions import *
+
+from .exceptions import (
+    MissingAssetError,
+    MissingAssetClassError,
+    MissingTagError,
+    MissingSeekKeyError,
+    MissingGenomeError,
+    MissingConfigDataError,
+    RefgenconfError,
+    ConfigNotCompliantError,
+    MissingRecipeError,
+    RemoteDigestMismatchError,
+    DownloadJsonError,
+    GenomeConfigFormatError,
+)
 from .helpers import (
     asciify_json_dict,
     block_iter_repr,
@@ -1765,7 +1778,9 @@ class RefGenConf(yacman.YacAttMap):
                 for tag_name in get_asset_tags(asset_mapping):
                     tag_mapping = asset_mapping[CFG_ASSET_TAGS_KEY][tag_name]
                     ret[genome_name][asset_name][tag_name] = {}
-                    for seek_key_name in get_tag_seek_keys(tag_mapping):
+                    if not (tag_seek_keys := get_tag_seek_keys(tag_mapping)):
+                        raise MissingAssetError()
+                    for seek_key_name in tag_seek_keys:
                         ret[genome_name][asset_name][tag_name][
                             seek_key_name
                         ] = self.seek(genome_name, asset_name, tag_name, seek_key_name)

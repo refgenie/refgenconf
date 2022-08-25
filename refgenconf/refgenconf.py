@@ -1778,7 +1778,8 @@ class RefGenConf(yacman.YacAttMap):
                 for tag_name in get_asset_tags(asset_mapping):
                     tag_mapping = asset_mapping[CFG_ASSET_TAGS_KEY][tag_name]
                     ret[genome_name][asset_name][tag_name] = {}
-                    if not (tag_seek_keys := get_tag_seek_keys(tag_mapping)):
+                    tag_seek_keys = get_tag_seek_keys(tag_mapping)
+                    if not tag_seek_keys:
                         raise MissingAssetError()
                     for seek_key_name in tag_seek_keys:
                         ret[genome_name][asset_name][tag_name][

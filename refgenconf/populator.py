@@ -74,7 +74,6 @@ def looper_refgenie_populate(namespaces):
             paths_dict[g] = {}
             for k, v in gdict.items():
                 tag = get_asset_tag(genome=g, asset=k)
-                # print(k,v)
                 try:
                     paths_dict[g][k] = v[tag]
                 except KeyError:
@@ -99,7 +98,6 @@ def looper_refgenie_populate(namespaces):
             except TypeError:
                 _LOGGER.warn("Warning: path_overrides is not iterable")
 
-        # print(paths_dict)
         # Provide these values under the 'refgenie' namespace
         namespaces["refgenie"] = AttMap(paths_dict)
         return rgc.populate(namespaces)

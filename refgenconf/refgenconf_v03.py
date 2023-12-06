@@ -9,7 +9,8 @@ import signal
 import sys
 import urllib.request
 import warnings
-from collections import Iterable, Mapping, OrderedDict
+from collections.abc import Iterable, Mapping
+from collections import OrderedDict
 from functools import partial
 from inspect import getfullargspec as finspect
 from tempfile import TemporaryDirectory
@@ -1892,7 +1893,7 @@ def _is_large_archive(size, cutoff=10):
         size = "{0:f}GB".format(_str2float(size) / 1000)
     if size.endswith("KB"):
         # convert to gigs
-        size = "{0:f}GB".format(_str2float(size) / 1000 ** 2)
+        size = "{0:f}GB".format(_str2float(size) / 1000**2)
     return size.endswith("TB") or (size.endswith("GB") and _str2float(size) > cutoff)
 
 

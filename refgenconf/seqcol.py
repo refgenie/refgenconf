@@ -4,6 +4,8 @@ import logging
 import os
 from gzip import open as gzopen
 
+from rich.progress import track
+
 from .exceptions import RefgenconfError
 from .henge import ITEM_TYPE, Henge
 
@@ -19,17 +21,17 @@ def _schema_path(name):
     return os.path.join(SCHEMA_FILEPATH, name)
 
 
-CONTENT_ALL_A_IN_B = 2 ** 0
-CONTENT_ALL_B_IN_A = 2 ** 1
-LENGTHS_ALL_A_IN_B = 2 ** 2
-LENGTHS_ALL_B_IN_A = 2 ** 3
-NAMES_ALL_A_IN_B = 2 ** 4
-NAMES_ALL_B_IN_A = 2 ** 5
-CONTENT_A_ORDER = 2 ** 6
-CONTENT_B_ORDER = 2 ** 7
-CONTENT_ANY_SHARED = 2 ** 8
-LENGTHS_ANY_SHARED = 2 ** 9
-NAMES_ANY_SHARED = 2 ** 10
+CONTENT_ALL_A_IN_B = 2**0
+CONTENT_ALL_B_IN_A = 2**1
+LENGTHS_ALL_A_IN_B = 2**2
+LENGTHS_ALL_B_IN_A = 2**3
+NAMES_ALL_A_IN_B = 2**4
+NAMES_ALL_B_IN_A = 2**5
+CONTENT_A_ORDER = 2**6
+CONTENT_B_ORDER = 2**7
+CONTENT_ANY_SHARED = 2**8
+LENGTHS_ANY_SHARED = 2**9
+NAMES_ANY_SHARED = 2**10
 
 FLAGS = {
     CONTENT_ALL_A_IN_B: "CONTENT_ALL_A_IN_B",
@@ -104,8 +106,9 @@ class SeqColClient(Henge):
         init = False
         aslist = []
         openfun = gzopen if gzipped else open
+        total_lines = sum(1 for _ in openfun(fa_file))
         with openfun(fa_file, "rt") as f:
-            for line in f:
+            for line in track(f, description=f"Processing FASTA", total=total_lines):
                 line = line.strip("\n")
                 if line.startswith(">"):
                     if not init:
@@ -244,5 +247,5 @@ def explain_flag(flag):
     """Explains a compare flag"""
     print(f"Flag: {flag}\nBinary: {bin(flag)}\n")
     for e in range(0, 13):
-        if flag & 2 ** e:
-            print(FLAGS[2 ** e])
+        if flag & 2**e:
+            print(FLAGS[2**e])

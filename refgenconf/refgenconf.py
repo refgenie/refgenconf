@@ -10,8 +10,9 @@ import signal
 import sys
 import warnings
 from collections import OrderedDict
-from collections.abc import Iterable, Mapping
+from collections.abc import Mapping
 from functools import partial
+from glob import glob
 from inspect import getfullargspec as finspect
 from urllib.error import ContentTooShortError, HTTPError
 from urllib.parse import urlencode
@@ -20,26 +21,111 @@ from urllib.request import urlopen, urlretrieve
 import yacman
 from attmap import AttMap
 from attmap import PathExAttMap as PXAM
+from jsonschema import validate
 from jsonschema.exceptions import ValidationError
 from pkg_resources import iter_entry_points
 from requests import ConnectionError
 from requests.exceptions import MissingSchema
 from rich.progress import BarColumn, Progress, TextColumn
+from rich.prompt import Confirm
 from rich.table import Table
-from ubiquerg import checksum, is_url, is_writable
+from ubiquerg import checksum, is_url, is_writable, untar, query_yes_no
 from ubiquerg import parse_registry_path as prp
-from ubiquerg import query_yes_no, untar
 
-from .const import *
-from .exceptions import *
+from .asset_class import asset_class_factory
+from .const import (
+    ALIAS_DIR,
+    API_ID_ALIAS_DIGEST,
+    API_ID_ALIASES_DICT,
+    API_ID_ARCHIVE,
+    API_ID_ASSET_ATTRS,
+    API_ID_ASSET_CLASS_CONTENTS,
+    API_ID_ASSET_CLASSES_DICT,
+    API_ID_ASSET_PATH,
+    API_ID_ASSETS,
+    API_ID_ASSETS_ASSET_CLASS,
+    API_ID_DEFAULT_TAG,
+    API_ID_DIGEST,
+    API_ID_GENOME_ATTRS,
+    API_ID_GENOMES_DICT,
+    API_ID_RECIPE_CONTENTS,
+    API_ID_RECIPES_DICT,
+    API_VERSION,
+    ATTRS_COPY_PULL,
+    BUILD_STATS_DIR,
+    CFG_ALIASES_KEY,
+    CFG_ARCHIVE_CHECKSUM_KEY,
+    CFG_ARCHIVE_SIZE_KEY,
+    CFG_ASSET_CHECKSUM_KEY,
+    CFG_ASSET_CHILDREN_KEY,
+    CFG_ASSET_CLASS_FOLDER_KEY,
+    CFG_ASSET_CLASS_KEY,
+    CFG_ASSET_CLASSES_KEY,
+    CFG_ASSET_DATE_KEY,
+    CFG_ASSET_DEFAULT_TAG_KEY,
+    CFG_ASSET_DESC_KEY,
+    CFG_ASSET_PARENTS_KEY,
+    CFG_ASSET_PATH_KEY,
+    CFG_ASSET_RELATIVES_KEYS,
+    CFG_ASSET_TAGS_KEY,
+    CFG_ASSETS_KEY,
+    CFG_FOLDER_KEY,
+    CFG_GENOME_ATTRS_KEYS,
+    CFG_GENOMES_KEY,
+    CFG_RECIPE_FOLDER_KEY,
+    CFG_RECIPES_KEY,
+    CFG_SEEK_KEYS_KEY,
+    CFG_SERVER_KEY,
+    CFG_SERVERS_KEY,
+    CFG_UPGRADE,
+    CFG_VERSION_KEY,
+    DATA_DIR,
+    DEFAULT_CONFIG_SCHEMA,
+    DEFAULT_SERVER,
+    DEFAULT_TAG,
+    HOOKS,
+    POST_LIST_HOOK,
+    POST_PULL_HOOK,
+    POST_TAG_HOOK,
+    POST_UPDATE_HOOK,
+    PRE_LIST_HOOK,
+    PRE_PULL_HOOK,
+    PRE_TAG_HOOK,
+    PRE_UPDATE_HOOK,
+    PRIVATE_API,
+    REFGENIE_BY_CFG,
+    REQ_CFG_VERSION,
+    REQ_TAG_ATTRS,
+    RGC_REQ_KEYS,
+    TEMPLATE_ASSET_CLASS_YAML,
+    TEMPLATE_RECIPE_INPUTS_JSON,
+    TEMPLATE_RECIPE_YAML,
+)
+
+from .exceptions import (
+    MissingAssetError,
+    MissingAssetClassError,
+    MissingTagError,
+    MissingSeekKeyError,
+    MissingGenomeError,
+    MissingConfigDataError,
+    RefgenconfError,
+    ConfigNotCompliantError,
+    MissingRecipeError,
+    RemoteDigestMismatchError,
+    DownloadJsonError,
+    GenomeConfigFormatError,
+)
 from .helpers import (
     asciify_json_dict,
     block_iter_repr,
     get_dir_digest,
     select_genome_config,
     send_data_request,
+    validate_tag,
 )
 from .progress_bar import _DownloadColumn, _TimeRemainingColumn, _TransferSpeedColumn
+from .recipe import recipe_factory
 from .seqcol import SeqColClient
 
 _LOGGER = logging.getLogger(__name__)
@@ -118,9 +204,9 @@ class RefGenConf(yacman.YacAttMap):
             else:
                 if version < REQ_CFG_VERSION:
                     msg = (
-                        "This genome config (v{}) is not compliant with v{} standards. \n"
-                        "To use current refgenconf, please use upgrade_config function to upgrade, or"
-                        "downgrade refgenconf: 'pip install \"refgenconf>={},<{}\"'. \n"
+                        "This genome config ({}) is not compliant with {} standards. \n"
+                        "To use current refgenconf, please use upgrade_config function to upgrade, or "
+                        "downgrade refgenconf Python package: 'pip install \"refgenconf>={},<{}\"'. \n"
                         "If refgenie is installed, you can use 'refgenie upgrade --target-version {}'".format(
                             self[CFG_VERSION_KEY],
                             str(REQ_CFG_VERSION),
@@ -140,6 +226,31 @@ class RefGenConf(yacman.YacAttMap):
                 os.path.dirname(filepath) if filepath else os.getcwd()
             )
             _missing_key_msg(CFG_FOLDER_KEY, self[CFG_FOLDER_KEY])
+
+        # initialize "recipe_folder"
+        if CFG_RECIPE_FOLDER_KEY not in self:
+            self[CFG_RECIPE_FOLDER_KEY] = os.path.join(self[CFG_FOLDER_KEY], "recipes")
+            _missing_key_msg(CFG_RECIPE_FOLDER_KEY, self[CFG_RECIPE_FOLDER_KEY])
+
+        # initialize "recipes"
+        if CFG_RECIPES_KEY not in self:
+            self[CFG_RECIPES_KEY] = None
+            _missing_key_msg(CFG_RECIPES_KEY, self[CFG_RECIPES_KEY])
+
+        # initialize "asset_class_folder"
+        if CFG_ASSET_CLASS_FOLDER_KEY not in self:
+            self[CFG_ASSET_CLASS_FOLDER_KEY] = os.path.join(
+                self[CFG_FOLDER_KEY], "asset_classes"
+            )
+            _missing_key_msg(
+                CFG_ASSET_CLASS_FOLDER_KEY, self[CFG_ASSET_CLASS_FOLDER_KEY]
+            )
+
+        # initialize "asset_classes"
+        if CFG_ASSET_CLASSES_KEY not in self:
+            self[CFG_ASSET_CLASSES_KEY] = None
+            _missing_key_msg(CFG_ASSET_CLASSES_KEY, self[CFG_ASSET_CLASSES_KEY])
+
         # initialize "genome_servers"
         if CFG_SERVERS_KEY not in self and CFG_SERVER_KEY in self:
             # backwards compatibility after server config key change
@@ -256,6 +367,24 @@ class RefGenConf(yacman.YacAttMap):
         return os.path.abspath(os.path.join(self[CFG_FOLDER_KEY], ALIAS_DIR))
 
     @property
+    def recipe_dir(self):
+        """
+        Path to the recipe directory
+
+        :return str: path to the directory where the recipes are stored
+        """
+        return os.path.abspath(self[CFG_RECIPE_FOLDER_KEY])
+
+    @property
+    def asset_class_dir(self):
+        """
+        Path to the asset class directory
+
+        :return str: path to the directory where the asset classes are stored
+        """
+        return os.path.abspath(self[CFG_ASSET_CLASS_FOLDER_KEY])
+
+    @property
     def file_path(self):
         """
         Path to the genome configuration file
@@ -278,7 +407,7 @@ class RefGenConf(yacman.YacAttMap):
         """
 
         def _write_fail_err(reason):
-            raise OSError("Can't initialize, {}: {} ".format(reason, filepath))
+            raise OSError(f"Can't initialize, {reason}: {filepath}")
 
         filepath = select_genome_config(filepath, check_exist=False)
         if not isinstance(filepath, str):
@@ -294,26 +423,51 @@ class RefGenConf(yacman.YacAttMap):
         self.write()
         self.make_readonly()
         _LOGGER.info(f"Initialized genome configuration file: {filepath}")
-        os.makedirs(self.data_dir, exist_ok=True)
-        os.makedirs(self.alias_dir, exist_ok=True)
-        _LOGGER.info(
-            f"Created directories:{block_iter_repr([self.data_dir, self.alias_dir])}"
-        )
-
+        dirs_to_create = [
+            self.data_dir,
+            self.alias_dir,
+            self.recipe_dir,
+            self.asset_class_dir,
+        ]
+        for d in dirs_to_create:
+            os.makedirs(d, exist_ok=True)
+        _LOGGER.info(f"Created directories:{block_iter_repr(dirs_to_create)}")
         return filepath
 
-    def list(self, genome=None, order=None, include_tags=False):
+    def list(self, genome=None, order=None, include_tags=False, asset_classes=False):
         """
         List local assets; map each namespace to a list of available asset names
 
         :param callable(str) -> object order: how to key genome IDs for sort
         :param list[str] | str genome: genomes that the assets should be found for
         :param bool include_tags: whether asset tags should be included in the returned dict
+        :param bool asset_classes: whether asset classes should be listed instead of asset names
         :return Mapping[str, Iterable[str]]: mapping from assembly name to
             collection of available asset names.
         """
         self.run_plugins(PRE_LIST_HOOK)
         refgens = self._select_genomes(genome=genome, order=order)
+        if asset_classes:
+            return OrderedDict(
+                [
+                    (
+                        g,
+                        sorted(
+                            [
+                                self[CFG_GENOMES_KEY][g][CFG_ASSETS_KEY][a][
+                                    CFG_ASSET_CLASS_KEY
+                                ]
+                                for a in self[CFG_GENOMES_KEY][g][CFG_ASSETS_KEY].keys()
+                                if CFG_ASSET_CLASS_KEY
+                                in self[CFG_GENOMES_KEY][g][CFG_ASSETS_KEY][a]
+                            ],
+                            key=order,
+                        ),
+                    )
+                    for g in refgens
+                    if CFG_ASSETS_KEY in self[CFG_GENOMES_KEY][g]
+                ]
+            )
         if include_tags:
             self.run_plugins(POST_LIST_HOOK)
             return OrderedDict(
@@ -345,6 +499,118 @@ class RefGenConf(yacman.YacAttMap):
             ]
         )
 
+    def list_asset_classes(self):
+        """
+        List locally available asset classes
+
+        :return List[str]: list of available asset classes
+        """
+        return (
+            list(self[CFG_ASSET_CLASSES_KEY].keys())
+            if CFG_ASSET_CLASSES_KEY in self and self[CFG_ASSET_CLASSES_KEY] is not None
+            else []
+        )
+
+    def list_recipes(self):
+        """
+        List locally available recipes
+
+        :return List[str]: list of available recipes
+        """
+        return (
+            list(self[CFG_RECIPES_KEY].keys())
+            if CFG_RECIPES_KEY in self and self[CFG_RECIPES_KEY] is not None
+            else []
+        )
+
+    def get_asset_class_table(
+        self,
+        server_url=None,
+        get_json_url=lambda s, i: construct_request_url(s, i, PRIVATE_API),
+    ):
+        """
+        Get a table of availalbe asset classes
+
+        :param str server_url: url of the server to query
+        :param callable(str, str) -> str get_json_url: a function that returns
+            a url to a json file
+        :return rich.Table: table of asset classes
+        """
+
+        def _fill_table_with_asset_class_data(asset_class_data, table):
+            table.add_column("Asset class")
+            table.add_column("Version")
+            table.add_column("Description")
+            asset_class_data = asset_class_data or {}
+            for asset_class_name, asset_class_metadata in asset_class_data.items():
+                table.add_row(
+                    asset_class_name,
+                    asset_class_metadata.get("version", ""),
+                    f"[italic]{asset_class_metadata.get('description', '')}[/italic]",
+                )
+            return table
+
+        if server_url is None:
+            asset_class_data = self[CFG_ASSET_CLASSES_KEY]
+            title = (
+                f"Local refgenie asset classes\nServer subscriptions: "
+                f"{', '.join(self[CFG_SERVERS_KEY])}"
+            )
+        else:
+            asset_class_data = send_data_request(
+                get_json_url(server_url, API_ID_ASSET_CLASSES_DICT)
+            )
+            title = f"Remote refgenie asset classes\nServer URL: {server_url}"
+        c = f"To learn more about an asset class, use [bold]refgenie asset_class show <asset_class>[/bold]"
+        return _fill_table_with_asset_class_data(
+            asset_class_data, Table(title=title, min_width=90, caption=c)
+        )
+
+    def get_recipe_table(
+        self,
+        server_url=None,
+        get_json_url=lambda s, i: construct_request_url(s, i, PRIVATE_API),
+    ):
+        """
+        Get a table of recipes
+
+        :param str server_url: url of the server to query
+        :param callable(str, str) -> str get_json_url: a function that returns
+            a url to a json file
+        :return rich.Table: table of recipes
+        """
+
+        def _fill_table_with_recipe_data(recipes_data, table):
+            table.add_column("Recipe")
+            table.add_column("Version")
+            table.add_column("Output asset class")
+            table.add_column("Description")
+            recipes_data = recipes_data or {}
+            for recipe_name, recipe_metadata in recipes_data.items():
+                table.add_row(
+                    recipe_name,
+                    recipe_metadata.get("version", ""),
+                    recipe_metadata.get("output_asset_class", ""),
+                    f"[italic]{recipe_metadata.get('description', '')}[/italic]",
+                )
+            return table
+
+        if server_url is None:
+            recipes_data = self[CFG_RECIPES_KEY]
+            title = (
+                f"Local refgenie recipes\nServer subscriptions: "
+                f"{', '.join(self[CFG_SERVERS_KEY])}"
+            )
+        else:
+            recipes_data = send_data_request(
+                get_json_url(server_url, API_ID_RECIPES_DICT)
+            )
+            title = f"Remote refgenie recipes\nServer URL: {server_url}"
+        c = f"To learn more about a recipe, use [bold]refgenie recipe show <recipe>[/bold]"
+        return _fill_table_with_recipe_data(
+            recipes_data, Table(title=title, min_width=90, caption=c)
+        )
+
     def get_asset_table(
         self,
         genomes=None,
@@ -352,21 +618,22 @@ class RefGenConf(yacman.YacAttMap):
         get_json_url=lambda s, i: construct_request_url(s, i, PRIVATE_API),
     ):
         """
-        Get a rich.Table object representing assets available locally
+        Get a rich.Table object representing available assets
 
         :param list[str] genomes: genomes to restrict the results with
         :param str server_url: server URL to query for the remote genome data
         :param function(str, str) -> str get_json_url: how to build URL from
             genome server URL base, genome, and asset
-        :return rich.table.Table: table of assets available locally
+        :return rich.table.Table: table of available assets
         """
 
         def _fill_table_with_genomes_data(rgc, genomes_data, table, genomes=None):
             it = "([italic]{}[/italic])"
-            table.add_column("genome")
+            table.add_column("Genome")
             if genomes:
-                table.add_column("asset " + it.format("seek_keys"))
-                table.add_column("tags")
+                table.add_column("Asset " + it.format(CFG_ASSET_CLASS_KEY))
+                table.add_column("Seek keys")
+                table.add_column("Tags")
                 for g in genomes:
                     try:
                         genome = rgc.get_genome_alias_digest(alias=g, fallback=True)
@@ -395,11 +662,13 @@ class RefGenConf(yacman.YacAttMap):
                         )
                         table.add_row(
                             ", ".join(genome_dict[CFG_ALIASES_KEY]),
-                            "{} ".format(asset) + it.format(", ".join(seek_keys)),
+                            "{} ".format(asset)
+                            + it.format(asset_dict.get(CFG_ASSET_CLASS_KEY, "")),
+                            ", ".join(seek_keys),
                             ", ".join(tags),
                         )
             else:
-                table.add_column("assets")
+                table.add_column("Assets")
                 for genome in list(genomes_data.keys()):
                     genome_dict = genomes_data[genome]
                     if CFG_ASSETS_KEY not in genome_dict:
@@ -422,8 +691,8 @@ class RefGenConf(yacman.YacAttMap):
             )
             title = f"Remote refgenie assets\nServer URL: {server_url}"
         c = (
-            f"use refgenie list{'r' if server_url is not None else ''} "
-            f"-g <genome> for more detailed view"
+            f"use refgenie [bold]list{'r' if server_url is not None else ''} "
+            f"-g <genome>[/bold] for more detailed view"
             if genomes is None
             else ""
         )
@@ -486,7 +755,7 @@ class RefGenConf(yacman.YacAttMap):
                 " asset to initialize.".format(genome)
             )
             return False
-        tag = tag or self.get_default_tag(genome, asset)
+        tag = validate_tag(tag or self.get_default_tag(genome, asset))
         abspath = os.path.join(self[CFG_FOLDER_KEY], path)
         remove = False
         if not os.path.exists(abspath) or not os.path.isabs(abspath):
@@ -499,17 +768,16 @@ class RefGenConf(yacman.YacAttMap):
         except Exception:
             pass
         else:
-            if not force and not query_yes_no(
-                "'{}/{}:{}' exists. Do you want to overwrite?".format(
-                    genome, asset, tag
-                )
+            if not force and not Confirm.ask(
+                prompt=f"'{genome}/{asset}:{tag}' exists. Do you want to overwrite?",
+                default=False,
             ):
                 _LOGGER.info("Aborted by a user, asset no added")
                 return False
             remove = True
             _LOGGER.info("Will remove existing to overwrite")
         tag_data = {
-            CFG_ASSET_PATH_KEY: path,
+            CFG_ASSET_DATE_KEY: path,
             CFG_ASSET_CHECKSUM_KEY: get_dir_digest(abspath) or "",
         }
         msg = "Added asset: {}/{}:{} {}".format(
@@ -536,6 +804,201 @@ class RefGenConf(yacman.YacAttMap):
         self._symlink_alias(genome, asset, tag)
         return True
 
+    def add_recipe(
+        self,
+        recipe_dict=None,
+        recipe_path=None,
+        source=None,
+        force=False,
+    ):
+        """
+        Add a recipe to the config
+
+        :param dict recipe_dict: a dictionary of recipe contents,
+            check the recipe specification for details
+        :param str recipe_path: a path to the recipe file
+        :param str source: the source of the recipe
+        :param bool force: whether to force existing recipe overwrite
+        """
+        # TODO: asset classes and recipes add/remove methods could be DRYed
+        args = {"asset_class_definition_file_dir": self.asset_class_dir}
+        if recipe_dict is None:
+            if recipe_path is None:
+                raise ValueError("Either recipe_dict or recipe_path must be provided")
+            if is_url(recipe_path):
+                source = recipe_path
+            else:
+                if not os.path.exists(recipe_path):
+                    recipe_path = os.path.join(self.recipe_dir, recipe_path)
+            args.update({"recipe_definition_file": recipe_path})
+        else:
+            args.update({"recipe_definition_dict": recipe_dict})
+        recipe = recipe_factory(**args)  # creates and validates the recipe
+
+        # write file to recipe folder
+        if not os.path.exists(self.recipe_dir):
+            os.makedirs(self.recipe_dir)
+        target_recipe_path = os.path.join(
+            self.recipe_dir, TEMPLATE_RECIPE_YAML.format(recipe.name)
+        )
+        if os.path.exists(target_recipe_path) and not force:
+            if not Confirm.ask(
+                prompt=f"Recipe '{recipe.name}' already exists. Overwrite?",
+                default=False,
+            ):
+                _LOGGER.info("Aborted, recipe not added")
+                return False
+
+        # save the recipe to the recipe dir
+        recipe.to_yaml(target_recipe_path)
+
+        # update recipe metadata in config
+        recipe_metadata = {
+            "path": os.path.relpath(target_recipe_path, self.recipe_dir),
+            "source": source or "self-added",
+            "version": recipe.version,
+            "output_asset_class": recipe.output_class.name,
+            "description": recipe.description,
+        }
+        with self as rgc:
+            rgc[CFG_RECIPES_KEY] = rgc[CFG_RECIPES_KEY] or {}
+            rgc[CFG_RECIPES_KEY].setdefault(recipe.name, {})
+            rgc[CFG_RECIPES_KEY][recipe.name].update(recipe_metadata)
+        _LOGGER.info(f"Added recipe: {recipe.name} ({target_recipe_path})")
+        return True
+
+    def remove_recipe(self, recipe_name, force=False):
+        """
+        Remove a recipe from the config
+
+        :param str recipe_name: the name of the recipe to remove
+        :param bool force: whether to force existing recipe removal
+        """
+        recipe_file = self.get_recipe_file(recipe_name)
+        if not os.path.exists(recipe_file):
+            raise MissingRecipeError(
+                f"Recipe '{recipe_name}' file not exist: {recipe_file}"
+            )
+        if not force and not Confirm.ask(
+            prompt=f"Are you sure you want to remove recipe '{recipe_name}'?",
+            default=False,
+        ):
+            _LOGGER.info("Aborted, recipe not removed")
+            return False
+        os.remove(recipe_file)
+
+        with self as rgc:
+            if recipe_name not in rgc[CFG_RECIPES_KEY]:
+                raise MissingRecipeError(
+                    f"Recipe '{recipe_name}' does not exist in the config"
+                )
+            rgc[CFG_RECIPES_KEY].pop(recipe_name)
+        _LOGGER.info(f"Removed recipe: {recipe_name}")
+
+    def add_asset_class(
+        self,
+        asset_class_dict=None,
+        asset_class_path=None,
+        source=None,
+        force=False,
+    ):
+        """
+        Add a asset_class to the config
+
+        :param str asset_class_name: a name for the asset_class
+        :param dict asset_class_dict: a dictionary of asset_class contents,
+            check the asset_class specification for details
+        :param str asset_class_path: a path to the asset_class file
+        :param str source: the source of the asset_class
+        :param bool force: whether to force existing asset_class overwrite
+        """
+        args = {}
+        if asset_class_dict is None:
+            if asset_class_path is None:
+                raise ValueError(
+                    "Either asset_class_path or asset_class_dict must be provided"
+                )
+            if is_url(asset_class_path):
+                source = asset_class_path
+            else:
+                if not os.path.exists(asset_class_path):
+                    asset_class_path = os.path.join(
+                        self.asset_class_dir, asset_class_path
+                    )
+            args.update({"asset_class_definition_file": asset_class_path})
+        else:
+            args.update({"asset_class_definition_dict": asset_class_dict})
+        args.update({"asset_class_definition_file_dir": self.asset_class_dir})
+        asset_class, parent_asset_classes = asset_class_factory(
+            **args
+        )  # creates and validates the asset class and parents
+        if len(parent_asset_classes) > 0:
+            nms = [ac.name for ac in parent_asset_classes]
+            _LOGGER.info(f"Adding parent asset classes: {block_iter_repr(nms)}")
+
+        any_added = False
+        # process the requested asset_class and all the parent_asset_classes
+        # so that all dependencies are added to the config
+        for ac in parent_asset_classes + [asset_class]:
+            # write file to asset_class folder
+            if not os.path.exists(self.asset_class_dir):
+                os.makedirs(self.asset_class_dir)
+            target_asset_class_path = os.path.join(
+                self.asset_class_dir, TEMPLATE_ASSET_CLASS_YAML.format(ac.name)
+            )
+            if os.path.exists(target_asset_class_path) and not force:
+                if not Confirm.ask(
+                    prompt=f"Asset class '{ac.name}' already exists. Overwrite?",
+                    default=False,
+                ):
+                    _LOGGER.info("Aborted, asset class not added")
+                    continue
+
+            # save the recipe to the recipe dir
+            ac.to_yaml(target_asset_class_path)
+            # update asset_class metadata in config
+            asset_class_metadata = {
+                "path": os.path.relpath(target_asset_class_path, self.asset_class_dir),
+                "source": source or "self-added",
+                "version": ac.version,
+                "description": ac.description,
+            }
+            with self as rgc:
+                rgc[CFG_ASSET_CLASSES_KEY] = rgc[CFG_ASSET_CLASSES_KEY] or {}
+                rgc[CFG_ASSET_CLASSES_KEY].setdefault(ac.name, {})
+                rgc[CFG_ASSET_CLASSES_KEY][ac.name].update(asset_class_metadata)
+            _LOGGER.info(f"Added asset class: {ac.name} ({target_asset_class_path})")
+            any_added = True
+        return any_added
+
+    def remove_asset_class(self, asset_class_name, force=False):
+        """
+        Remove an asset class from the config
+
+        :param str asset_class: the name of the asset class to remove
+        :param bool force: whether to force existing asset class removal
+        """
+        asset_class_file = self.get_asset_class_file(asset_class_name)
+        if not os.path.exists(asset_class_file):
+            raise MissingRecipeError(
+                f"Asset class '{asset_class_name}' file not exist: {asset_class_file}"
+            )
+        if not force and not Confirm.ask(
+            prompt=f"Are you sure you want to remove asset class '{asset_class_name}'?",
+            default=False,
+        ):
+            _LOGGER.info("Aborted, recipe not removed")
+            return False
+        os.remove(asset_class_file)
+
+        with self as rgc:
+            if asset_class_name not in rgc[CFG_ASSET_CLASSES_KEY]:
+                raise MissingRecipeError(
+                    f"Asset class '{asset_class_name}' does not exist in the config"
+                )
+            rgc[CFG_ASSET_CLASSES_KEY].pop(asset_class_name)
+        _LOGGER.info(f"Removed asset class: {asset_class_name}")
+
     def get_symlink_paths(self, genome, asset=None, tag=None, all_aliases=False):
         """
         Get path to the alias directory for the selected genome-asset-tag
@@ -555,7 +1018,7 @@ class RefGenConf(yacman.YacAttMap):
             return {}
         alias = _make_list_of_str(defined_aliases)
         if asset:
-            tag = tag or self.get_default_tag(genome, asset)
+            tag = validate_tag(tag or self.get_default_tag(genome, asset))
         return {
             a: os.path.join(self.alias_dir, a, asset, tag)
             if asset
@@ -593,7 +1056,7 @@ class RefGenConf(yacman.YacAttMap):
         created = []
         genome_digest = self.get_genome_alias_digest(genome, fallback=True)
         if asset:
-            tag = tag or self.get_default_tag(genome, asset)
+            tag = validate_tag(tag or self.get_default_tag(genome, asset))
             src_path = self.seek_src(genome, asset, tag, enclosing_dir=True)
         else:
             src_path = os.path.join(self.data_dir, genome_digest)
@@ -603,26 +1066,24 @@ class RefGenConf(yacman.YacAttMap):
         for alias, path in target_paths_mapping.items():
             if not os.path.exists(path):
                 os.makedirs(path, exist_ok=True)
-                for root, dirs, files in os.walk(src_path):
-                    appendix = os.path.relpath(root, src_path)
-                    for directory in dirs:
-                        try:
-                            os.makedirs(os.path.join(path, appendix, _rpl(directory)))
-                        except FileExistsError:
-                            continue
-                    for file in files:
-                        try:
-                            rel = os.path.relpath(
-                                os.path.join(root, file), os.path.join(path, appendix)
-                            )
-                            new_path = os.path.join(path, appendix, _rpl(file))
-                            link_fun(rel, new_path)
-                        except FileExistsError:
-                            _LOGGER.warning(
-                                f"Could not create link, file exists: {new_path}"
-                            )
-                            continue
-                created.append(path)
+            for root, dirs, files in os.walk(src_path):
+                appendix = os.path.relpath(root, src_path)
+                for directory in dirs:
+                    try:
+                        os.makedirs(os.path.join(path, appendix, _rpl(directory)))
+                    except FileExistsError:
+                        continue
+                for file in files:
+                    try:
+                        rel = os.path.relpath(
+                            os.path.join(root, file), os.path.join(path, appendix)
+                        )
+                        new_path = os.path.join(path, appendix, _rpl(file))
+                        link_fun(rel, new_path)
+                    except FileExistsError:
+                        _LOGGER.debug(f"Could not create link, file exists: {new_path}")
+                        continue
+            created.append(path)
         if created:
             _LOGGER.info(f"Created alias directories:{block_iter_repr(created)}")
 
@@ -722,7 +1183,9 @@ class RefGenConf(yacman.YacAttMap):
         :raise refgenconf.MissingAssetError: if the names assembly is known to
             this configuration instance, but the requested asset is unknown
         """
-        tag_name = tag_name or self.get_default_tag(genome_name, asset_name)
+        tag_name = validate_tag(
+            tag_name or self.get_default_tag(genome_name, asset_name)
+        )
         try:
             genome_digest = self.get_genome_alias_digest(genome_name, fallback=True)
         except yacman.UndefinedAliasError:
@@ -744,6 +1207,20 @@ class RefGenConf(yacman.YacAttMap):
                 seek_val = ""
         else:
             try:
+                asset_class_name = self.get_assets_asset_class(
+                    genome=genome_digest, asset=asset_name
+                )
+                seek_key_type = self.get_asset_class(
+                    asset_class_name=asset_class_name
+                ).seek_keys[seek_key]["type"]
+            except Exception as e:
+                _LOGGER.warn(
+                    "Could not determine seek key type due to an asset class issue."
+                    "A path will be returned. Caught exception: " + str(e)
+                )
+                seek_key_type = "file"
+            _LOGGER.debug(f"Determined '{seek_key}' seek key type: {seek_key_type}")
+            try:
                 seek_val = asset_tag_data[CFG_SEEK_KEYS_KEY][seek_key]
             except KeyError:
                 if seek_key == "dir":
@@ -753,6 +1230,8 @@ class RefGenConf(yacman.YacAttMap):
                         f"Seek key '{seek_key}' not defined for: "
                         f"'{genome_name}.{asset_name}:{tag_name}'"
                     )
+            if seek_key_type not in ["file", "directory", "prefix"]:
+                return seek_val
         if enclosing_dir:
             seek_val = ""
         fullpath = os.path.join(
@@ -803,7 +1282,7 @@ class RefGenConf(yacman.YacAttMap):
         :return str: path to the asset
         """
         good_servers = [
-            s for s in self[CFG_SERVERS_KEY] if get_url(s, API_ID_ASSET_PATH)
+            s for s in self[CFG_SERVERS_KEY] if get_url(s, API_ID_ASSET_ATTRS)
         ]
         _LOGGER.debug(f"Compatible refgenieserver instances: {good_servers}")
         for url in good_servers:
@@ -862,7 +1341,9 @@ class RefGenConf(yacman.YacAttMap):
         :raise refgenconf.MissingAssetError: if the names assembly is known to
             this configuration instance, but the requested asset is unknown
         """
-        tag_name = tag_name or self.get_default_tag(genome_name, asset_name)
+        tag_name = validate_tag(
+            tag_name or self.get_default_tag(genome_name, asset_name)
+        )
         _LOGGER.debug(
             "getting asset: '{}/{}.{}:{}'".format(
                 genome_name, asset_name, seek_key, tag_name
@@ -967,9 +1448,11 @@ class RefGenConf(yacman.YacAttMap):
             )
             return DEFAULT_TAG
         try:
-            return self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][
-                CFG_ASSET_DEFAULT_TAG_KEY
-            ]
+            return validate_tag(
+                self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][
+                    CFG_ASSET_DEFAULT_TAG_KEY
+                ]
+            )
         except KeyError:
             alt = (
                 self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][
@@ -996,11 +1479,179 @@ class RefGenConf(yacman.YacAttMap):
                         ),
                         RuntimeWarning,
                     )
-                return alt
+                return validate_tag(alt)
         except TypeError:
             _raise_not_mapping(
                 self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset], "Asset section "
             )
+
+    def get_assets_asset_class(self, genome, asset):
+        """
+        Return the class of the asset,
+        if the 'asset_class' key exists in the config or None otherwise.
+
+        :param str genome: name of a reference genome assembly/digest of interest
+        :param str asset: name of the particular asset of interest
+        :return str: name of the class to use for the asset
+        """
+        self._assert_gat_exists(genome, asset)
+        return (
+            self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][CFG_ASSET_CLASS_KEY]
+            if (
+                CFG_ASSET_CLASS_KEY
+                in self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]
+            )
+            else None
+        )
+
+    def get_asset_class_file(self, asset_class_name):
+        """
+        Return the absolute path to the recipe file
+        for the given recipe name.
+
+        :param str recipe_name: name of the recipe to get the recipe file for
+        :return str: absolute path to the recipe file
+        """
+        if asset_class_name is None:
+            raise MissingAssetClassError("No asset class name provided")
+        if os.path.exists(asset_class_name) or is_url(asset_class_name):
+            _LOGGER.debug("Provided asset class name is a file or a URL")
+            return asset_class_name
+        if asset_class_name not in self.list_asset_classes():
+            raise MissingAssetClassError(
+                f"Could not find '{asset_class_name}' asset class"
+            )
+        return os.path.join(
+            self.asset_class_dir, self.asset_classes[asset_class_name]["path"]
+        )
+
+    def pull_asset_class(
+        self,
+        asset_class_name,
+        get_url=lambda server, id: construct_request_url(server, id),
+        force=False,
+    ):
+        """
+        Pull the asset class with the given name from the remote server.
+
+        :param str recipe_name: name of the asset_class to pull
+        :param function(serverUrl, operationId) -> str get_url: how to determine
+            URL request, given server URL and endpoint operationID
+        :param bool force: whether to overwrite existing asset class file
+        """
+        for url in self[CFG_SERVERS_KEY]:
+            asset_class_conents_url_template = get_url(url, API_ID_ASSET_CLASS_CONTENTS)
+            if asset_class_conents_url_template is None:
+                continue
+            asset_class_conents_url = asset_class_conents_url_template.format(
+                asset_class=asset_class_name
+            )
+            _LOGGER.info(
+                f"Pulling '{asset_class_name}' asset class from '{asset_class_conents_url}'"
+            )
+            asset_class_contents = send_data_request(url=asset_class_conents_url)
+            self.add_asset_class(
+                asset_class_dict=asset_class_contents, force=force, source=url
+            )
+            break
+
+    def get_recipe_file(self, recipe_name):
+        """
+        Return the absolute path to the recipe file
+        for the given recipe name.
+
+        :param str recipe_name: name of the recipe to get the recipe file for
+        :return str: absolute path to the recipe file
+        """
+        if recipe_name is None:
+            raise MissingRecipeError("No recipe name provided")
+        if os.path.exists(recipe_name) or is_url(recipe_name):
+            _LOGGER.debug("Provided recipe name is a file or a URL")
+            return recipe_name
+        if recipe_name not in self.list_recipes():
+            raise MissingRecipeError(f"Could not find '{recipe_name}' recipe")
+        return os.path.join(self.recipe_dir, self.recipes[recipe_name]["path"])
+
+    def get_recipe(self, recipe_name):
+        """
+        Return the recipe with the given name, if it exists.
+        Alternatively, the recipe can be created from a file, if the recipe_name is a file path or a URL.
+
+        :param str recipe_name: name of the recipe to return
+        :return refgenconf.recipe.Recipe: the recipe with the given name
+        """
+        return recipe_factory(
+            recipe_definition_file=self.get_recipe_file(recipe_name),
+            asset_class_definition_file_dir=self.asset_class_dir,
+        )
+
+    def pull_recipe(
+        self,
+        recipe_name,
+        get_url=lambda server, id: construct_request_url(server, id),
+        force=False,
+        pull_asset_class=False,
+    ):
+        """
+        Pull the recipe with the given name from the remote server.
+
+        :param str recipe_name: name of the recipe to pull
+        :param function(serverUrl, operationId) -> str get_url: how to determine
+            URL request, given server URL and endpoint operationID
+        :param bool force: whether to overwrite existing recipe file
+        """
+        for url in self[CFG_SERVERS_KEY]:
+            recipe_conents_url_template = get_url(url, API_ID_RECIPE_CONTENTS)
+            if recipe_conents_url_template is None:
+                continue
+            recipe_conents_url = recipe_conents_url_template.format(recipe=recipe_name)
+            _LOGGER.info(f"Pulling '{recipe_name}' recipe from '{recipe_conents_url}'")
+            recipe_contents = send_data_request(url=recipe_conents_url)
+            acn = recipe_contents["output_asset_class"]
+            try:
+                self.get_asset_class(asset_class_name=acn)
+            except (MissingAssetClassError, FileNotFoundError) as e:
+                if pull_asset_class:
+                    _LOGGER.warn(f"{e}. Pulling...")
+                    self.pull_asset_class(
+                        asset_class_name=acn, get_url=get_url, force=force
+                    )
+                else:
+                    raise
+            self.add_recipe(recipe_dict=recipe_contents, force=force, source=url)
+            break
+
+    def get_asset_class(self, asset_class_name):
+        """
+        Return the asset class with the given name, if it exists.
+        Alternatively, the asset class can be created from a file, if the asset_class_name is a file path or a URL.
+
+        :param str recipe_name: name of the asset class to return
+        :return refgenconf.asset.AssetClass: the asset class with the given name
+        """
+        return asset_class_factory(
+            asset_class_definition_file=self.get_asset_class_file(asset_class_name)
+        )[0]
+
+    def set_asset_class(self, genome, asset, asset_class, description=None):
+        """
+        Set the asset class to use for a particular asset.
+
+        :param str genome: identifier (digest) of a reference genome assembly of interest
+        :param str asset: name of the particular asset of interest
+        :param str asset_class: name of the class to use for the asset
+        """
+        self._assert_gat_exists(genome, asset)
+        asset_dict = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]
+        if CFG_ASSET_CLASS_KEY in asset_dict:
+            if asset_dict[CFG_ASSET_CLASS_KEY] != asset_class:
+                raise RefgenconfError(
+                    f"Asset class for asset '{genome}/{asset}' is already set to '{asset_dict['asset_class']}'"
+                )
+        else:
+            asset_dict[CFG_ASSET_CLASS_KEY] = asset_class
+            if description is not None:
+                asset_dict[CFG_ASSET_DESC_KEY] = description
 
     def set_default_pointer(
         self,
@@ -1127,7 +1778,10 @@ class RefGenConf(yacman.YacAttMap):
                 for tag_name in get_asset_tags(asset_mapping):
                     tag_mapping = asset_mapping[CFG_ASSET_TAGS_KEY][tag_name]
                     ret[genome_name][asset_name][tag_name] = {}
-                    for seek_key_name in get_tag_seek_keys(tag_mapping):
+                    tag_seek_keys = get_tag_seek_keys(tag_mapping)
+                    if not tag_seek_keys:
+                        raise MissingAssetError()
+                    for seek_key_name in tag_seek_keys:
                         ret[genome_name][asset_name][tag_name][
                             seek_key_name
                         ] = self.seek(genome_name, asset_name, tag_name, seek_key_name)
@@ -1258,10 +1912,7 @@ class RefGenConf(yacman.YacAttMap):
         :raise ValueError: when the original tag is not specified
         :return bool: a logical indicating whether the tagging was successful
         """
-        if any([c in new_tag for c in TAG_NAME_BANNED_CHARS]):
-            raise ValueError(
-                f"The tag name can't consist of characters: {TAG_NAME_BANNED_CHARS}"
-            )
+        validate_tag(new_tag)
         self.run_plugins(PRE_TAG_HOOK)
         ori_path = self.seek_src(
             genome, asset, tag, enclosing_dir=True, strict_exists=True
@@ -1327,6 +1978,7 @@ class RefGenConf(yacman.YacAttMap):
         :raise ValueError: when the original tag is not specified
         :return bool: a logical indicating whether the tagging was successful
         """
+        tag = validate_tag(tag)
         self._assert_gat_exists(genome, asset, tag)
         asset_mapping = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]
         if tag is None:
@@ -1337,7 +1989,7 @@ class RefGenConf(yacman.YacAttMap):
                 f"for '{genome}/{asset}' are: {ts}"
             )
         if new_tag in asset_mapping[CFG_ASSET_TAGS_KEY]:
-            if not force and not query_yes_no(
+            if not force and not Confirm.ask(
                 f"You already have a '{asset}' asset tagged as "
                 f"'{new_tag}', do you wish to override?"
             ):
@@ -1350,7 +2002,7 @@ class RefGenConf(yacman.YacAttMap):
         if CFG_ASSET_PARENTS_KEY in asset_mapping[CFG_ASSET_TAGS_KEY][tag]:
             parents = asset_mapping[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_PARENTS_KEY]
         if len(children) > 0 or len(parents) > 0:
-            if not force and not query_yes_no(
+            if not force and not Confirm.ask(
                 f"The asset '{genome}/{asset}:{tag}' has {len(children)} "
                 f"children and {len(parents)} parents. Refgenie will update"
                 f" the relationship data. Do you want to proceed?"
@@ -1394,6 +2046,7 @@ class RefGenConf(yacman.YacAttMap):
         :param bool update_children: whether the children of the selected relatives
             should be updated.
         """
+        tag = validate_tag(tag)
         relative_key = (
             CFG_ASSET_CHILDREN_KEY if update_children else CFG_ASSET_PARENTS_KEY
         )
@@ -1527,7 +2180,7 @@ class RefGenConf(yacman.YacAttMap):
             s for s in self[CFG_SERVERS_KEY] if get_json_url(s, API_ID_DIGEST)
         ]
 
-        _LOGGER.info(f"Compatible refgenieserver instances: {good_servers}")
+        _LOGGER.debug(f"Compatible refgenieserver instances: {good_servers}")
 
         for server_url in good_servers:
             try:
@@ -1542,7 +2195,7 @@ class RefGenConf(yacman.YacAttMap):
 
             num_servers += 1
             try:
-                determined_tag = (
+                determined_tag = validate_tag(
                     send_data_request(
                         get_json_url(server_url, API_ID_DEFAULT_TAG).format(
                             genome=genome, asset=asset
@@ -1571,6 +2224,9 @@ class RefGenConf(yacman.YacAttMap):
             url_archive = get_json_url(server_url, API_ID_ARCHIVE).format(
                 genome=genome, asset=asset
             )
+            url_asset_class_name = get_json_url(
+                server_url, API_ID_ASSETS_ASSET_CLASS
+            ).format(genome=genome, asset=asset)
 
             try:
                 archive_data = send_data_request(
@@ -1608,7 +2264,7 @@ class RefGenConf(yacman.YacAttMap):
                 if force is False:
                     return preserve()
                 elif force is None:
-                    if not query_yes_no(f"Replace existing ({tag_dir})?", "no"):
+                    if not Confirm.ask(f"Replace existing ({tag_dir})?"):
                         return preserve()
                     else:
                         _LOGGER.debug(f"Overwriting: {tag_dir}")
@@ -1634,7 +2290,7 @@ class RefGenConf(yacman.YacAttMap):
                         "Skipping pull of {}/{}:{}; size: {}".format(*gat, archsize)
                     )
                     return _null_return()
-                if not query_yes_no(
+                if not Confirm.ask(
                     "This archive exceeds the size cutoff ({} > {:.1f}GB). "
                     "Do you want to proceed?".format(archsize, size_cutoff)
                 ):
@@ -1665,7 +2321,7 @@ class RefGenConf(yacman.YacAttMap):
                 else:
                     _LOGGER.info("Trying next server")
                     # set the tag value back to what user requested
-                    determined_tag = tag
+                    determined_tag = validate_tag(tag)
                     continue
             except ConnectionRefusedError as e:
                 _LOGGER.error(str(e))
@@ -1715,6 +2371,11 @@ class RefGenConf(yacman.YacAttMap):
                         },
                     )
                     rgc.set_default_pointer(*gat)
+                    rgc.set_asset_class(
+                        genome=genome,
+                        asset=asset,
+                        asset_class=send_data_request(url_asset_class_name),
+                    )
                     rgc.update_genomes(genome=genome, data=genome_archive_data)
             else:
                 [
@@ -1733,6 +2394,11 @@ class RefGenConf(yacman.YacAttMap):
                     },
                 )
                 self.set_default_pointer(*gat)
+                self.set_asset_class(
+                    genome=genome,
+                    asset=asset,
+                    asset_class=send_data_request(url_asset_class_name),
+                )
                 self.update_genomes(genome=genome, data=genome_archive_data)
             if asset == "fasta":
                 self.initialize_genome(
@@ -1853,6 +2519,7 @@ class RefGenConf(yacman.YacAttMap):
         :param str digest: identifier to use
         :param bool overwrite: whether all the previously set aliases should be
             removed and just the current one stored
+        :param bool create_genome: whether to create the genome entry, if missing
         :param bool no_write: whether to skip writing the alias to the file
         :return bool: whether the alias has been established
         """
@@ -1977,6 +2644,43 @@ class RefGenConf(yacman.YacAttMap):
         """
         return os.path.join(self.data_dir, genome, f"{genome}__ASDs.json")
 
+    def get_recipe_inputs_path(self, genome, asset, tag=None):
+        """
+        Get path to the recipe inputs JSON file for a given genome and asset.
+
+        :param str genome: genome name
+        :param str asset: asset name
+        :param str tag: tag name
+        :return str: recipe inputs path
+        """
+        tag = validate_tag(tag or self.get_default_tag(genome=genome, asset=asset))
+        return os.path.join(
+            self.data_dir,
+            self.get_genome_alias_digest(alias=genome, fallback=True),
+            asset,
+            tag,
+            BUILD_STATS_DIR,
+            TEMPLATE_RECIPE_INPUTS_JSON.format(asset, tag),
+        )
+
+    def get_recipe_inputs(self, genome, asset, tag=None):
+        """
+        Get recipe inputs for a given genome and asset.
+
+        :param str genome: genome name
+        :param str asset: asset name
+        :param str tag: tag name
+        :return dict: recipe inputs
+        """
+        tag = validate_tag(tag or self.get_default_tag(genome=genome, asset=asset))
+        pth = self.get_recipe_inputs_path(genome, asset, tag)
+        if not os.path.isfile(pth):
+            raise FileNotFoundError(
+                f"Recipe inputs not found for '{genome}/{asset}:{tag}': {pth}"
+            )
+        with open(pth, "r") as ifp:
+            return json.load(ifp)
+
     def remove_asset_from_relatives(self, genome, asset, tag):
         """
         Remove any relationship links associated with the selected asset
@@ -2026,7 +2730,7 @@ class RefGenConf(yacman.YacAttMap):
             added is 'children'
         :return RefGenConf: updated object
         """
-        tag = tag or self.get_default_tag(genome, asset)
+        tag = validate_tag(tag or self.get_default_tag(genome, asset))
         relationship = CFG_ASSET_CHILDREN_KEY if children else CFG_ASSET_PARENTS_KEY
         if _check_insert_data(data, list, "data"):
             # creates/asserts the genome/asset:tag combination
@@ -2053,7 +2757,7 @@ class RefGenConf(yacman.YacAttMap):
         :param Mapping keys: seek_keys to be added/updated
         :return RefGenConf: updated object
         """
-        tag = tag or self.get_default_tag(genome, asset)
+        tag = validate_tag(tag or self.get_default_tag(genome, asset))
         if _check_insert_data(keys, Mapping, "keys"):
             self.update_tags(genome, asset, tag, force_digest=force_digest)
             asset = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]
@@ -2151,7 +2855,9 @@ class RefGenConf(yacman.YacAttMap):
         :raise TypeError: if genome argument type is not a list or str
         :return RefGenConf: updated object
         """
-        tag = tag or self.get_default_tag(genome, asset, use_existing=False)
+        tag = validate_tag(
+            tag or self.get_default_tag(genome, asset, use_existing=False)
+        )
         if files:
             req_dict = {
                 "genome": self.get_genome_alias_digest(genome, fallback=True),
@@ -2159,7 +2865,7 @@ class RefGenConf(yacman.YacAttMap):
                 "tag": tag,
             }
             _LOGGER.debug("Attempting removal: {}".format(req_dict))
-            if not force and not query_yes_no(
+            if not force and not Confirm.ask(
                 "Remove '{}/{}:{}'?".format(genome, asset, tag)
             ):
                 _LOGGER.info("Action aborted by the user")
@@ -2273,7 +2979,7 @@ class RefGenConf(yacman.YacAttMap):
                     if alt[1] in alt[0]:
                         del alt[0][alt[1]]
 
-        tag = tag or self.get_default_tag(genome, asset)
+        tag = validate_tag(tag or self.get_default_tag(genome, asset))
         if _check_insert_data(genome, str, "genome"):
             if _check_insert_data(asset, str, "asset"):
                 if _check_insert_data(tag, str, "tag"):
@@ -2295,9 +3001,11 @@ class RefGenConf(yacman.YacAttMap):
                     )
                     _del_if_empty(self[CFG_GENOMES_KEY], genome)
                     try:
-                        default_tag = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][
-                            asset
-                        ][CFG_ASSET_DEFAULT_TAG_KEY]
+                        default_tag = str(
+                            self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][
+                                CFG_ASSET_DEFAULT_TAG_KEY
+                            ]
+                        )
                     except KeyError:
                         pass
                     else:
@@ -2308,6 +3016,86 @@ class RefGenConf(yacman.YacAttMap):
                     if len(self[CFG_GENOMES_KEY]) == 0:
                         self[CFG_GENOMES_KEY] = None
         return self
+
+    def validate_asset_seek_keys(self, genome, asset, tag, no_error=False):
+        """
+        Validate seek_keys with asset class-sourced schema
+
+        :param str genome: genome to be validated
+        :param str asset: asset to be validated
+        :param str tag: tag to be validated
+        :param bool no_error: whether to skip raising an error
+        :return bool: whether the seek keys are valid
+        """
+        asset_class_name = self.get_assets_asset_class(genome, asset)
+        if asset_class_name is None:
+            raise MissingConfigDataError(
+                f"Could not find asset class for asset {genome}/{asset}"
+            )
+        ac = self.get_asset_class(asset_class_name)
+        _assert_gat_exists(self.genomes, genome, asset, tag)
+        seek_keys = self.genomes[genome][CFG_ASSETS_KEY][asset][CFG_ASSET_TAGS_KEY][
+            tag
+        ][CFG_SEEK_KEYS_KEY]
+        _LOGGER.info(f"Validating seek keys for '{genome}/{asset}:{tag}'")
+        # validate structure and types of seek_keys
+        validate(seek_keys, ac.seek_keys_canonical_schema)
+        # validate values of seek_keys. Types 'file', 'directory' and 'prefix' are special cases,
+        # since instead of comparing the literal value, files existence on disk is checked
+        if "properties" not in ac.seek_keys_schema:
+            raise ValueError("Auto-generated seek_keys schema is invalid")
+        for seek_key, values in ac.seek_keys_schema["properties"].items():
+            if "type" not in values:
+                continue
+            if values["type"] in ["file", "directory"]:
+                try:
+                    file_pth = self.seek_src(
+                        genome_name=genome,
+                        asset_name=asset,
+                        tag_name=tag,
+                        seek_key=seek_key,
+                        strict_exists=True,
+                    )
+                except (RefgenconfError, OSError) as e:
+                    if no_error:
+                        return False
+                    raise ValidationError(getattr(e, "message", str(e)))
+                _LOGGER.debug(
+                    f"File exists for {genome}/{asset}.{seek_key}:{tag} ({file_pth})"
+                )
+
+            if values["type"] == "prefix":
+                try:
+                    prefix = self.seek_src(
+                        genome_name=genome,
+                        asset_name=asset,
+                        tag_name=tag,
+                        seek_key=seek_key,
+                        strict_exists=None,
+                    )
+                    matched_files = glob(f"{prefix}*")
+                    if len(matched_files) == 0:
+                        raise ValidationError(
+                            f"No files found for {genome}/{asset}.{seek_key}:{tag}. Tried prefix: {prefix}*"
+                        )
+                except (RefgenconfError, OSError) as e:
+                    if no_error:
+                        return False
+                    raise ValidationError(getattr(e, "message", str(e)))
+                _LOGGER.debug(
+                    f"{len(matched_files)} files matched prefix for {genome}/{asset}.{seek_key}:{tag}: {block_iter_repr(matched_files)}"
+                )
+
+            if values["type"] in ["string", "number", "integer", "boolean"]:
+                if "value" in values:
+                    if seek_keys[seek_key] != values["value"]:
+                        if no_error:
+                            return False
+                        raise ValidationError(
+                            f"{seek_key} value does not match expected value"
+                            f" ({seek_keys[seek_key]}!={values['value']})"
+                        )
+        return True
 
     def update_genomes(self, genome, data=None, force_digest=None):
         """
@@ -2481,7 +3269,7 @@ class RefGenConf(yacman.YacAttMap):
         """
         remote_asset_data = prp(remote_asset_name)
         asset = remote_asset_data["item"]
-        tag = remote_asset_data["tag"]
+        tag = validate_tag(remote_asset_data["tag"])
         try:
             local_digest = self.id(genome, asset, tag)
             if remote_digest != local_digest:
@@ -2511,7 +3299,7 @@ class RefGenConf(yacman.YacAttMap):
         """
         remote_asset_data = prp(remote_asset_name)
         asset = remote_asset_data["item"]
-        tag = remote_asset_data["tag"]
+        tag = validate_tag(remote_asset_data["tag"])
         asset_digest_url = construct_request_url(server_url, API_ID_DIGEST).format(
             genome=genome, asset=asset, tag=tag
         )
@@ -2559,7 +3347,7 @@ class RefGenConf(yacman.YacAttMap):
         :return str: asset digest for the tag
         """
         self._assert_gat_exists(genome, asset, tag)
-        tag = tag or self.get_default_tag(genome, asset)
+        tag = validate_tag(tag or self.get_default_tag(genome, asset))
         a = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]
         if CFG_ASSET_CHECKSUM_KEY in a[CFG_ASSET_TAGS_KEY][tag]:
             return a[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_CHECKSUM_KEY]
@@ -2639,6 +3427,42 @@ class RefGenConf(yacman.YacAttMap):
             seek_method_name="seekr",
             remote_class=remote_class or "http",
         )
+
+    def get_build_groups(self):
+        """
+        Generate a list of build groups from the local refgenie recipe registry.
+        The build order is determined based on the recipes' dependencies.
+
+        :return List[Set[str]]: a list of sets that represent the build order
+        """
+        # get a collection of required asset classes by each asset to build
+        reqs_dict_set = {}
+        for _, recipe_metadata in self.recipes.items():
+            recipe = recipe_factory(
+                recipe_definition_file=os.path.join(
+                    self.recipe_dir, recipe_metadata["path"]
+                ),
+                asset_class_definition_file_dir=self.asset_class_dir,
+            )
+            reqs_dict_set[recipe.output_class.name] = []
+            if recipe.inputs["assets"]:
+                reqs_dict_set[recipe.output_class.name] = [
+                    asset_dict["asset_class"]
+                    for asset_dict in recipe.inputs["assets"].values()
+                ]
+        reqs_dict_set = {k: set(v) for k, v in reqs_dict_set.items()}
+        build_groups = []
+        while reqs_dict_set:
+            # values not in keys, assets without depenencies
+            build_group = set(i for v in reqs_dict_set.values() for i in v) - set(
+                reqs_dict_set.keys()
+            )
+            # and keys without value, assets without depenencies
+            build_group.update(k for k, v in reqs_dict_set.items() if not v)
+            build_groups.append(build_group)
+            # remove the completed items
+            reqs_dict_set = {k: v - build_group for k, v in reqs_dict_set.items() if v}
+        return build_groups
 
     def run_plugins(self, hook):
         """
@@ -2753,6 +3577,7 @@ class RefGenConf(yacman.YacAttMap):
             the structure of the given genomes mapping suggests that it was
             parsed from an improperly formatted/structured genome config file.
         """
+        tname = validate_tag(tname)
         _LOGGER.debug(f"checking existence of: {gname}/{aname}:{tname}")
         try:
             genome = self[CFG_GENOMES_KEY][gname]
@@ -2766,7 +3591,7 @@ class RefGenConf(yacman.YacAttMap):
                     f"Genome '{gname}' exists, but asset '{aname}' is missing"
                 )
             except TypeError:
-                _raise_not_mapping(asset_data, "Asset section ")
+                _raise_not_mapping(genome[CFG_ASSETS_KEY], "Asset section ")
             if tname is not None:
                 try:
                     tag_data = asset_data[CFG_ASSET_TAGS_KEY][tname]
@@ -2869,7 +3694,8 @@ def upgrade_config(
     :param callable link_fun: function to use to link files, e.g os.symlink or os.link
     """
     # init rgc obj with provided config
-    current_version = yacman.YacAttMap(filepath=filepath)[CFG_VERSION_KEY]
+    current_config = yacman.YacAttMap(filepath=filepath)
+    current_version = current_config[CFG_VERSION_KEY]
 
     if current_version == 0.3:
         from .refgenconf_v03 import _RefGenConfV03 as OldRefGenConf
@@ -2879,6 +3705,12 @@ def upgrade_config(
         if target_version == "0.4":
             from .helpers import alter_file_tree_03_04 as alter_file_tree
             from .helpers import format_config_03_04 as format_config
+    elif current_version == 0.4:
+        from .helpers import format_config_04_05
+
+        rgc = RefGenConf(entries=format_config_04_05(current_config))
+        rgc.write(filepath=filepath)
+        return True
     else:
         raise NotImplementedError(
             f"Did not upgrade. Upgrade from v{current_version} config is not "
@@ -2895,7 +3727,7 @@ def upgrade_config(
 
     # prompt the user
     url = "http://refgenie.databio.org/en/latest/upgrade_config/"
-    if not force and not query_yes_no(
+    if not force and not Confirm.ask(
         f"Upgrading config to v{target_version}. Current genome identifiers"
         f" will be replaced with sequence-derived digests and contents of "
         f"'{rgc[CFG_FOLDER_KEY]}' will be moved to '{DATA_DIR}' and "
@@ -2922,7 +3754,7 @@ def upgrade_config(
 
     # check digest availability
     missing_digest = []
-    for genome, genome_v in rgc[CFG_GENOMES_KEY].items():
+    for genome in rgc[CFG_GENOMES_KEY].keys():
         try:
             tag = rgc.get_default_tag(genome, "fasta")
             asset_path = rgc.seek(genome, "fasta", tag, "fasta")
@@ -2944,7 +3776,7 @@ def upgrade_config(
     if (
         not force
         and missing_digest
-        and not query_yes_no(
+        and not Confirm.ask(
             f"The following genomes will be lost due to the lack of local fasta "
             f"assets and remote genome digests: {', '.join(missing_digest)}. "
             f"Would you like to proceed?"
@@ -3098,7 +3930,7 @@ def _assert_gat_exists(genomes, gname, aname=None, tname=None, allow_incomplete=
                 f"Genome '{gname}' exists, but asset '{aname}' is missing"
             )
         except TypeError:
-            _raise_not_mapping(asset_data, "Asset section ")
+            _raise_not_mapping(genome[CFG_ASSETS_KEY], "Asset section ")
         if tname is not None:
             try:
                 tag_data = asset_data[CFG_ASSET_TAGS_KEY][tname]
@@ -3139,7 +3971,7 @@ def _is_large_archive(size, cutoff=10):
         size = "{0:f}GB".format(_str2float(size) / 1000)
     if size.endswith("KB"):
         # convert to gigs
-        size = "{0:f}GB".format(_str2float(size) / 1000 ** 2)
+        size = "{0:f}GB".format(_str2float(size) / 1000**2)
     return size.endswith("TB") or (size.endswith("GB") and _str2float(size) > cutoff)
 
 
@@ -3410,7 +4242,7 @@ def _populate_refgenie_registry_path(rgc, glob, seek_method_name, remote_class=N
     :param str remote_class: remote data provider class. Used only in remote=True
     :return dict | str | list: modified input dict with refgenie paths populated
     """
-    p = re.compile("refgenie://([A-Za-z0-9_/\.\:]+)?")
+    p = re.compile("refgenie://([A-Za-z0-9_\-/\.\:]+)?")
     partial_args = dict()
 
     # prepare partial function based on operation mode

@@ -1,8 +1,10 @@
 future
+jinja2
 jsonschema>=3.0.1
 pyfaidx
 pyyaml
 requests
 rich>=9.0.1
+ubiquerg>=0.6.2
 yacman>=0.8.3
 tqdm

@@ -1020,9 +1020,11 @@ class RefGenConf(yacman.YacAttMap):
         if asset:
             tag = validate_tag(tag or self.get_default_tag(genome, asset))
         return {
-            a: os.path.join(self.alias_dir, a, asset, tag)
-            if asset
-            else os.path.join(self.alias_dir, a)
+            a: (
+                os.path.join(self.alias_dir, a, asset, tag)
+                if asset
+                else os.path.join(self.alias_dir, a)
+            )
             for a in alias
         }
 
@@ -1782,9 +1784,9 @@ class RefGenConf(yacman.YacAttMap):
                     if not tag_seek_keys:
                         raise MissingAssetError()
                     for seek_key_name in tag_seek_keys:
-                        ret[genome_name][asset_name][tag_name][
-                            seek_key_name
-                        ] = self.seek(genome_name, asset_name, tag_name, seek_key_name)
+                        ret[genome_name][asset_name][tag_name][seek_key_name] = (
+                            self.seek(genome_name, asset_name, tag_name, seek_key_name)
+                        )
         return ret
 
     def get_local_data_str(self, genome=None, order=None):
@@ -1871,9 +1873,11 @@ class RefGenConf(yacman.YacAttMap):
             genomes = genome if isinstance(genome, list) else [genome]
             if genome is not None:
                 genome_digests = [
-                    g
-                    if g in aliases_by_digest.keys()
-                    else digests_by_alias.get(g, None)
+                    (
+                        g
+                        if g in aliases_by_digest.keys()
+                        else digests_by_alias.get(g, None)
+                    )
                     for g in genomes
                 ]
                 if genome_digests is None:

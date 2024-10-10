@@ -4,7 +4,7 @@ import mock
 import pytest
 
 from refgenconf import RefGenConf
-from refgenconf.exceptions import MissingGenomeError
+from refgenconf.exceptions import MissingAssetError
 from refgenconf.populator import looper_refgenie_populate
 
 __author__ = "Michal Stolarczyk"
@@ -140,3 +140,15 @@ class TestLooperPlugins:
         ret = looper_refgenie_populate(namespaces=namespaces)
         assert "refgenie" in ret
         assert ret["refgenie"][genome][test_asset][test_asset] == "REPLACEMENT"
+
+    def test_refgenconf_raises_correct_error_for_non_existing_asset(
+        self, mocker, cfg_file
+    ):
+        mocker.patch("refgenconf.refgenconf.get_tag_seek_keys", return_value=None)
+
+        with pytest.raises(MissingAssetError):
+            looper_refgenie_populate(
+                namespaces={
+                    "pipeline": {"var_templates": {"refgenie_config": cfg_file}}
+                }
+            )

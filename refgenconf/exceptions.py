@@ -7,6 +7,7 @@ __all__ = [
     "GenomeConfigFormatError",
     "MissingAssetError",
     "MissingRecipeError",
+    "MissingAssetClassError",
     "MissingConfigDataError",
     "MissingGenomeError",
     "MissingSeekKeyError",
@@ -31,7 +32,7 @@ class DownloadJsonError(RefgenconfError):
 
     def __init__(self, resp):
         super(DownloadJsonError, self).__init__(
-            "No response provided" if resp is None else "JSON: {}".format(resp.json())
+            "No response provided" if resp is None else f"Reason: {resp}"
         )
         self.response = resp
 
@@ -65,6 +66,12 @@ class MissingSeekKeyError(RefgenconfError):
 
 class MissingRecipeError(RefgenconfError):
     """Error type for request of an unavailable recipe."""
+
+    pass
+
+
+class MissingAssetClassError(RefgenconfError):
+    """Error type for request of an unavailable asset class."""
 
     pass
 

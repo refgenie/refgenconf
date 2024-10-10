@@ -5,6 +5,10 @@ properties:
     type: [string, number]
   genome_folder:
     type: string
+  recipe_folder:
+    type: string
+  asset_class_folder:
+    type: string
   remote_url_base:
     type: string
   genome_archive_folder:
@@ -19,6 +23,14 @@ properties:
     additionalProperties: false
     patternProperties:
       ^.*$: { "$ref": "#/definitions/genome" }
+  recipes:
+    additionalProperties: false
+    patternProperties:
+      ^.*$: { "$ref": "#/definitions/recipe" }
+  asset_classes:
+    additionalProperties: false
+    patternProperties:
+      ^.*$: { "$ref": "#/definitions/asset_class" }
 
 definitions:
   genome:
@@ -37,10 +49,12 @@ definitions:
   asset:
     type: object
     properties:
-      my_required_prop:
-        type: integer
-      asset_description:
+      asset_class:
         type: string
+      default_tag:
+        anyOf:
+          - type: string
+          - type: number
       tags:
         additionalProperties: false
         patternProperties:
@@ -56,17 +70,51 @@ definitions:
         additionalProperties: false
         patternProperties:
           ^.*$: { "$ref": "#/definitions/seek_key" }
-      asset_parents:
-        type: array
-        items:
-          type: string
-      asset_children:
-        type: array
-        items:
-          type: string
+      asset_parents: { "$ref": "#/definitions/relatives" }
+      asset_children: { "$ref": "#/definitions/relatives" }
+      custom_properties:
+        type: object
+      date_built:
+        type: [string, "null"]
+
   seek_key:
     type: string
   relatives:
     type: array
     items:
       type: string
+  asset_class:
+    type: object
+    properties:
+      description:
+        type: string
+      version:
+        type: string
+      source:
+        type: string
+      path:
+        type: string
+    required:
+      - description
+      - version
+      - source
+      - path
+  recipe:
+    type: object
+    properties:
+      output_asset_class:
+        type: string
+      description:
+        type: string
+      version:
+        type: string
+      source:
+        type: string
+      path:
+        type: string
+    required:
+      - output_asset_class
+      - description
+      - version
+      - source
+      - path

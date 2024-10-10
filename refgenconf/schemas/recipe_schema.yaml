@@ -1,0 +1,116 @@
+description: "refgenie recipe file schema"
+properties:
+  name:
+    type: string
+    pattern: "^\\S*$"
+  version:
+    type: string
+    pattern: "^\\S*$"
+  description:
+    type: string
+  inputs:
+    type: object
+    additionalProperties: false
+    patternProperties:
+      files|params:
+        anyOf:
+          [
+            {
+              type: object,
+              additionalProperties: false,
+              patternProperties: { ^.*$: { "$ref": "#/definitions/input" } },
+            },
+            { type: "null" },
+          ]
+      assets:
+        anyOf:
+          [
+            {
+              type: object,
+              additionalProperties: false,
+              patternProperties:
+                { ^.*$: { "$ref": "#/definitions/input_asset" } },
+            },
+            { type: "null" },
+          ]
+  output_asset_class:
+    type: string
+  container:
+    type: string
+  custom_properties:
+    anyOf: [{ "$ref": "#/definitions/custom_properties" }, { type: "null" }]
+  default_tag:
+    type: string
+  command_template_list:
+    type: array
+    items:
+      type: string
+  checksum_exclude_list:
+    description: "A list of paths to exclude from asset checksum calculation. The paths can include regex and must be relative to the asset outfolder."
+    type: array
+    items:
+      type: string
+  test:
+    anyOf: [{ "$ref": "#/definitions/test" }, { type: "null" }]
+
+required:
+  - name
+  - version
+  - inputs
+  - output_asset_class
+  - command_template_list
+
+definitions:
+  input:
+    type: object
+    properties:
+      description:
+        type: string
+    required:
+      - description
+  input_asset:
+    type: object
+    properties:
+      description:
+        type: string
+      asset_class:
+        type: string
+    required:
+      - description
+      - asset_class
+  inputs:
+    type: object
+    additionalProperties: false
+    patternProperties:
+      ^.*$: { "$ref": "#/definitions/input" }
+  test:
+    type: object
+    properties:
+      genome:
+        type: string
+        description: "Genome DRUID to use for testing"
+      inputs:
+        type: object
+        properties:
+          files:
+            type: object
+            patternProperties:
+              ^.*$:
+                type: string
+            additionalProperties: false
+      outputs:
+        type: object
+        patternProperties:
+          ^.*$:
+            type: object
+            properties:
+              md5sum:
+                type: string
+              value:
+                type: ["number", "string", "boolean", "array"]
+  custom_properties:
+    type: object
+    additionalProperties: false
+    patternProperties:
+      ^.*$:
+        type: string

@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from attmap import AttMap
 from ubiquerg import parse_registry_path as prp
 
-import refgenconf
+from .refgenconf import RefGenConf
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -42,7 +42,7 @@ def looper_refgenie_populate(namespaces):
         and "refgenie_config" in namespaces["pipeline"]["var_templates"]
     ):
         rgc_path = namespaces["pipeline"]["var_templates"]["refgenie_config"]
-        rgc = refgenconf.RefGenConf(rgc_path)
+        rgc = RefGenConf(rgc_path)
 
         complete_sk_dict = rgc.list_seek_keys_values()
         paths_dict = {}
@@ -57,14 +57,14 @@ def looper_refgenie_populate(namespaces):
                 return namespaces["project"]["refgenie"]["tag_overrides"][genome][asset]
             except KeyError:
                 default_tag = rgc.get_default_tag(genome=genome, asset=asset)
-                _LOGGER.info(
+                _LOGGER.debug(
                     f"Refgenie asset ({genome}/{asset}) tag not specified in `refgenie.tag_overrides` section. "
                     f"Using the default tag: {default_tag}"
                 )
                 return default_tag
             except TypeError:
                 default_tag = rgc.get_default_tag(genome=genome, asset=asset)
-                _LOGGER.warn(f"tag_overrides section is malformed. Using default.")
+                _LOGGER.warning(f"tag_overrides section is malformed. Using default.")
                 return default_tag
 
         # Restructure the seek key paths to make them accessible with
@@ -74,11 +74,10 @@ def looper_refgenie_populate(namespaces):
             paths_dict[g] = {}
             for k, v in gdict.items():
                 tag = get_asset_tag(genome=g, asset=k)
-                # print(k,v)
                 try:
                     paths_dict[g][k] = v[tag]
                 except KeyError:
-                    _LOGGER.warn(
+                    _LOGGER.warning(
                         f"Can't find tag '{tag}' for asset '{g}/{k}', as specified in your project config. Using default."
                     )
                     paths_dict[g][k] = v[rgc.get_default_tag(genome=g, asset=k)]
@@ -97,9 +96,8 @@ def looper_refgenie_populate(namespaces):
             except KeyError:
                 _LOGGER.debug("Did not find path_overrides section")
             except TypeError:
-                _LOGGER.warn("Warning: path_overrides is not iterable")
+                _LOGGER.warning("Warning: path_overrides is not iterable")
 
-        # print(paths_dict)
         # Provide these values under the 'refgenie' namespace
         namespaces["refgenie"] = AttMap(paths_dict)
         return rgc.populate(namespaces)

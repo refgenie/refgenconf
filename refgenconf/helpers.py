@@ -13,7 +13,29 @@ from requests import ConnectionError, get
 from ubiquerg import is_command_callable
 from yacman import select_config
 
-from .const import *
+from .const import (
+    ALIAS_DIR,
+    API_ID_ALIAS_DIGEST,
+    API_VERSION,
+    BUILD_STATS_DIR,
+    CFG_ALIASES_KEY,
+    CFG_ASSET_CLASS_KEY,
+    CFG_ASSET_CLASSES_KEY,
+    CFG_ASSET_CUSTOM_PROPS_KEY,
+    CFG_ASSET_DATE_KEY,
+    CFG_ASSET_TAGS_KEY,
+    CFG_ASSETS_KEY,
+    CFG_CHECKSUM_KEY,
+    CFG_ENV_VARS,
+    CFG_FOLDER_KEY,
+    CFG_GENOMES_KEY,
+    CFG_RECIPES_KEY,
+    CFG_SERVERS_KEY,
+    CFG_VERSION_KEY,
+    DATA_DIR,
+    REQ_CFG_VERSION,
+    TAG_NAME_CHAR_WHITELIST,
+)
 from .exceptions import DownloadJsonError, MissingAssetError
 from .seqcol import SeqColClient
 
@@ -55,14 +77,14 @@ def asciify_json_dict(json_dict):
     return asciify_dict(json_dict)
 
 
-def get_dir_digest(path, pm=None):
+def get_dir_digest(path, pm=None, exclude_files=[]):
     """
     Generate a MD5 digest that reflects just the contents of the
     files in the selected directory.
 
     :param str path: path to the directory to digest
     :param pypiper.PipelineManager pm: a pipeline object, optional.
-    The subprocess module will be used if not provided
+        The subprocess module will be used if not provided
     :return str: a digest, e.g. a3c46f201a3ce7831d85cf4a125aa334
     """
     if not is_command_callable("md5sum"):
@@ -72,18 +94,20 @@ def get_dir_digest(path, pm=None):
             "Install and try again, e.g on macOS: 'brew install "
             "md5sha1sum'"
         )
+    exclude_files.append(f"{BUILD_STATS_DIR}*")
+    exlusion_str = " ".join([f"-not -path './{ef}'" for ef in exclude_files])
     cmd = (
-        "cd {}; find . -type f -not -path './"
-        + BUILD_STATS_DIR
-        + "*' -exec md5sum {{}} \; | sort -k 2 | awk '{{print $1}}' | md5sum"
-    )
+        "cd {}; find . -type f "
+        + exlusion_str
+        + " -exec md5sum {{}} \; | sort -k 2 | awk '{{print $1}}' | md5sum"
+    ).format(path)
     try:
-        x = pm.checkprint(cmd.format(path))
+        digest = pm.checkprint(cmd)
     except AttributeError:
         try:
             from subprocess import check_output
 
-            x = check_output(cmd.format(path), shell=True).decode("utf-8")
+            digest = check_output(cmd, shell=True).decode("utf-8")
         except Exception as e:
             _LOGGER.warning(
                 "{}: could not calculate digest for '{}'".format(
@@ -91,7 +115,7 @@ def get_dir_digest(path, pm=None):
                 )
             )
             return
-    return str(sub(r"\W+", "", x))  # strips non-alphanumeric
+    return str(sub(r"\W+", "", digest))  # strips non-alphanumeric
 
 
 def format_config_03_04(rgc, get_json_url):
@@ -103,7 +127,7 @@ def format_config_03_04(rgc, get_json_url):
     remove 'genome_digests' section from the config
     replace all aliases in keys/asset names with genome digests
 
-    :param obj rgc: RefGenConfV03 obj
+    :param obj refgenconf.RefGenConfV03: RefGenConfV03 obj
     :param function(str, str) -> str get_json_url: how to build URL from
             genome server URL base, genome, and asset
     """
@@ -166,6 +190,35 @@ def format_config_03_04(rgc, get_json_url):
             del rgc[CFG_GENOMES_KEY][digest][CFG_CHECKSUM_KEY]
         else:
             del rgc[CFG_GENOMES_KEY][genome]
+
+
+def format_config_04_05(config):
+    """
+    upgrade the v0.4 config file format to v0.5 format:
+        - add 'recipes' section to the config,
+        - add 'assset_classes' section to the config,
+
+    :param YacAttMap config: current config file as a YacAttMap
+    """
+    _LOGGER.info("Upgrading v0.4 config file format to v0.5.")
+    # add 'recipes' and 'asset_classes' sections to the config
+    config[CFG_RECIPES_KEY] = None
+    config[CFG_ASSET_CLASSES_KEY] = None
+    if CFG_GENOMES_KEY not in config:
+        return True
+    for _, genome_data in config[CFG_GENOMES_KEY].items():
+        if CFG_ASSETS_KEY not in genome_data:
+            continue
+        for asset, asset_data in genome_data[CFG_ASSETS_KEY].items():
+            asset_data.setdefault(CFG_ASSET_CLASS_KEY, asset)
+            if CFG_ASSET_TAGS_KEY not in asset_data:
+                continue
+            for _, tag_data in asset_data[CFG_ASSET_TAGS_KEY].items():
+                tag_data.setdefault(CFG_ASSET_DATE_KEY, None)
+                tag_data.setdefault(CFG_ASSET_CUSTOM_PROPS_KEY, None)
+
+    config[CFG_VERSION_KEY] = REQ_CFG_VERSION
+    return config
 
 
 def alter_file_tree_03_04(rgc, link_fun):
@@ -307,7 +360,7 @@ def send_data_request(url, params=None):
             if resp.encoding == "utf-8" or resp.apparent_encoding == "ascii":
                 _LOGGER.debug(f"Request returned pain text data: {resp.text}")
                 return resp.text
-    raise DownloadJsonError(resp)
+    raise DownloadJsonError(resp.text)
 
 
 def replace_str_in_obj(object, x, y):
@@ -331,16 +384,22 @@ def replace_str_in_obj(object, x, y):
     return obj
 
 
-def block_iter_repr(input_obj, numbered=False):
+def block_iter_repr(input_obj, numbered=False, flatten=False):
     """
     Create a human readable string representation of an iterable. Either as a bulleted or numbered list.
 
     :param Iterable input_obj: object to create a representation for
     :param bool numbered: whether a numbered list should be created
+    :param bool flatten: whether the list should be flattened
     :param str: the representation
     """
+
+    def _flatten(t):
+        return [item for sublist in t for item in sublist]
+
     if isinstance(input_obj, str):
         input_obj = [input_obj]
+    input_obj = _flatten(input_obj) if flatten else input_obj
     if not isinstance(input_obj, Iterable):
         raise TypeError("Input object has to be an Iterable")
     return (
@@ -349,3 +408,39 @@ def block_iter_repr(input_obj, numbered=False):
         if numbered
         else "\n - {}".format("\n - ".join(input_obj))
     )
+
+
+def validate_tag(tag):
+    """
+    Validates a tag
+
+    Makes sure that the tag is a string that contains only characters
+    specified in a URL-safe whitelist. Additionally, makes sure that the tag is not
+    coercible to numeric types, so that issues with RefGenConf YAML serialization will not be occuring.
+
+    :param str tag: tag to validate
+    :return str: valid tag
+    """
+    if tag is None:
+        return tag
+    if not isinstance(tag, str):
+        raise TypeError("Invalid tag: {tag}. Tag has to be a string")
+    if not all([c in TAG_NAME_CHAR_WHITELIST for c in tag]):
+        raise ValueError(
+            f"Invalid tag: {tag}. "
+            f"The tag name can consist only of these characters: {TAG_NAME_CHAR_WHITELIST}"
+        )
+    try:
+        float(tag)
+    except ValueError:
+        return tag
+    else:
+        raise ValueError(
+            f"Invalid tag: {tag}. The tag name cannot be coercible to numeric types!"
+        )
+
+
+# looper run asset_pep/refgenie_build_cfg_auto.yaml -p bulker_slurm --sel-attr asset --sel-incl bwa_index
+# looper run asset_pep/refgenie_build_cfg_auto.yaml -p bulker_slurm --sel-attr asset --sel-incl bowtie2_index
+# looper run asset_pep/refgenie_build_cfg_auto.yaml -p bulker_slurm --sel-attr asset --sel-incl star_index
+# looper run asset_pep/refgenie_build_cfg_auto.yaml -p bulker_slurm --sel-attr asset --sel-incl bismark_bt2_index

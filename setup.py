@@ -48,6 +48,6 @@ setup(
         ["pytest-runner"] if {"test", "pytest", "ptr"} & set(sys.argv) else []
     ),
     url="https://refgenie.databio.org",
-    author=u"Nathan Sheffield, Vince Reuter, Michal Stolarczyk",
+    author="Nathan Sheffield, Vince Reuter, Michal Stolarczyk",
     **extra
 )

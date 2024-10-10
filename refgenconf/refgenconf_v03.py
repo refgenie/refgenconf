@@ -1892,7 +1892,7 @@ def _is_large_archive(size, cutoff=10):
         size = "{0:f}GB".format(_str2float(size) / 1000)
     if size.endswith("KB"):
         # convert to gigs
-        size = "{0:f}GB".format(_str2float(size) / 1000 ** 2)
+        size = "{0:f}GB".format(_str2float(size) / 1000**2)
     return size.endswith("TB") or (size.endswith("GB") and _str2float(size) > cutoff)
 
 

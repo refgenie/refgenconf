@@ -33,10 +33,9 @@ setup(
     classifiers=[
         "Development Status :: 4 - Beta",
         "License :: OSI Approved :: BSD License",
-        "Programming Language :: Python :: 3.5",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
         "Topic :: Scientific/Engineering :: Bio-Informatics",
     ],
     license="BSD2",
@@ -48,6 +47,6 @@ setup(
         ["pytest-runner"] if {"test", "pytest", "ptr"} & set(sys.argv) else []
     ),
     url="https://refgenie.databio.org",
-    author=u"Nathan Sheffield, Vince Reuter, Michal Stolarczyk",
+    author="Nathan Sheffield, Vince Reuter, Michal Stolarczyk",
     **extra
 )

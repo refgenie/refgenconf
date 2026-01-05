@@ -1,4 +1,4 @@
-""" Tests for basic functionality of the RefGenConf constructor """
+"""Tests for basic functionality of the RefGenConf constructor"""
 
 import os
 

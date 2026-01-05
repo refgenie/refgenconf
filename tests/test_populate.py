@@ -1,4 +1,4 @@
-""" Tests for RefGenConf.populate. These tests depend on successful completion of tests is test_1pull_asset.py """
+"""Tests for RefGenConf.populate. These tests depend on successful completion of tests is test_1pull_asset.py"""
 
 import random
 import string

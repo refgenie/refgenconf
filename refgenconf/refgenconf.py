@@ -557,9 +557,11 @@ class RefGenConf(yacman.YacAttMap):
         if asset:
             tag = tag or self.get_default_tag(genome, asset)
         return {
-            a: os.path.join(self.alias_dir, a, asset, tag)
-            if asset
-            else os.path.join(self.alias_dir, a)
+            a: (
+                os.path.join(self.alias_dir, a, asset, tag)
+                if asset
+                else os.path.join(self.alias_dir, a)
+            )
             for a in alias
         }
 
@@ -1128,9 +1130,9 @@ class RefGenConf(yacman.YacAttMap):
                     tag_mapping = asset_mapping[CFG_ASSET_TAGS_KEY][tag_name]
                     ret[genome_name][asset_name][tag_name] = {}
                     for seek_key_name in get_tag_seek_keys(tag_mapping):
-                        ret[genome_name][asset_name][tag_name][
-                            seek_key_name
-                        ] = self.seek(genome_name, asset_name, tag_name, seek_key_name)
+                        ret[genome_name][asset_name][tag_name][seek_key_name] = (
+                            self.seek(genome_name, asset_name, tag_name, seek_key_name)
+                        )
         return ret
 
     def get_local_data_str(self, genome=None, order=None):
@@ -1217,9 +1219,11 @@ class RefGenConf(yacman.YacAttMap):
             genomes = genome if isinstance(genome, list) else [genome]
             if genome is not None:
                 genome_digests = [
-                    g
-                    if g in aliases_by_digest.keys()
-                    else digests_by_alias.get(g, None)
+                    (
+                        g
+                        if g in aliases_by_digest.keys()
+                        else digests_by_alias.get(g, None)
+                    )
                     for g in genomes
                 ]
                 if genome_digests is None:
@@ -3139,7 +3143,7 @@ def _is_large_archive(size, cutoff=10):
         size = "{0:f}GB".format(_str2float(size) / 1000)
     if size.endswith("KB"):
         # convert to gigs
-        size = "{0:f}GB".format(_str2float(size) / 1000 ** 2)
+        size = "{0:f}GB".format(_str2float(size) / 1000**2)
     return size.endswith("TB") or (size.endswith("GB") and _str2float(size) > cutoff)
 
 

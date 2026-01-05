@@ -1,4 +1,4 @@
-""" Tests for updating a configuration object's genome_servers section """
+"""Tests for updating a configuration object's genome_servers section"""
 
 import pytest
 

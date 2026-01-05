@@ -1,4 +1,4 @@
-""" Tests for listing remotely available genomes and assets. """
+"""Tests for listing remotely available genomes and assets."""
 
 from collections import OrderedDict
 

@@ -1,4 +1,4 @@
-""" Tests for RefGenConf.initialize_config_file """
+"""Tests for RefGenConf.initialize_config_file"""
 
 import os
 import shutil

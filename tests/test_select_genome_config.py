@@ -1,4 +1,4 @@
-""" Tests for selection of genome configuration file """
+"""Tests for selection of genome configuration file"""
 
 import os
 

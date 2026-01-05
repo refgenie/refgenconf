@@ -21,7 +21,7 @@ import yacman
 from attmap import AttMap
 from attmap import PathExAttMap as PXAM
 from jsonschema.exceptions import ValidationError
-from pkg_resources import iter_entry_points
+from importlib.metadata import entry_points
 from requests import ConnectionError
 from requests.exceptions import MissingSchema
 from rich.progress import BarColumn, Progress, TextColumn
@@ -199,7 +199,7 @@ class RefGenConf(yacman.YacAttMap):
             registered functions names to their values
         """
         return {
-            h: {ep.name: ep.load() for ep in iter_entry_points("refgenie.hooks." + h)}
+            h: {ep.name: ep.load() for ep in entry_points(group="refgenie.hooks." + h)}
             for h in HOOKS
         }
 

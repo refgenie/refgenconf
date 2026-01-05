@@ -9,7 +9,11 @@ import signal
 import sys
 import urllib.request
 import warnings
-from collections import Iterable, Mapping, OrderedDict
+try:
+    from collections.abc import Iterable, Mapping
+except ImportError:
+    from collections import Iterable, Mapping
+from collections import OrderedDict
 from functools import partial
 from inspect import getfullargspec as finspect
 from tempfile import TemporaryDirectory
@@ -17,7 +21,8 @@ from urllib.error import ContentTooShortError, HTTPError
 
 import yacman
 from attmap import PathExAttMap as PXAM
-from pkg_resources import iter_entry_points
+
+from importlib.metadata import entry_points
 from tqdm import tqdm
 from ubiquerg import checksum, is_url, is_writable
 from ubiquerg import parse_registry_path as prp
@@ -167,7 +172,7 @@ class _RefGenConfV03(yacman.YacAttMap):
             registered functions names to their values
         """
         return {
-            h: {ep.name: ep.load() for ep in iter_entry_points("refgenie.hooks." + h)}
+            h: {ep.name: ep.load() for ep in entry_points(group="refgenie.hooks." + h)}
             for h in HOOKS
         }
 

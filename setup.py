@@ -39,6 +39,7 @@ setup(
         "Programming Language :: Python :: 3.13",
         "Topic :: Scientific/Engineering :: Bio-Informatics",
     ],
+    python_requires=">=3.10",
     license="BSD2",
     keywords="bioinformatics, sequencing, ngs",
     test_suite="tests",

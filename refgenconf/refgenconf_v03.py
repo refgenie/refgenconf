@@ -9,12 +9,7 @@ import signal
 import sys
 import urllib.request
 import warnings
-
-try:
-    from collections.abc import Iterable, Mapping
-except ImportError:
-    from collections import Iterable, Mapping
-from collections import OrderedDict
+from collections.abc import Iterable, Mapping
 from functools import partial
 from inspect import getfullargspec as finspect
 from tempfile import TemporaryDirectory
@@ -229,7 +224,7 @@ class _RefGenConfV03(yacman.YacAttMap):
         )
         if include_tags:
             self.run_plugins(POST_LIST_HOOK)
-            return OrderedDict(
+            return dict(
                 [
                     (
                         g,
@@ -244,7 +239,7 @@ class _RefGenConfV03(yacman.YacAttMap):
                 ]
             )
         self.run_plugins(POST_LIST_HOOK)
-        return OrderedDict(
+        return dict(
             [
                 (
                     g,
@@ -683,7 +678,7 @@ class _RefGenConfV03(yacman.YacAttMap):
         :param list[str] | str genome: genomes that the assets should be found for
         :param function(str) -> object order: how to key genome IDs and asset
             names for sort
-        :return dict[OrderedDict[list]]: remotely available genomes and assets
+        :return dict[dict[list]]: remotely available genomes and assets
             keyed by genome keyed by source server endpoint
         """
         data_by_server = {}
@@ -1581,7 +1576,7 @@ class _RefGenConfV03(yacman.YacAttMap):
         asset ID.
         :param function(str) -> object order: how to key genome IDs and asset
             names for sort
-        :return OrderedDict[str, Iterable[str]] binding between asset kind/key/name
+        :return dict[str, Iterable[str]] binding between asset kind/key/name
             and collection of reference genome assembly names for which the
             asset type is available
         """
@@ -1590,7 +1585,7 @@ class _RefGenConfV03(yacman.YacAttMap):
             for a in am[CFG_ASSETS_KEY].keys():
                 genomes.setdefault(a, []).append(g)
         assets = sorted(genomes.keys(), key=order)
-        return OrderedDict([(a, sorted(genomes[a], key=order)) for a in assets])
+        return dict([(a, sorted(genomes[a], key=order)) for a in assets])
 
     def _chk_digest_if_avail(self, genome, remote_asset_name, server_url):
         """
@@ -1916,7 +1911,7 @@ def _list_remote(url, genome, order=None, as_str=True):
     )
     if not refgens:
         return None, None if as_str else dict()
-    filtered_genomes_data = OrderedDict(
+    filtered_genomes_data = dict(
         [(rg, sorted(genomes_data[rg], key=order)) for rg in refgens]
     )
     if not as_str:

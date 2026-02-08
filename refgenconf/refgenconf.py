@@ -22,13 +22,7 @@ from attmap import AttMap
 from attmap import PathExAttMap as PXAM
 from jsonschema.exceptions import ValidationError
 
-try:
-    if sys.version_info >= (3, 10):
-        from importlib.metadata import entry_points
-    else:
-        from importlib_metadata import entry_points  # type: ignore
-except ImportError:  # pragma: no cover
-    from importlib.metadata import entry_points
+from importlib.metadata import entry_points
 from requests import ConnectionError
 from requests.exceptions import MissingSchema
 from rich.progress import BarColumn, Progress, TextColumn
@@ -3421,7 +3415,7 @@ def _populate_refgenie_registry_path(rgc, glob, seek_method_name, remote_class=N
     :param str remote_class: remote data provider class. Used only in remote=True
     :return dict | str | list: modified input dict with refgenie paths populated
     """
-    p = re.compile("refgenie://([A-Za-z0-9_/\.\:]+)?")
+    p = re.compile(r"refgenie://([A-Za-z0-9_/\.\:]+)?")
     partial_args = dict()
 
     # prepare partial function based on operation mode

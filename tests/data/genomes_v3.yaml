@@ -1,39 +1,33 @@
-config_version: 0.4
+config_version: 0.3
 genome_folder: /tmp/old
-genome_servers: 
- - http://refgenomes.databio.org
+genome_servers:
+  - http://refgenomes.databio.org
 genomes:
-  7319f9237651755047bc40d7f7a9770d42a537e840f4e105:
+  human_repeats:
     assets:
       fasta:
         tags:
           default:
             seek_keys:
-              fasta: 7319f9237651755047bc40d7f7a9770d42a537e840f4e105.fa
-              fai: 7319f9237651755047bc40d7f7a9770d42a537e840f4e105.fa.fai
-              chrom_sizes: 7319f9237651755047bc40d7f7a9770d42a537e840f4e105.chrom.sizes
-              dir: .
+              fasta: human_repeats.fa
+              fai: human_repeats.fa.fai
+              chrom_sizes: human_repeats.chrom.sizes
             asset_parents: []
             asset_path: fasta
             asset_digest: 4a749d4e74b057d0efa0c8398ebcb871
         default_tag: default
     genome_description: Manually curated collection of human repeat sequences from GenBank
-    aliases: 
-     - human_repeats
-  94e0d21feb576e6af61cd2a798ad30682ef2428bb7eabbb4:
+  rCRSd:
     assets:
       fasta:
         tags:
           default:
             seek_keys:
-              fasta: 94e0d21feb576e6af61cd2a798ad30682ef2428bb7eabbb4.fa
-              fai: 94e0d21feb576e6af61cd2a798ad30682ef2428bb7eabbb4.fa.fai
-              chrom_sizes: 94e0d21feb576e6af61cd2a798ad30682ef2428bb7eabbb4.chrom.sizes
-              dir: .
+              fasta: rCRSd.fa
+              fai: rCRSd.fa.fai
+              chrom_sizes: rCRSd.chrom.sizes
             asset_parents: []
             asset_path: fasta
             asset_digest: 4eb430296bc02ed7e4006624f1d5ac53
         default_tag: default
     genome_description: The revised cambridge reference sequence. This is the human mitochondrial reference genome
-    aliases: 
-     - rCRSd

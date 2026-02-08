@@ -75,7 +75,7 @@ def get_dir_digest(path, pm=None):
     cmd = (
         "cd {}; find . -type f -not -path './"
         + BUILD_STATS_DIR
-        + "*' -exec md5sum {{}} \; | sort -k 2 | awk '{{print $1}}' | md5sum"
+        + r"*' -exec md5sum {{}} \; | sort -k 2 | awk '{{print $1}}' | md5sum"
     )
     try:
         x = pm.checkprint(cmd.format(path))

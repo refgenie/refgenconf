@@ -1,4 +1,4 @@
-""" Basic RGC asset tests """
+"""Basic RGC asset tests"""
 
 from collections import OrderedDict
 

@@ -1,4 +1,4 @@
-""" Tests for RefGenConf.get_asset. These tests depend on successful completion of tests is test_1pull_asset.py """
+"""Tests for RefGenConf.get_asset. These tests depend on successful completion of tests is test_1pull_asset.py"""
 
 import os
 from shutil import rmtree

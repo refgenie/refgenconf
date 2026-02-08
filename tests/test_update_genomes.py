@@ -1,4 +1,4 @@
-""" Tests for updating a configuration object's genomes section """
+"""Tests for updating a configuration object's genomes section"""
 
 import pytest
 from attmap import PathExAttMap

@@ -1,4 +1,4 @@
-""" Tests for querying available reference genome assembly names """
+"""Tests for querying available reference genome assembly names"""
 
 from refgenconf.const import CFG_GENOMES_KEY
 from tests.conftest import get_conf_genomes

@@ -1,4 +1,4 @@
-""" Tests for asset pull """
+"""Tests for asset pull"""
 
 import logging
 import os

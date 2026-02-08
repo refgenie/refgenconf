@@ -1,4 +1,4 @@
-""" Package exception types """
+"""Package exception types"""
 
 import abc
 

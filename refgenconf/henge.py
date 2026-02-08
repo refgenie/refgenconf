@@ -1,4 +1,4 @@
-""" An interface to a database back-end for DRUIDs """
+"""An interface to a database back-end for DRUIDs"""
 
 import copy
 import hashlib

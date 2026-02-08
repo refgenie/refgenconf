@@ -1,4 +1,4 @@
-""" Tests for RefGenConf.remove assets """
+"""Tests for RefGenConf.remove assets"""
 
 import mock
 import pytest

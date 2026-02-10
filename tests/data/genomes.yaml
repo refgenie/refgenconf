@@ -49,6 +49,18 @@ genomes:
             asset_path: bwa_index
             asset_digest: 914dec83dcfab73e056717d33ecfd465
         default_tag: default
+      fasta:
+        tags:
+          default:
+            seek_keys:
+              fasta: 43f14ba8beed34d52edb244e26f193df6edbb467bd55d37a.fa
+              fai: 43f14ba8beed34d52edb244e26f193df6edbb467bd55d37a.fa.fai
+              chrom_sizes: 43f14ba8beed34d52edb244e26f193df6edbb467bd55d37a.chrom.sizes
+              dir: .
+            asset_parents: []
+            asset_path: fasta
+            asset_digest: 8dfe402f7d29d5b036dd8937119e4404
+        default_tag: default
     genome_description: The mouse mitochondrial genome, doubled
   94e0d21feb576e6af61cd2a798ad30682ef2428bb7eabbb4:
     aliases: 
@@ -91,6 +103,8 @@ genomes:
             asset_parents: []
             asset_path: fasta
             asset_digest: 4eb430296bc02ed7e4006624f1d5ac53
+            asset_children: 
+             - 94e0d21feb576e6af61cd2a798ad30682ef2428bb7eabbb4/bowtie2_index:default
         default_tag: default
     genome_description: The revised cambridge reference sequence. This is the human mitochondrial reference genome
 config_version: 0.4

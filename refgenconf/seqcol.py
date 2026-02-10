@@ -165,7 +165,10 @@ class SeqColClient(Henge):
         def _get_common_content(lstA, lstB):
             """Find the intersection between two list of dicts with sequences."""
             return list(
-                filter(lambda x: x is not None, [_index(x, lstB) for x in _xp(SEQ_KEY, lstA)])
+                filter(
+                    lambda x: x is not None,
+                    [_index(x, lstB) for x in _xp(SEQ_KEY, lstA)],
+                )
             )
 
         # Not ideal, but we expect these to return lists, but if the item was

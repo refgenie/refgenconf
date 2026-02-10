@@ -15,7 +15,7 @@ class TestAdd:
         ],
     )
     def test_nonexistent_file(self, cfg_file, pth, gname, aname, tname):
-        rgc = RefGenConf(filepath=cfg_file)
+        rgc = RefGenConf.from_yaml_file(cfg_file)
         with pytest.raises(OSError):
             rgc.add(pth, gname, aname, tname)
 
@@ -24,7 +24,7 @@ class TestAdd:
         [("human_repeats", "fasta", "default"), ("rCRSd", "fasta", "default")],
     )
     def test_preexisting_asset_prompt(self, cfg_file, gname, aname, tname):
-        rgc = RefGenConf(filepath=cfg_file)
+        rgc = RefGenConf.from_yaml_file(cfg_file)
         path = rgc.seek(genome_name=gname, asset_name=aname, tag_name=tname)
         with mock.patch("refgenconf.refgenconf.query_yes_no", return_value=False):
             assert not rgc.add(path, gname, aname, tname)
@@ -37,7 +37,7 @@ class TestAdd:
         ],
     )
     def test_cant_add_without_digest_set_first(self, cfg_file, gname, aname, tname):
-        rgc = RefGenConf(filepath=cfg_file)
+        rgc = RefGenConf.from_yaml_file(cfg_file)
         path = rgc.seek(
             genome_name=gname, asset_name="fasta", tag_name=tname, enclosing_dir=True
         )
@@ -52,7 +52,7 @@ class TestAdd:
         ],
     )
     def test_force_overwrite_asset(self, cfg_file, gname, aname, tname):
-        rgc = RefGenConf(filepath=cfg_file)
+        rgc = RefGenConf.from_yaml_file(cfg_file)
         path = rgc.seek(
             genome_name=gname, asset_name="fasta", tag_name=tname, enclosing_dir=True
         )
@@ -67,7 +67,7 @@ class TestAdd:
         ],
     )
     def test_nofile(self, cfg_file, gname, aname, tname):
-        rgc = RefGenConf(filepath=cfg_file)
+        rgc = RefGenConf.from_yaml_file(cfg_file)
         path = rgc.seek(
             genome_name=gname, asset_name="fasta", tag_name=tname, enclosing_dir=True
         )

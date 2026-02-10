@@ -22,9 +22,7 @@ from urllib.parse import urlencode
 from urllib.request import urlopen, urlretrieve
 
 import yacman
-from attmap import AttMap
-from attmap import PathExAttMap as PXAM
-from jsonschema.exceptions import ValidationError
+from yacman import write_lock
 from requests import ConnectionError
 from requests.exceptions import MissingSchema
 from rich.progress import BarColumn, Progress, TextColumn
@@ -63,47 +61,34 @@ def _handle_sigint(filepath: str) -> Callable[..., Any]:
     return handle
 
 
-class RefGenConf(yacman.YacAttMap):
+class RefGenConf(yacman.YAMLConfigManager):
     """A sort of oracle of available reference genome assembly assets."""
 
     def __init__(
         self,
-        filepath: str | None = None,
-        entries: str | dict[str, Any] | None = None,
-        writable: bool = False,
+        entries: dict[str, Any] | None = None,
         wait_max: int = 60,
-        skip_read_lock: bool = False,
         genome_exact: bool = False,
-        schema_source: str | None = None,
     ) -> None:
-        """Create the config instance by with a filepath or key-value pairs.
+        """Create the config instance by with a dict of key-value pairs.
 
         Args:
-            filepath: A path to the YAML file to read.
-            entries: Config filepath or collection of key-value pairs.
-            writable: Whether to create the object with write capabilities.
+            entries: Collection of key-value pairs.
             wait_max: How long to wait for creating an object when the
                 file that data will be read from is locked.
-            skip_read_lock: Whether the file should not be locked for
-                reading when object is created in read only mode.
+            genome_exact: Whether to disable genome alias resolution.
 
         Raises:
             MissingConfigDataError: If a required configuration item is
                 missing.
-            ValueError: If entries is given as a string and is not a file.
         """
 
         def _missing_key_msg(key: str, value: Any) -> None:
             _LOGGER.debug("Config lacks '{}' key. Setting to: {}".format(key, value))
 
         super(RefGenConf, self).__init__(
-            filepath=filepath,
             entries=entries,
-            writable=writable,
             wait_max=wait_max,
-            skip_read_lock=skip_read_lock,
-            schema_source=schema_source or DEFAULT_CONFIG_SCHEMA,
-            write_validate=True,
         )
         # assert correct config version
         try:
@@ -139,8 +124,9 @@ class RefGenConf(yacman.YacAttMap):
 
         # initialize "genomes_folder"
         if CFG_FOLDER_KEY not in self:
+            fp = getattr(self, 'filepath', None)
             self[CFG_FOLDER_KEY] = (
-                os.path.dirname(filepath) if filepath else os.getcwd()
+                os.path.dirname(fp) if fp else os.getcwd()
             )
             _missing_key_msg(CFG_FOLDER_KEY, self[CFG_FOLDER_KEY])
         # initialize "genome_servers"
@@ -166,25 +152,47 @@ class RefGenConf(yacman.YacAttMap):
 
         # initialize "genomes" mapping
         if CFG_GENOMES_KEY in self:
-            if not isinstance(self[CFG_GENOMES_KEY], PXAM):
+            if not isinstance(self[CFG_GENOMES_KEY], dict):
                 if self[CFG_GENOMES_KEY]:
                     _LOGGER.warning(
                         "'{k}' value is a {t_old}, not a {t_new}; setting to empty {t_new}".format(
                             k=CFG_GENOMES_KEY,
                             t_old=type(self[CFG_GENOMES_KEY]).__name__,
-                            t_new=PXAM.__name__,
+                            t_new="dict",
                         )
                     )
-                self[CFG_GENOMES_KEY] = PXAM()
+                self[CFG_GENOMES_KEY] = {}
         else:
-            self[CFG_GENOMES_KEY] = PXAM()
+            self[CFG_GENOMES_KEY] = {}
 
-        self[CFG_GENOMES_KEY] = yacman.AliasedYacAttMap(
-            entries=self[CFG_GENOMES_KEY],
-            aliases=lambda x: {k: v.__getitem__(CFG_ALIASES_KEY) for k, v in x.items()},
+        self[CFG_GENOMES_KEY] = yacman.AliasedYAMLConfigManager(
+            entries=dict(self[CFG_GENOMES_KEY]) if self[CFG_GENOMES_KEY] else None,
+            aliases=lambda x: {k: v[CFG_ALIASES_KEY] for k, v in x.items() if CFG_ALIASES_KEY in v},
             aliases_strict=True,
             exact=genome_exact,
         )
+
+    @classmethod
+    def from_yaml_file(cls, filepath, genome_exact=False, **kwargs):
+        """Create a RefGenConf from a YAML file path.
+
+        Args:
+            filepath: Path to the YAML file.
+            genome_exact: Whether to disable genome alias resolution.
+            **kwargs: Additional keyword arguments passed to YAMLConfigManager.from_yaml_file.
+        """
+        # Use parent's from_yaml_file to get a YAMLConfigManager with file data
+        ycm = yacman.YAMLConfigManager.from_yaml_file(filepath, **kwargs)
+        # Create RefGenConf from the loaded entries
+        obj = cls(
+            entries=dict(ycm.data),
+            wait_max=ycm.settings.get("wait_max", 60),
+            genome_exact=genome_exact,
+        )
+        # Transfer file-related attributes
+        obj.filepath = ycm.filepath
+        obj.locker = ycm.locker
+        return obj
 
     def __bool__(self) -> bool:
         minkeys = set(self.keys()) == set(RGC_REQ_KEYS)
@@ -213,7 +221,13 @@ class RefGenConf(yacman.YacAttMap):
             Mapping of human-readable genome identifiers to genome
             identifiers.
         """
-        return self.genomes[yacman.IK][yacman.ALIASES_KEY]
+        result = {}
+        for genome, genome_data in self[CFG_GENOMES_KEY].items():
+            try:
+                result[genome] = genome_data[CFG_ALIASES_KEY]
+            except (KeyError, TypeError):
+                pass
+        return result
 
     @property
     def genome_aliases_table(self) -> Table:
@@ -264,10 +278,7 @@ class RefGenConf(yacman.YacAttMap):
         Returns:
             Path to the genome configuration file.
         """
-        try:
-            return self[yacman.IK][yacman.FILEPATH_KEY]
-        except (AttributeError, KeyError):
-            return None
+        return getattr(self, 'filepath', None)
 
     def initialize_config_file(self, filepath: str | None = None) -> str:
         """Initialize genome configuration file on disk.
@@ -298,9 +309,8 @@ class RefGenConf(yacman.YacAttMap):
             _write_fail_err("file exists")
         if not is_writable(filepath, check_exist=False):
             _write_fail_err("insufficient permissions")
-        self.make_writable(filepath)
-        self.write()
-        self.make_readonly()
+        self.write_copy(filepath)
+        self.filepath = os.path.abspath(filepath)
         _LOGGER.info(f"Initialized genome configuration file: {filepath}")
         os.makedirs(self.data_dir, exist_ok=True)
         os.makedirs(self.alias_dir, exist_ok=True)
@@ -560,13 +570,14 @@ class RefGenConf(yacman.YacAttMap):
             self.set_default_pointer(genome, asset, tag)
             _LOGGER.info(msg)
         else:
-            with self as rgc:
+            with write_lock(self) as rgc:
                 if remove:
                     rgc.cfg_remove_assets(genome, asset, tag)
                 rgc.update_tags(genome, asset, tag, tag_data)
                 rgc.update_seek_keys(genome, asset, tag, seek_keys or {asset: "."})
                 rgc.set_default_pointer(genome, asset, tag)
                 _LOGGER.info(msg)
+                rgc.write()
         self._symlink_alias(genome, asset, tag)
         return True
 
@@ -700,7 +711,7 @@ class RefGenConf(yacman.YacAttMap):
                 )
             )
 
-    def filepath(
+    def asset_filepath(
         self, genome: str, asset: str, tag: str, ext: str = ".tgz", dir: bool = False
     ) -> str:
         """Determine path to a particular asset for a particular genome.
@@ -1398,9 +1409,10 @@ class RefGenConf(yacman.YacAttMap):
         )
         new_path = os.path.abspath(os.path.join(ori_path, os.pardir, new_tag))
         if self.file_path:
-            with self as r:
+            with write_lock(self) as r:
                 if not r.cfg_tag_asset(genome, asset, tag, new_tag, force):
                     sys.exit(0)
+                r.write()
         else:
             if not self.cfg_tag_asset(genome, asset, tag, new_tag, force):
                 sys.exit(0)
@@ -1420,11 +1432,15 @@ class RefGenConf(yacman.YacAttMap):
                 " to the new one '{}'".format(ori_path, new_path)
             )
         else:
-            if self.file_path:
-                with self as r:
-                    r.cfg_remove_assets(genome, asset, tag, relationships=False)
-            else:
-                self.cfg_remove_assets(genome, asset, tag, relationships=False)
+            try:
+                if self.file_path:
+                    with write_lock(self) as r:
+                        r.cfg_remove_assets(genome, asset, tag, relationships=False)
+                        r.write()
+                else:
+                    self.cfg_remove_assets(genome, asset, tag, relationships=False)
+            except KeyError:
+                pass  # Already removed by cfg_tag_asset
             _LOGGER.debug(
                 "Asset '{}/{}' tagged with '{}' has been removed from"
                 " the genome config".format(genome, asset, tag)
@@ -1737,7 +1753,7 @@ class RefGenConf(yacman.YacAttMap):
                 archive_data = asciify_json_dict(archive_data)
 
             # local directory that the asset data will be stored in
-            tag_dir = os.path.dirname(self.filepath(*gat))
+            tag_dir = os.path.dirname(self.asset_filepath(*gat))
             # local target path for the saved archive
             tardir = os.path.join(self.data_dir, genome, asset)
             tarpath = os.path.join(tardir, asset + "__" + determined_tag + ".tgz")
@@ -1842,7 +1858,7 @@ class RefGenConf(yacman.YacAttMap):
                 os.remove(tarpath)
 
             if self.file_path:
-                with self as rgc:
+                with write_lock(self) as rgc:
                     [
                         rgc.chk_digest_update_child(
                             gat[0], x, "{}/{}:{}".format(*gat), server_url
@@ -1860,6 +1876,7 @@ class RefGenConf(yacman.YacAttMap):
                     )
                     rgc.set_default_pointer(*gat)
                     rgc.update_genomes(genome=genome, data=genome_archive_data)
+                    rgc.write()
             else:
                 [
                     self.chk_digest_update_child(
@@ -1906,7 +1923,7 @@ class RefGenConf(yacman.YacAttMap):
         except (yacman.UndefinedAliasError, AttributeError):
             if not fallback:
                 raise
-            if alias in self.genome_aliases.values():
+            if alias in self[CFG_GENOMES_KEY]:
                 return alias
             raise
 
@@ -1937,8 +1954,14 @@ class RefGenConf(yacman.YacAttMap):
         except (yacman.UndefinedAliasError, AttributeError):
             if not fallback:
                 raise
-            if digest in self.genome_aliases.keys():
+            # Check if 'digest' is a recognized genome (either a key or an alias)
+            if digest in self[CFG_GENOMES_KEY]:
                 return digest
+            try:
+                self[CFG_GENOMES_KEY].get_key(alias=digest)
+                return digest
+            except (yacman.UndefinedAliasError, AttributeError):
+                pass
             raise
 
     def remove_genome_aliases(
@@ -1980,8 +2003,9 @@ class RefGenConf(yacman.YacAttMap):
         # get the symlink mapping before the removal for _remove_symlink_alias
         symlink_mapping = self.get_symlink_paths(genome=digest, all_aliases=True)
         if self.file_path:
-            with self as r:
+            with write_lock(self) as r:
                 removed_aliases = _check_and_remove_alias(r, digest, aliases)
+                r.write()
         else:
             removed_aliases = _check_and_remove_alias(self, digest, aliases)
         if not removed_aliases:
@@ -2034,7 +2058,7 @@ class RefGenConf(yacman.YacAttMap):
             except MissingGenomeError:
                 if not create:
                     raise
-                rgc[CFG_GENOMES_KEY][d] = PXAM()
+                rgc[CFG_GENOMES_KEY][d] = {}
 
             sa, ra = rgc[CFG_GENOMES_KEY].set_aliases(
                 aliases=a, key=d, overwrite=overwrite, reset_key=reset_digest
@@ -2082,10 +2106,11 @@ class RefGenConf(yacman.YacAttMap):
         # get the symlink mapping before the removal for _remove_symlink_alias
         symlink_mapping = self.get_symlink_paths(genome=digest, all_aliases=True)
         if self.file_path and not no_write:
-            with self as r:
+            with write_lock(self) as r:
                 set_aliases, removed_aliases = _check_and_set_alias(
                     rgc=r, d=digest, a=genome, create=create_genome
                 )
+                r.write()
             self._remove_symlink_alias(symlink_mapping, removed_aliases)
             self._symlink_alias(genome=digest)
         else:
@@ -2258,7 +2283,7 @@ class RefGenConf(yacman.YacAttMap):
         if _check_insert_data(keys, Mapping, "keys"):
             self.update_tags(genome, asset, tag, force_digest=force_digest)
             asset = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]
-            _safe_setdef(asset[CFG_ASSET_TAGS_KEY][tag], CFG_SEEK_KEYS_KEY, PXAM())
+            _safe_setdef(asset[CFG_ASSET_TAGS_KEY][tag], CFG_SEEK_KEYS_KEY, {})
             asset[CFG_ASSET_TAGS_KEY][tag][CFG_SEEK_KEYS_KEY].update(keys)
         return self
 
@@ -2289,24 +2314,24 @@ class RefGenConf(yacman.YacAttMap):
             genome = force_digest or self.get_genome_alias_digest(
                 alias=genome, fallback=True
             )
-            _safe_setdef(self[CFG_GENOMES_KEY], genome, PXAM())
+            _safe_setdef(self[CFG_GENOMES_KEY], genome, {})
             if _check_insert_data(asset, str, "asset"):
-                _safe_setdef(self[CFG_GENOMES_KEY][genome], CFG_ASSETS_KEY, PXAM())
+                _safe_setdef(self[CFG_GENOMES_KEY][genome], CFG_ASSETS_KEY, {})
                 _safe_setdef(
-                    self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY], asset, PXAM()
+                    self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY], asset, {}
                 )
                 if _check_insert_data(tag, str, "tag"):
                     _safe_setdef(
                         self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset],
                         CFG_ASSET_TAGS_KEY,
-                        PXAM(),
+                        {},
                     )
                     _safe_setdef(
                         self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][
                             CFG_ASSET_TAGS_KEY
                         ],
                         tag,
-                        PXAM(),
+                        {},
                     )
                     if _check_insert_data(data, Mapping, "data"):
                         self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][
@@ -2339,11 +2364,11 @@ class RefGenConf(yacman.YacAttMap):
             genome = force_digest or self.get_genome_alias_digest(
                 alias=genome, fallback=True
             )
-            _safe_setdef(self[CFG_GENOMES_KEY], genome, PXAM())
+            _safe_setdef(self[CFG_GENOMES_KEY], genome, {})
             if _check_insert_data(asset, str, "asset"):
-                _safe_setdef(self[CFG_GENOMES_KEY][genome], CFG_ASSETS_KEY, PXAM())
+                _safe_setdef(self[CFG_GENOMES_KEY][genome], CFG_ASSETS_KEY, {})
                 _safe_setdef(
-                    self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY], asset, PXAM()
+                    self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY], asset, {}
                 )
                 if _check_insert_data(data, Mapping, "data"):
                     self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset].update(data)
@@ -2410,8 +2435,9 @@ class RefGenConf(yacman.YacAttMap):
                 removed.append(_remove(asset_path))
                 removed.extend([_remove(p) for p in alias_asset_paths])
                 if self.file_path:
-                    with self as r:
+                    with write_lock(self) as r:
                         r.cfg_remove_assets(genome, asset, tag, relationships)
+                        r.write()
                 else:
                     self.cfg_remove_assets(genome, asset, tag, relationships)
             else:
@@ -2420,8 +2446,9 @@ class RefGenConf(yacman.YacAttMap):
                     "Removing from genome config.".format(asset_path)
                 )
                 if self.file_path:
-                    with self as r:
+                    with write_lock(self) as r:
                         r.cfg_remove_assets(genome, asset, tag, relationships)
+                        r.write()
                         return
                 else:
                     self.cfg_remove_assets(genome, asset, tag, relationships)
@@ -2450,8 +2477,9 @@ class RefGenConf(yacman.YacAttMap):
                     removed.extend([_remove(p) for p in alias_genome_dirs])
                     try:
                         if self.file_path:
-                            with self as r:
+                            with write_lock(self) as r:
                                 del r[CFG_GENOMES_KEY][genome]
+                                r.write()
                         else:
                             del self[CFG_GENOMES_KEY][genome]
                     except (KeyError, TypeError):
@@ -2462,8 +2490,9 @@ class RefGenConf(yacman.YacAttMap):
             _LOGGER.info(f"Successfully removed entities:{block_iter_repr(removed)}")
         else:
             if self.file_path:
-                with self as r:
+                with write_lock(self) as r:
                     r.cfg_remove_assets(genome, asset, tag, relationships)
+                    r.write()
             else:
                 self.cfg_remove_assets(genome, asset, tag, relationships)
 
@@ -2568,7 +2597,7 @@ class RefGenConf(yacman.YacAttMap):
             genome = force_digest or self.get_genome_alias_digest(
                 alias=genome, fallback=True
             )
-            _safe_setdef(self[CFG_GENOMES_KEY], genome, PXAM({CFG_ASSETS_KEY: PXAM()}))
+            _safe_setdef(self[CFG_GENOMES_KEY], genome, {CFG_ASSETS_KEY: {}})
             if _check_insert_data(data, Mapping, "data"):
                 self[CFG_GENOMES_KEY][genome].update(data)
         return self
@@ -2608,8 +2637,9 @@ class RefGenConf(yacman.YacAttMap):
             no_write: Whether to skip writing changes to disk.
         """
         if self.file_path and not no_write:
-            with self as r:
+            with write_lock(self) as r:
                 r._update_genome_servers(url=urls, reset=reset)
+                r.write()
         else:
             self._update_genome_servers(url=urls, reset=reset)
         _LOGGER.info(f"Subscribed to: {', '.join(urls)}")
@@ -2632,8 +2662,9 @@ class RefGenConf(yacman.YacAttMap):
                     "URL '{}' not in genome_servers list: {}".format(s, ori_servers)
                 )
         if self.file_path and not no_write:
-            with self as r:
+            with write_lock(self) as r:
                 r._update_genome_servers(ori_servers, reset=True)
+                r.write()
         else:
             self._update_genome_servers(ori_servers, reset=True)
         if unsub_list:
@@ -2944,6 +2975,25 @@ class RefGenConf(yacman.YacAttMap):
             _LOGGER.debug("Running {} plugin: {}".format(hook, name))
             func(self)
 
+    def to_yaml(self, trailing_newline: bool = False, expand: bool = False) -> str:
+        """Get YAML representation, converting AliasedYAMLConfigManager to plain dict.
+
+        Args:
+            trailing_newline: Whether to add trailing newline.
+            expand: Whether to expand paths in values.
+
+        Returns:
+            YAML text representation of this instance.
+        """
+        import copy
+        import yaml as _yaml
+        data = copy.copy(self.data)
+        if CFG_GENOMES_KEY in data and isinstance(data[CFG_GENOMES_KEY], yacman.AliasedYAMLConfigManager):
+            data[CFG_GENOMES_KEY] = dict(data[CFG_GENOMES_KEY].data)
+        return _yaml.dump(data, default_flow_style=False) + (
+            "\n" if trailing_newline else ""
+        )
+
     def write(self, filepath: str | None = None) -> str:
         """Write the contents to a file.
 
@@ -2955,21 +3005,12 @@ class RefGenConf(yacman.YacAttMap):
 
         Returns:
             The path to the created file.
-
-        Raises:
-            OSError: When the object has been created in a read only
-                mode or other process has locked the file, or when the
-                write is called on an object with no write capabilities.
-            TypeError: When the filepath cannot be determined. This
-                takes place only if YacAttMap initialized with a Mapping
-                as an input, not read from file.
         """
         self.run_plugins(PRE_UPDATE_HOOK)
-        try:
-            path = super(RefGenConf, self).write(filepath=filepath, exclude_case=True)
-        except ValidationError:
-            _LOGGER.error("The changes were not written to the file")
-            raise
+        if filepath:
+            path = self.write_copy(filepath)
+        else:
+            path = super(RefGenConf, self).write(exclude_case=True)
         self.run_plugins(POST_UPDATE_HOOK)
         return path
 
@@ -3204,12 +3245,12 @@ def upgrade_config(
             os.link.
     """
     # init rgc obj with provided config
-    current_version = yacman.YacAttMap(filepath=filepath)[CFG_VERSION_KEY]
+    current_version = yacman.YAMLConfigManager.from_yaml_file(filepath)[CFG_VERSION_KEY]
 
     if current_version == 0.3:
         from .refgenconf_v03 import _RefGenConfV03 as OldRefGenConf
 
-        rgc = OldRefGenConf(filepath=filepath, writable=True)
+        rgc = OldRefGenConf.from_yaml_file(filepath)
 
         if target_version == "0.4":
             from .helpers import alter_file_tree_03_04 as alter_file_tree
@@ -3295,7 +3336,8 @@ def upgrade_config(
     # change the config_version
     rgc[CFG_VERSION_KEY] = target_version
     # write over the config file
-    rgc.write()
+    with write_lock(rgc) as locked:
+        locked.write()
     return True
 
 
@@ -3596,11 +3638,11 @@ def _make_list_of_str(arg: str | list[str]) -> list[str]:
 
     if isinstance(arg, str):
         return [arg]
-    elif isinstance(arg, list):
-        if not all(isinstance(i, str) for i in arg):
+    elif hasattr(arg, '__iter__'):
+        items = list(arg)
+        if not all(isinstance(i, str) for i in items):
             _raise_faulty_arg()
-        else:
-            return arg
+        return items
     else:
         _raise_faulty_arg()
 
@@ -3852,8 +3894,8 @@ def _populate_refgenie_registry_path(
         return glob
     elif isinstance(glob, list):
         return [_pop(v) for v in glob]
-    elif isinstance(glob, AttMap):
-        return AttMap(_pop(glob.to_dict()))
+    elif isinstance(glob, Mapping):
+        return dict(_pop(dict(glob)))
     else:
         otype = type(glob)
         _LOGGER.debug(

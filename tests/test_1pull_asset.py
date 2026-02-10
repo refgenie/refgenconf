@@ -47,7 +47,7 @@ def test_download_interruption(my_rgc, gname, aname, tname, caplog):
     """Download interruption provides appropriate warning message and halts."""
     import signal
 
-    print("filepath: " + my_rgc.__internal.file_path)
+    print("filepath: " + str(my_rgc.file_path))
 
     def kill_download(*args, **kwargs):
         os.kill(os.getpid(), signal.SIGINT)
@@ -84,8 +84,9 @@ def test_parent_asset_mismatch(my_rgc, gname, aname, tname):
     """Test that an exception is raised when remote and local parent checksums do not match on pull"""
     with mock.patch("refgenconf.refgenconf.query_yes_no", return_value=True):
         my_rgc.pull(gname, "fasta", tname)
-    my_rgc.make_writable()
-    my_rgc.write()
+    from yacman import write_lock
+    with write_lock(my_rgc) as r:
+        r.write()
     ori = my_rgc[CFG_GENOMES_KEY][gname][CFG_ASSETS_KEY]["fasta"][CFG_ASSET_TAGS_KEY][
         tname
     ][CFG_ASSET_CHECKSUM_KEY]
@@ -95,11 +96,11 @@ def test_parent_asset_mismatch(my_rgc, gname, aname, tname):
     with mock.patch("refgenconf.refgenconf.query_yes_no", return_value=True):
         with pytest.raises(RemoteDigestMismatchError):
             my_rgc.pull(gname, aname, tname)
-    with my_rgc as r:
+    with write_lock(my_rgc) as r:
         r[CFG_GENOMES_KEY][gname][CFG_ASSETS_KEY]["fasta"][CFG_ASSET_TAGS_KEY][tname][
             CFG_ASSET_CHECKSUM_KEY
         ] = ori
-    my_rgc.make_readonly()
+        r.write()
 
 
 @pytest.mark.parametrize(
@@ -111,8 +112,8 @@ def test_pull_asset_updates_genome_config(cfg_file, gname, aname, tname):
     Test that the object that was identical prior to the asset pull differs afterwards
     and the pulled asset metadata has been written to the config file
     """
-    ori_rgc = RefGenConf(filepath=cfg_file, writable=False)
-    rgc = RefGenConf(filepath=cfg_file, writable=False)
+    ori_rgc = RefGenConf.from_yaml_file(cfg_file)
+    rgc = RefGenConf.from_yaml_file(cfg_file)
     remove_asset_and_file(rgc, gname, aname, tname)
     remove_asset_and_file(ori_rgc, gname, aname, tname)
     # ori_rgc.remove_assets(gname, aname, tname)
@@ -121,7 +122,7 @@ def test_pull_asset_updates_genome_config(cfg_file, gname, aname, tname):
         print("\nPulling; genome: {}, asset: {}, tag: {}\n".format(gname, aname, tname))
         rgc.pull(gname, aname, tname)
     assert not ori_rgc.to_dict() == rgc.to_dict()
-    post_rgc = RefGenConf(filepath=cfg_file, writable=False)
+    post_rgc = RefGenConf.from_yaml_file(cfg_file)
     assert isinstance(post_rgc.seek(gname, aname, tname), str)
 
 
@@ -136,10 +137,8 @@ def test_pull_asset_updates_genome_config(cfg_file, gname, aname, tname):
 def test_pull_asset_works_with_nonwritable_and_writable_rgc(
     cfg_file, gname, aname, tname, state
 ):
-    rgc = RefGenConf(filepath=cfg_file, writable=state)
+    rgc = RefGenConf.from_yaml_file(cfg_file)
     remove_asset_and_file(rgc, gname, aname, tname)
     print("\nPulling; genome: {}, asset: {}, tag: {}\n".format(gname, aname, tname))
     with mock.patch("refgenconf.refgenconf.query_yes_no", return_value=True):
         rgc.pull(gname, aname, tname)
-    if state:
-        rgc.make_readonly()

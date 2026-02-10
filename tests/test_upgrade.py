@@ -20,7 +20,7 @@ DOWNLOAD_FUNCTION = f"refgenconf.refgenconf.{_download_url_progress.__name__}"
 class TestUpgradeExceptions:
     def test_cfg_v03_errors_with_new_constructor(self, cfg_file_old):
         with pytest.raises(ConfigNotCompliantError):
-            RefGenConf(filepath=cfg_file_old)
+            RefGenConf.from_yaml_file(cfg_file_old)
 
     @pytest.mark.parametrize("target_version", ["0.5", 0.1, "IDK", [1, 2, 3]])
     def test_unavailable_conversions(self, target_version, cfg_file_old):
@@ -31,7 +31,7 @@ class TestUpgradeExceptions:
 class TestUpgrade03to04:
     @pytest.mark.parametrize("genome", ["human_repeats", "rCRSd"])
     def test_get_old_data(self, cfg_file_old, genome):
-        old_rgc = _RefGenConfV03(cfg_file_old)
+        old_rgc = _RefGenConfV03.from_yaml_file(cfg_file_old)
         # get some old asset data on disk
         with mock.patch("refgenconf.refgenconf_v03.query_yes_no", return_value=True):
             print(f"\nPulling: {genome}/fasta:default\n")
@@ -55,7 +55,7 @@ class TestUpgrade03to04:
         with open(cfg_copy, "w") as f:
             yaml.dump(cfg_data, f)
 
-        old_rgc = _RefGenConfV03(str(cfg_copy))
+        old_rgc = _RefGenConfV03.from_yaml_file(str(cfg_copy))
         g, a, t = "human_alu", "fasta", "default"
         try:
             old_rgc.seek(g, "fasta", "default", strict_exists=True)
@@ -84,5 +84,5 @@ class TestUpgrade03to04:
                 force=True,
             )
         upgrade_config(filepath=str(cfg_copy), target_version="0.4", force=True)
-        rgc = RefGenConf(str(cfg_copy))
+        rgc = RefGenConf.from_yaml_file(str(cfg_copy))
         assert rgc[CFG_VERSION_KEY] == REQ_CFG_VERSION

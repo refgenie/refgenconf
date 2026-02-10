@@ -4,7 +4,6 @@ import logging
 from collections.abc import Mapping
 from typing import Any
 
-from attmap import AttMap
 from ubiquerg import parse_registry_path as prp
 
 import refgenconf
@@ -49,7 +48,7 @@ def looper_refgenie_populate(namespaces: Mapping[str, Any]) -> dict[str, Any]:
         and "refgenie_config" in namespaces["pipeline"]["var_templates"]
     ):
         rgc_path = namespaces["pipeline"]["var_templates"]["refgenie_config"]
-        rgc = refgenconf.RefGenConf(rgc_path)
+        rgc = refgenconf.RefGenConf.from_yaml_file(rgc_path)
 
         complete_sk_dict = rgc.list_seek_keys_values()
         paths_dict = {}
@@ -108,7 +107,7 @@ def looper_refgenie_populate(namespaces: Mapping[str, Any]) -> dict[str, Any]:
 
         # print(paths_dict)
         # Provide these values under the 'refgenie' namespace
-        namespaces["refgenie"] = AttMap(paths_dict)
+        namespaces["refgenie"] = paths_dict
         return rgc.populate(namespaces)
     else:
         msg = """

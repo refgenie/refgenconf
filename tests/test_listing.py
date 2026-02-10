@@ -1,7 +1,7 @@
 """Basic RGC asset tests"""
 
 import pytest
-from yacman.exceptions import UndefinedAliasError
+from yacman import UndefinedAliasError
 
 from refgenconf.const import CFG_GENOMES_KEY
 
@@ -31,7 +31,7 @@ class ListTest:
         This situation may occur after setting genome identity for nonexistent genome.
         """
         # get the original genomes count
-        ori_genomes_count = len(ro_rgc.genomes)
+        ori_genomes_count = len(ro_rgc[CFG_GENOMES_KEY])
         # set test alias, which will create an empty genome section
         ro_rgc.set_genome_alias(
             genome="test_alias",
@@ -42,8 +42,10 @@ class ListTest:
         assert len(ro_rgc.list().keys()) == ori_genomes_count
         # clean up
         ro_rgc.remove_genome_aliases(digest="test_digest")
-        with ro_rgc as r:
-            del r["genomes"]["test_digest"]
+        from yacman import write_lock
+        with write_lock(ro_rgc) as r:
+            del r["genomes"].data["test_digest"]
+            r.write()
 
 
 class ListByGenomeTest:

@@ -179,6 +179,8 @@ class TestInitializeGenome:
         )
         assert d in my_rgc[CFG_GENOMES_KEY]
         assert fasta_name in my_rgc[CFG_GENOMES_KEY][d][CFG_ALIASES_KEY]
-        with my_rgc as r:
-            del r[CFG_GENOMES_KEY][d]
+        from yacman import write_lock
+        with write_lock(my_rgc) as r:
+            del r[CFG_GENOMES_KEY].data[d]
+            r.write()
         rmtree(os.path.join(my_rgc.alias_dir, fasta_name))

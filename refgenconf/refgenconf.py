@@ -1606,8 +1606,9 @@ class RefGenConf(yacman.YacAttMap):
         force: bool | None = None,
         force_large: bool | None = None,
         size_cutoff: int | float = 10,
-        get_json_url: Callable[..., Any] = lambda server,
-        operation_id: construct_request_url(server, operation_id),
+        get_json_url: Callable[..., Any] = lambda server, operation_id: (
+            construct_request_url(server, operation_id)
+        ),
         build_signal_handler: Callable[..., Any] = _handle_sigint,
     ) -> tuple[list[str], dict[str, Any] | None, str | None] | None:
         """Download and possibly unpack one or more assets for a given ref gen.
@@ -3182,8 +3183,9 @@ def upgrade_config(
     target_version: str,
     filepath: str,
     force: bool = False,
-    get_json_url: Callable[..., Any] = lambda s, i: s
-    + _get_server_endpoints_mapping(s)[i],
+    get_json_url: Callable[..., Any] = lambda s, i: (
+        s + _get_server_endpoints_mapping(s)[i]
+    ),
     link_fun: Callable[[str, str], Any] = lambda s, t: os.symlink(s, t),
 ) -> bool | None:
     """Upgrade the config to a selected target version.

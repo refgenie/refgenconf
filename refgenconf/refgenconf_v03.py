@@ -1004,8 +1004,9 @@ class _RefGenConfV03(yacman.YacAttMap):
         force: bool | None = None,
         force_large: bool | None = None,
         size_cutoff: int | float = 10,
-        get_json_url: Callable[[str, str], str] = lambda server,
-        operation_id: construct_request_url(server, operation_id),
+        get_json_url: Callable[[str, str], str] = lambda server, operation_id: (
+            construct_request_url(server, operation_id)
+        ),
         build_signal_handler: Callable[[str], Callable[..., Any]] = _handle_sigint,
     ) -> tuple[list[str], dict[str, Any] | None, str | None] | None:
         """Download and possibly unpack one or more assets for a given ref gen.

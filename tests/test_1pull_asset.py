@@ -85,6 +85,7 @@ def test_parent_asset_mismatch(my_rgc, gname, aname, tname):
     with mock.patch("refgenconf.refgenconf.query_yes_no", return_value=True):
         my_rgc.pull(gname, "fasta", tname)
     from yacman import write_lock
+
     with write_lock(my_rgc) as r:
         r.write()
     ori = my_rgc[CFG_GENOMES_KEY][gname][CFG_ASSETS_KEY]["fasta"][CFG_ASSET_TAGS_KEY][

@@ -184,7 +184,7 @@ class _RefGenConfV03(yacman.YAMLConfigManager):
         Returns:
             Path to the genome configuration file.
         """
-        return getattr(self, 'filepath', None)
+        return getattr(self, "filepath", None)
 
     def initialize_config_file(self, filepath: str | None = None) -> str:
         """Initialize genome configuration file on disk.
@@ -1409,9 +1409,7 @@ class _RefGenConfV03(yacman.YAMLConfigManager):
             _safe_setdef(self[CFG_GENOMES_KEY], genome, {})
             if _check_insert_data(asset, str, "asset"):
                 _safe_setdef(self[CFG_GENOMES_KEY][genome], CFG_ASSETS_KEY, {})
-                _safe_setdef(
-                    self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY], asset, {}
-                )
+                _safe_setdef(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY], asset, {})
                 if _check_insert_data(tag, str, "tag"):
                     _safe_setdef(
                         self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset],
@@ -1450,9 +1448,7 @@ class _RefGenConfV03(yacman.YAMLConfigManager):
             _safe_setdef(self[CFG_GENOMES_KEY], genome, {})
             if _check_insert_data(asset, str, "asset"):
                 _safe_setdef(self[CFG_GENOMES_KEY][genome], CFG_ASSETS_KEY, {})
-                _safe_setdef(
-                    self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY], asset, {}
-                )
+                _safe_setdef(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY], asset, {})
                 if _check_insert_data(data, Mapping, "data"):
                     self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset].update(data)
         return self

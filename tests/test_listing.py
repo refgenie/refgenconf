@@ -43,6 +43,7 @@ class ListTest:
         # clean up
         ro_rgc.remove_genome_aliases(digest="test_digest")
         from yacman import write_lock
+
         with write_lock(ro_rgc) as r:
             del r["genomes"].data["test_digest"]
             r.write()

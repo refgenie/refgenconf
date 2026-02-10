@@ -124,10 +124,8 @@ class RefGenConf(yacman.YAMLConfigManager):
 
         # initialize "genomes_folder"
         if CFG_FOLDER_KEY not in self:
-            fp = getattr(self, 'filepath', None)
-            self[CFG_FOLDER_KEY] = (
-                os.path.dirname(fp) if fp else os.getcwd()
-            )
+            fp = getattr(self, "filepath", None)
+            self[CFG_FOLDER_KEY] = os.path.dirname(fp) if fp else os.getcwd()
             _missing_key_msg(CFG_FOLDER_KEY, self[CFG_FOLDER_KEY])
         # initialize "genome_servers"
         if CFG_SERVERS_KEY not in self and CFG_SERVER_KEY in self:
@@ -167,7 +165,9 @@ class RefGenConf(yacman.YAMLConfigManager):
 
         self[CFG_GENOMES_KEY] = yacman.AliasedYAMLConfigManager(
             entries=dict(self[CFG_GENOMES_KEY]) if self[CFG_GENOMES_KEY] else None,
-            aliases=lambda x: {k: v[CFG_ALIASES_KEY] for k, v in x.items() if CFG_ALIASES_KEY in v},
+            aliases=lambda x: {
+                k: v[CFG_ALIASES_KEY] for k, v in x.items() if CFG_ALIASES_KEY in v
+            },
             aliases_strict=True,
             exact=genome_exact,
         )
@@ -278,7 +278,7 @@ class RefGenConf(yacman.YAMLConfigManager):
         Returns:
             Path to the genome configuration file.
         """
-        return getattr(self, 'filepath', None)
+        return getattr(self, "filepath", None)
 
     def initialize_config_file(self, filepath: str | None = None) -> str:
         """Initialize genome configuration file on disk.
@@ -2317,9 +2317,7 @@ class RefGenConf(yacman.YAMLConfigManager):
             _safe_setdef(self[CFG_GENOMES_KEY], genome, {})
             if _check_insert_data(asset, str, "asset"):
                 _safe_setdef(self[CFG_GENOMES_KEY][genome], CFG_ASSETS_KEY, {})
-                _safe_setdef(
-                    self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY], asset, {}
-                )
+                _safe_setdef(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY], asset, {})
                 if _check_insert_data(tag, str, "tag"):
                     _safe_setdef(
                         self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset],
@@ -2367,9 +2365,7 @@ class RefGenConf(yacman.YAMLConfigManager):
             _safe_setdef(self[CFG_GENOMES_KEY], genome, {})
             if _check_insert_data(asset, str, "asset"):
                 _safe_setdef(self[CFG_GENOMES_KEY][genome], CFG_ASSETS_KEY, {})
-                _safe_setdef(
-                    self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY], asset, {}
-                )
+                _safe_setdef(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY], asset, {})
                 if _check_insert_data(data, Mapping, "data"):
                     self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset].update(data)
         return self
@@ -2987,8 +2983,11 @@ class RefGenConf(yacman.YAMLConfigManager):
         """
         import copy
         import yaml as _yaml
+
         data = copy.copy(self.data)
-        if CFG_GENOMES_KEY in data and isinstance(data[CFG_GENOMES_KEY], yacman.AliasedYAMLConfigManager):
+        if CFG_GENOMES_KEY in data and isinstance(
+            data[CFG_GENOMES_KEY], yacman.AliasedYAMLConfigManager
+        ):
             data[CFG_GENOMES_KEY] = dict(data[CFG_GENOMES_KEY].data)
         return _yaml.dump(data, default_flow_style=False) + (
             "\n" if trailing_newline else ""
@@ -3638,7 +3637,7 @@ def _make_list_of_str(arg: str | list[str]) -> list[str]:
 
     if isinstance(arg, str):
         return [arg]
-    elif hasattr(arg, '__iter__'):
+    elif hasattr(arg, "__iter__"):
         items = list(arg)
         if not all(isinstance(i, str) for i in items):
             _raise_faulty_arg()

@@ -49,10 +49,6 @@ test = [
     "pytest-remotedata",
     "mock",
 ]
-docs = [
-    "mkdocs-databio",
-]
-
 [tool.pytest.ini_options]
 addopts = "-rfE"
 testpaths = ["tests"]

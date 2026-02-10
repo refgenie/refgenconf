@@ -1,21 +1,25 @@
+from __future__ import annotations
+
 import binascii
 import hashlib
 import logging
 import os
+from collections.abc import Callable
 from gzip import open as gzopen
+from typing import Any
 
 from .exceptions import RefgenconfError
 from .henge import ITEM_TYPE, Henge
 
 
-def trunc512_digest(seq, offset=24):
+def trunc512_digest(seq: str, offset: int = 24) -> str:
     digest = hashlib.sha512(seq.encode()).digest()
     hex_digest = binascii.hexlify(digest[:offset])
     return hex_digest.decode()
 
 
 # module constants
-def _schema_path(name):
+def _schema_path(name: str) -> str:
     return os.path.join(SCHEMA_FILEPATH, name)
 
 
@@ -60,24 +64,19 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class SeqColClient(Henge):
-    """
-    Extension of henge that accommodates collections of sequences.
-    """
+    """Extension of henge that accommodates collections of sequences."""
 
     def __init__(
-        self, database, schemas=None, henges=None, checksum_function=trunc512_digest
-    ):
-        """
-        A user interface to insert and retrieve decomposable recursive unique
-        identifiers (DRUIDs).
+        self, database: dict[str, Any], schemas: list[str] | None = None, henges: dict[str, Any] | None = None, checksum_function: Callable[[str], str] = trunc512_digest
+    ) -> None:
+        """A user interface to insert and retrieve decomposable recursive unique identifiers (DRUIDs).
 
-        :param dict database: Dict-like lookup database with sequences
-            and hashes
-        :param dict schemas: One or more jsonschema schemas describing the
-            data types stored by this Henge
-        :param function(str) -> str checksum_function: Default function to
-            handle the digest of the
-            serialized items stored in this henge.
+        Args:
+            database: Dict-like lookup database with sequences and hashes.
+            schemas: One or more jsonschema schemas describing the data
+                types stored by this Henge.
+            checksum_function: Default function to handle the digest of
+                the serialized items stored in this henge.
         """
         assert all([os.path.exists(s) for s in INTERNAL_SCHEMAS]), RefgenconfError(
             f"Missing schema files: {INTERNAL_SCHEMAS}"
@@ -89,15 +88,14 @@ class SeqColClient(Henge):
             checksum_function=checksum_function,
         )
 
-    def load_fasta(self, fa_file, skip_seq=False, gzipped=False):
-        """
-        Load a sequence collection into the database
+    def load_fasta(self, fa_file: str, skip_seq: bool = False, gzipped: bool = False) -> tuple[str, list[dict[str, Any]]]:
+        """Load a sequence collection into the database.
 
-        :param str fa_file: path to the FASTA file to parse and load
-        :param bool skip_seq: whether to disregard the actual sequences,
-            load just the names and lengths
-        :param bool skip_seq: whether to disregard the actual sequences,
-            load just the names and lengths
+        Args:
+            fa_file: Path to the FASTA file to parse and load.
+            skip_seq: Whether to disregard the actual sequences, load
+                just the names and lengths.
+            gzipped: Whether the FASTA file is gzipped.
         """
         seq = ""
         name = ""
@@ -136,30 +134,28 @@ class SeqColClient(Henge):
         return collection_checksum, aslist
 
     @staticmethod
-    def compare_asds(asdA, asdB, explain=False):
-        """
-        Compare Annotated Sequence Digests (ASDs) -- digested sequences and metadata
+    def compare_asds(asdA: list[dict[str, Any]] | dict[str, Any], asdB: list[dict[str, Any]] | dict[str, Any], explain: bool = False) -> int:
+        """Compare Annotated Sequence Digests (ASDs) -- digested sequences and metadata.
 
-        :param str asdA: ASD for first sequence collection to compare.
-        :param str asdB: ASD for second sequence collection to compare.
-        :param bool explain: Print an explanation of the flag? [Default: False]
+        Args:
+            asdA: ASD for first sequence collection to compare.
+            asdB: ASD for second sequence collection to compare.
+            explain: Print an explanation of the flag? [Default: False]
         """
 
         def _xp(prop, lst):
-            """Extract property from a list of dicts"""
+            """Extract property from a list of dicts."""
             return list(map(lambda x: x[prop], lst))
 
         def _index(x, lst):
-            """Find an index of a sequence element in a list of dicts"""
+            """Find an index of a sequence element in a list of dicts."""
             try:
                 return _xp(SEQ_KEY, lst).index(x)
             except:
                 return None
 
         def _get_common_content(lstA, lstB):
-            """
-            Find the intersection between two list of dicts with sequences
-            """
+            """Find the intersection between two list of dicts with sequences."""
             return list(
                 filter(None.__ne__, [_index(x, lstB) for x in _xp(SEQ_KEY, lstA)])
             )
@@ -215,14 +211,13 @@ class SeqColClient(Henge):
             explain_flag(return_flag)
         return return_flag
 
-    def compare(self, digestA, digestB, explain=False):
-        """
-        Given two collection checksums in the database, provide some information
-        about how they are related.
+    def compare(self, digestA: str, digestB: str, explain: bool = False) -> int:
+        """Given two collection checksums in the database, provide some information about how they are related.
 
-        :param str digestA: Digest for first sequence collection to compare.
-        :param str digestB: Digest for second sequence collection to compare.
-        :param bool explain: Print an explanation of the flag? [Default: False]
+        Args:
+            digestA: Digest for first sequence collection to compare.
+            digestB: Digest for second sequence collection to compare.
+            explain: Print an explanation of the flag? [Default: False]
         """
         typeA = self.database[digestA + ITEM_TYPE]
         typeB = self.database[digestB + ITEM_TYPE]
@@ -240,8 +235,8 @@ class SeqColClient(Henge):
 # Static functions below (these don't require a database)
 
 
-def explain_flag(flag):
-    """Explains a compare flag"""
+def explain_flag(flag: int) -> None:
+    """Explain a compare flag."""
     print(f"Flag: {flag}\nBinary: {bin(flag)}\n")
     for e in range(0, 13):
         if flag & 2**e:

@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 from datetime import timedelta
 
-from rich.progress import ProgressColumn, filesize
+from rich.progress import ProgressColumn, Task, filesize
 from rich.text import Text
 
 
@@ -8,7 +10,7 @@ class _DownloadColumn(ProgressColumn):
     """Renders file size downloaded and total, e.g. '0.5/2.3 GB'."""
 
     @staticmethod
-    def render(task):
+    def render(task: Task) -> Text:
         """Calculate common unit for completed and total."""
         completed = int(task.completed)
         total = int(task.total)
@@ -29,7 +31,7 @@ class _TransferSpeedColumn(ProgressColumn):
     """Renders human readable transfer speed."""
 
     @staticmethod
-    def render(task):
+    def render(task: Task) -> Text:
         """Show data transfer speed."""
         speed = task.speed
         if speed is None:
@@ -45,7 +47,7 @@ class _TimeRemainingColumn(ProgressColumn):
     max_refresh = 1
 
     @staticmethod
-    def render(task):
+    def render(task: Task) -> Text:
         """Show time remaining."""
         remaining = task.time_remaining
         if remaining is None:

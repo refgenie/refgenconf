@@ -1,7 +1,10 @@
 # refgenie looper plugin
 
+from __future__ import annotations
+
 import logging
 from collections.abc import Mapping
+from typing import Any
 
 from attmap import AttMap
 from ubiquerg import parse_registry_path as prp
@@ -11,25 +14,31 @@ import refgenconf
 _LOGGER = logging.getLogger(__name__)
 
 
-def looper_refgenie_populate(namespaces):
-    """
-    A looper plugin that populates refgenie references in a PEP from
-    refgenie://genome/asset:tag registry paths. This can be used to convert
-    all refgenie references into their local paths at the looper stage, so the
-    final paths are passed to the workflow. This way the workflow does not
-    need to depend on refgenie to resolve the paths.
-    This is useful for example for CWL pipelines, which are built to have
-    paths resolved outside the workflow.
+def looper_refgenie_populate(namespaces: Mapping[str, Any]) -> dict[str, Any]:
+    """Populate refgenie references in a PEP from registry paths.
+
+    A looper plugin that converts refgenie://genome/asset:tag registry
+    paths into their local paths at the looper stage, so the final paths
+    are passed to the workflow. This way the workflow does not need to
+    depend on refgenie to resolve the paths. This is useful for example
+    for CWL pipelines, which are built to have paths resolved outside
+    the workflow.
 
     The namespaces structure required to run the plugin is:
-    `namespaces["pipeline"]["var_templates"]["refgenie_config"]`
+    ``namespaces["pipeline"]["var_templates"]["refgenie_config"]``
 
-    :param Mapping namespaces: a nested variable namespaces dict
-    :return dict: sample namespace dict
-    :raises TypeError: if the input namespaces is not a mapping
-    :raises KeyError: if the namespaces mapping does not include 'pipeline'
-    :raises NotImplementedError: if 'var_templates' key is missing in the 'pipeline' namespace or
-        'refgenie_config' is missing in 'var_templates' section.
+    Args:
+        namespaces: A nested variable namespaces dict.
+
+    Returns:
+        Sample namespace dict.
+
+    Raises:
+        TypeError: If the input namespaces is not a mapping.
+        KeyError: If the namespaces mapping does not include 'pipeline'.
+        NotImplementedError: If 'var_templates' key is missing in the
+            'pipeline' namespace or 'refgenie_config' is missing in
+            'var_templates' section.
     """
     if not isinstance(namespaces, Mapping):
         raise TypeError("Namespaces must be a Mapping")

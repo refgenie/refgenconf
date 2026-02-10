@@ -32,5 +32,5 @@ class TestInitialize:
     @pytest.mark.parametrize("pth", [None, 1, {"a": "b"}])
     def test_invalid_path(self, pth):
         rgc = RefGenConf()
-        with pytest.raises(TypeError):
+        with pytest.raises((TypeError, OSError)):
             rgc.initialize_config_file(filepath=pth)

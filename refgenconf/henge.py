@@ -1,9 +1,13 @@
-"""An interface to a database back-end for DRUIDs"""
+"""An interface to a database back-end for DRUIDs."""
+
+from __future__ import annotations
 
 import copy
 import hashlib
 import logging
 import os
+from collections.abc import Callable
+from typing import Any
 
 import jsonschema
 import yacman
@@ -20,33 +24,31 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class NotFoundException(Exception):
-    """Raised when a digest is not found"""
+    """Raised when a digest is not found."""
 
-    def __init__(self, m):
+    def __init__(self, m: str) -> None:
         self.message = "{} not found in database".format(m)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.message
 
 
-def md5(seq):
+def md5(seq: str) -> str:
     return hashlib.md5(seq.encode()).hexdigest()
 
 
 class Henge(object):
-    def __init__(self, database, schemas, henges=None, checksum_function=md5):
-        """
-        A user interface to insert and retrieve decomposable recursive unique
-        identifiers (DRUIDs).
+    def __init__(self, database: dict[str, Any], schemas: dict[str, Any] | list[str], henges: dict[str, Henge] | None = None, checksum_function: Callable[[str], str] = md5) -> None:
+        """A user interface to insert and retrieve decomposable recursive unique identifiers (DRUIDs).
 
-        :param dict database: Dict-like lookup database for sequences and
-            hashes.
-        :param list schemas: One or more jsonschema schemas describing the
-            data types stored by this Henge
-        :param dict henges: One or more henge objects indexed by object name for
-            remote storing of items.
-        :param function(str) -> str checksum_function: Default function to
-            handle the digest of the serialized items stored in this henge.
+        Args:
+            database: Dict-like lookup database for sequences and hashes.
+            schemas: One or more jsonschema schemas describing the data
+                types stored by this Henge.
+            henges: One or more henge objects indexed by object name for
+                remote storing of items.
+            checksum_function: Default function to handle the digest of
+                the serialized items stored in this henge.
         """
         self.database = database
         self.checksum_function = checksum_function
@@ -85,15 +87,15 @@ class Henge(object):
                     self.schemas[item_type] = henge.schemas[item_type]
                     self.henges[item_type] = henge
 
-    def retrieve(self, druid, reclimit=None, raw=False):
-        """
-        Retrieve an item given a digest
+    def retrieve(self, druid: str, reclimit: int | None = None, raw: bool = False) -> Any:
+        """Retrieve an item given a digest.
 
-        :param str druid: The Decomposable recursive unique identifier (DRUID), or
-            digest that uniquely identifies that item to retrieve.
-        :param int reclimit: Recursion limit. Set to None for no limit (default).
-        :param bool raw: Return the value as a raw, henge-delimited string, instead
-            of processing into a mapping. Default: False.
+        Args:
+            druid: The Decomposable recursive unique identifier (DRUID),
+                or digest that uniquely identifies that item to retrieve.
+            reclimit: Recursion limit. Set to None for no limit (default).
+            raw: Return the value as a raw, henge-delimited string,
+                instead of processing into a mapping. Default: False.
         """
 
         def reconstruct_item(string, schema, reclimit):
@@ -151,18 +153,15 @@ class Henge(object):
         return reconstruct_item(string, schema, reclimit)
 
     @property
-    def item_types(self):
-        """
-        A list of item types handled by this Henge instance
-        """
+    def item_types(self) -> list[str]:
+        """A list of item types handled by this Henge instance."""
         return list(self.schemas.keys())
 
-    def select_item_type(self, item):
-        """
-        Returns a list of all item types handled by this instance that validate
-        with the given item.
+    def select_item_type(self, item: dict[str, Any]) -> list[str]:
+        """Return a list of all item types handled by this instance that validate with the given item.
 
-        :param dict item: The item you wish to validate type of.
+        Args:
+            item: The item you wish to validate type of.
         """
         valid_schemas = []
         for name, schema in self.schemas.items():
@@ -174,15 +173,15 @@ class Henge(object):
                 continue
         return valid_schemas
 
-    def insert(self, item, item_type):
-        """
-        Add structured items of a specified type to the database.
+    def insert(self, item: list[Any] | dict[str, Any], item_type: str) -> str | bool:
+        """Add structured items of a specified type to the database.
 
-        :param list item: List of items to add.
-        :param str item_type: A string specifying the type of item. Must match
-            something from Henge.list_item_types. You can use
-            Henge.select_item_type to automatically choose this, if only one
-            fits.
+        Args:
+            item: List of items to add.
+            item_type: A string specifying the type of item. Must match
+                something from Henge.list_item_types. You can use
+                Henge.select_item_type to automatically choose this, if
+                only one fits.
         """
 
         if item_type not in self.schemas.keys():
@@ -223,19 +222,19 @@ class Henge(object):
 
         return self._insert_flat(flat_item, item_type)
 
-    def _insert_flat(self, item, item_type=None):
-        """
-        Add flattened items (of a specified type) to the database.
+    def _insert_flat(self, item: list[Any] | dict[str, Any], item_type: str | None = None) -> str | bool:
+        """Add flattened items (of a specified type) to the database.
 
         Flattened items have removed all levels, so it's only attributes and
         strict values; no nesting allowed. Use the upstream insert function
         to insert full structured objects, which calls this function.
 
-        :param list item: List of items to add.
-        :param str item_type: A string specifying the type of item. Must match
-            something from Henge.list_item_types. You can use
-            Henge.select_item_type to automatically choose this, if only one
-            fits.
+        Args:
+            item: List of items to add.
+            item_type: A string specifying the type of item. Must match
+                something from Henge.list_item_types. You can use
+                Henge.select_item_type to automatically choose this, if
+                only one fits.
         """
         if item_type not in self.schemas.keys():
             _LOGGER.error(
@@ -287,11 +286,8 @@ class Henge(object):
         _LOGGER.debug("Loaded {}".format(druid))
         return druid
 
-    def _henge_insert(self, druid, string, item_type, digest_version=None):
-        """
-        Inserts an item into the database, with henge-metadata slots for item
-        type and digest version.
-        """
+    def _henge_insert(self, druid: str, string: str, item_type: str, digest_version: str | None = None) -> None:
+        """Insert an item into the database, with henge-metadata slots for item type and digest version."""
         if not digest_version:
             digest_version = self.digest_version
 
@@ -313,10 +309,8 @@ class Henge(object):
         except Exception as e:
             raise e
 
-    def clean(self):
-        """
-        Remove all items from this database.
-        """
+    def clean(self) -> None:
+        """Remove all items from this database."""
         for k, v in self.database.items():
             try:
                 del self.database[k]
@@ -325,14 +319,12 @@ class Henge(object):
             except (KeyError, AttributeError):
                 pass
 
-    def show(self):
-        """
-        Show all items in the database.
-        """
+    def show(self) -> None:
+        """Show all items in the database."""
         for k, v in self.database.items():
             print(k, v)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         repr = (
             "Henge object\n"
             + "Item types: "
@@ -344,10 +336,8 @@ class Henge(object):
         return repr
 
 
-def split_schema(schema, name=None):
-    """
-    Splits a hierarchical schema into flat components suitable for a Henge
-    """
+def split_schema(schema: dict[str, Any], name: str | None = None) -> dict[str, Any]:
+    """Split a hierarchical schema into flat components suitable for a Henge."""
     slist = {}
     # base case
     if schema["type"] not in ["object", "array"]:

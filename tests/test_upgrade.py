@@ -37,29 +37,38 @@ class TestUpgrade03to04:
             print(f"\nPulling: {genome}/fasta:default\n")
             old_rgc.pull(genome=genome, asset="fasta", tag="default")
 
-    def test_all_server_local_mix(self, cfg_file_old):
-        """
-        Test config upgrade from v0.3 to v0.4 when a mix of genomes in terms of
-        remote digest availability is in defined the old config
-        """
-        old_rgc = _RefGenConfV03(cfg_file_old)
-        # get some old asset data on disk
+    def test_all_server_local_mix(self, cfg_file_old, tmp_path):
+        """Test config upgrade from v0.3 to v0.4 when a mix of genomes in terms of
+        remote digest availability is defined in the old config."""
+        import shutil
+        import yaml
+
+        # Copy config to tmp_path so we don't mutate the shared test fixture
+        cfg_copy = tmp_path / "genomes_v3.yaml"
+        shutil.copy(cfg_file_old, cfg_copy)
+        genome_folder = tmp_path / "genomes"
+        genome_folder.mkdir()
+        # Update genome_folder in the copied config
+        with open(cfg_copy) as f:
+            cfg_data = yaml.safe_load(f)
+        cfg_data["genome_folder"] = str(genome_folder)
+        with open(cfg_copy, "w") as f:
+            yaml.dump(cfg_data, f)
+
+        old_rgc = _RefGenConfV03(str(cfg_copy))
         g, a, t = "human_alu", "fasta", "default"
         try:
-            pth = old_rgc.seek(g, "fasta", "default", strict_exists=True)
+            old_rgc.seek(g, "fasta", "default", strict_exists=True)
         except MissingGenomeError:
             src_url = f"http://big.databio.org/refgenie_raw/files.{g}.{a}.{a}"
-            target_archive = f"/tmp/old/{g}.fa.gz"
-            target_file = f"/tmp/old/{g}.fa"
-            target_dir = f"/tmp/old/{g}/{a}/{t}"
+            target_archive = str(genome_folder / f"{g}.fa.gz")
+            target_file = str(genome_folder / f"{g}.fa")
+            target_dir = str(genome_folder / g / a / t)
             os.makedirs(target_dir, exist_ok=True)
             try:
                 urllib.request.urlretrieve(src_url, target_archive)
             except Exception as e:
-                import warnings
-
-                warnings.warn(f"Could not download {src_url}, skipping test: {e}")
-                return
+                pytest.skip(f"Could not download {src_url}: {e}")
             from subprocess import run
 
             run(
@@ -74,9 +83,6 @@ class TestUpgrade03to04:
                 seek_keys={a: f"{g}.fa"},
                 force=True,
             )
-        else:
-            print(f"{pth} exists")
-        finally:
-            upgrade_config(filepath=cfg_file_old, target_version="0.4", force=True)
-        rgc = RefGenConf(cfg_file_old)
+        upgrade_config(filepath=str(cfg_copy), target_version="0.4", force=True)
+        rgc = RefGenConf(str(cfg_copy))
         assert rgc[CFG_VERSION_KEY] == REQ_CFG_VERSION

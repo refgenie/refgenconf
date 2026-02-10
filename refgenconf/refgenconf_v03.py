@@ -220,7 +220,12 @@ class _RefGenConfV03(yacman.YacAttMap):
         _LOGGER.info("Initialized genome configuration file: {}".format(filepath))
         return filepath
 
-    def list(self, genome: str | list[str] | None = None, order: Callable[..., Any] | None = None, include_tags: bool = False) -> dict[str, list[str]]:
+    def list(
+        self,
+        genome: str | list[str] | None = None,
+        order: Callable[..., Any] | None = None,
+        include_tags: bool = False,
+    ) -> dict[str, list[str]]:
         """List local assets; map each namespace to a list of available asset names.
 
         Args:
@@ -303,7 +308,15 @@ class _RefGenConfV03(yacman.YacAttMap):
             [make_line(g, self[CFG_GENOMES_KEY][g][CFG_ASSETS_KEY]) for g in refgens]
         )
 
-    def add(self, path: str, genome: str, asset: str, tag: str | None = None, seek_keys: dict[str, str] | None = None, force: bool = False) -> bool:
+    def add(
+        self,
+        path: str,
+        genome: str,
+        asset: str,
+        tag: str | None = None,
+        seek_keys: dict[str, str] | None = None,
+        force: bool = False,
+    ) -> bool:
         """Add an external asset to the config.
 
         Args:
@@ -364,7 +377,9 @@ class _RefGenConfV03(yacman.YacAttMap):
             _LOGGER.info(msg)
             return True
 
-    def filepath(self, genome: str, asset: str, tag: str, ext: str = ".tgz", dir: bool = False) -> str:
+    def filepath(
+        self, genome: str, asset: str, tag: str, ext: str = ".tgz", dir: bool = False
+    ) -> str:
         """Determine path to a particular asset for a particular genome.
 
         Args:
@@ -520,7 +535,9 @@ class _RefGenConfV03(yacman.YacAttMap):
             warnings.warn(msg, RuntimeWarning)
         return fullpath
 
-    def get_default_tag(self, genome: str, asset: str, use_existing: bool = True) -> str:
+    def get_default_tag(
+        self, genome: str, asset: str, use_existing: bool = True
+    ) -> str:
         """Determine the asset tag to use as default.
 
         The one indicated by the 'default_tag' key in the asset section is
@@ -583,7 +600,9 @@ class _RefGenConfV03(yacman.YacAttMap):
                 self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset], "Asset section "
             )
 
-    def set_default_pointer(self, genome: str, asset: str, tag: str, force: bool = False) -> None:
+    def set_default_pointer(
+        self, genome: str, asset: str, tag: str, force: bool = False
+    ) -> None:
         """Point to the selected tag by default.
 
         Args:
@@ -611,7 +630,12 @@ class _RefGenConfV03(yacman.YacAttMap):
                 "Default tag for '{}/{}' set to: {}".format(genome, asset, tag)
             )
 
-    def list_assets_by_genome(self, genome: str | None = None, order: Callable[..., Any] | None = None, include_tags: bool = False) -> list[str] | dict[str, list[str]]:
+    def list_assets_by_genome(
+        self,
+        genome: str | None = None,
+        order: Callable[..., Any] | None = None,
+        include_tags: bool = False,
+    ) -> list[str] | dict[str, list[str]]:
         """List types/names of assets that are available for one--or all--genomes.
 
         Args:
@@ -633,7 +657,9 @@ class _RefGenConfV03(yacman.YacAttMap):
             else self.list(order, include_tags=include_tags)
         )
 
-    def list_genomes_by_asset(self, asset: str | None = None, order: Callable[..., Any] | None = None) -> dict[str, list[str]] | list[str]:
+    def list_genomes_by_asset(
+        self, asset: str | None = None, order: Callable[..., Any] | None = None
+    ) -> dict[str, list[str]] | list[str]:
         """List assemblies for which a particular asset is available.
 
         Args:
@@ -659,7 +685,11 @@ class _RefGenConfV03(yacman.YacAttMap):
             )
         )
 
-    def get_local_data_str(self, genome: str | list[str] | None = None, order: Callable[..., Any] | None = None) -> tuple[str, str]:
+    def get_local_data_str(
+        self,
+        genome: str | list[str] | None = None,
+        order: Callable[..., Any] | None = None,
+    ) -> tuple[str, str]:
         """List locally available reference genome IDs and assets by ID.
 
         Args:
@@ -693,7 +723,9 @@ class _RefGenConfV03(yacman.YacAttMap):
         self,
         genome: str | list[str] | None = None,
         order: Callable[..., Any] | None = None,
-        get_url: Callable[[str, str], str] = lambda server, id: construct_request_url(server, id),
+        get_url: Callable[[str, str], str] = lambda server, id: construct_request_url(
+            server, id
+        ),
     ) -> dict[str, Any]:
         """List genomes and assets available remotely.
 
@@ -718,7 +750,9 @@ class _RefGenConfV03(yacman.YacAttMap):
         self,
         genome: str | list[str] | None = None,
         order: Callable[..., Any] | None = None,
-        get_url: Callable[[str, str], str] = lambda server, id: construct_request_url(server, id),
+        get_url: Callable[[str, str], str] = lambda server, id: construct_request_url(
+            server, id
+        ),
         as_str: bool = False,
     ) -> dict[str, Any]:
         """List genomes and assets available remotely on all servers the object subscribes to.
@@ -740,7 +774,9 @@ class _RefGenConfV03(yacman.YacAttMap):
             data_by_server[url] = _list_remote(url, genome, order, as_str=as_str)
         return data_by_server
 
-    def tag(self, genome: str, asset: str, tag: str, new_tag: str, files: bool = True) -> None:
+    def tag(
+        self, genome: str, asset: str, tag: str, new_tag: str, files: bool = True
+    ) -> None:
         """Retag the asset selected by the tag with the new_tag.
 
         Prompts if default already exists and overrides upon confirmation.
@@ -803,7 +839,9 @@ class _RefGenConfV03(yacman.YacAttMap):
             )
         self.run_plugins(POST_TAG_HOOK)
 
-    def cfg_tag_asset(self, genome: str, asset: str, tag: str | None, new_tag: str) -> bool | None:
+    def cfg_tag_asset(
+        self, genome: str, asset: str, tag: str | None, new_tag: str
+    ) -> bool | None:
         """Retag the asset selected by the tag with the new_tag.
 
         Prompts if default already exists and overrides upon confirmation.
@@ -877,7 +915,13 @@ class _RefGenConfV03(yacman.YacAttMap):
         return True
 
     def _update_relatives_tags(
-        self, genome: str, asset: str, tag: str, new_tag: str, relatives: list[str], update_children: bool
+        self,
+        genome: str,
+        asset: str,
+        tag: str,
+        new_tag: str,
+        relatives: list[str],
+        update_children: bool,
     ) -> None:
         """Update tags in the 'asset_parents' section in the list of children.
 
@@ -960,9 +1004,8 @@ class _RefGenConfV03(yacman.YacAttMap):
         force: bool | None = None,
         force_large: bool | None = None,
         size_cutoff: int | float = 10,
-        get_json_url: Callable[[str, str], str] = lambda server, operation_id: construct_request_url(
-            server, operation_id
-        ),
+        get_json_url: Callable[[str, str], str] = lambda server,
+        operation_id: construct_request_url(server, operation_id),
         build_signal_handler: Callable[[str], Callable[..., Any]] = _handle_sigint,
     ) -> tuple[list[str], dict[str, Any] | None, str | None] | None:
         """Download and possibly unpack one or more assets for a given ref gen.
@@ -1268,7 +1311,12 @@ class _RefGenConfV03(yacman.YacAttMap):
                     pass
 
     def update_relatives_assets(
-        self, genome: str, asset: str, tag: str | None = None, data: list[str] | None = None, children: bool = False
+        self,
+        genome: str,
+        asset: str,
+        tag: str | None = None,
+        data: list[str] | None = None,
+        children: bool = False,
     ) -> None:
         """Update the asset relatives of an asset.
 
@@ -1303,7 +1351,13 @@ class _RefGenConfV03(yacman.YacAttMap):
                 data,
             )
 
-    def update_seek_keys(self, genome: str, asset: str, tag: str | None = None, keys: Mapping | None = None) -> _RefGenConfV03:
+    def update_seek_keys(
+        self,
+        genome: str,
+        asset: str,
+        tag: str | None = None,
+        keys: Mapping | None = None,
+    ) -> _RefGenConfV03:
         """Update the seek keys for a tagged asset.
 
         A convenience method which wraps the update assets and uses it to
@@ -1326,7 +1380,13 @@ class _RefGenConfV03(yacman.YacAttMap):
             asset[CFG_ASSET_TAGS_KEY][tag][CFG_SEEK_KEYS_KEY].update(keys)
         return self
 
-    def update_tags(self, genome: str, asset: str | None = None, tag: str | None = None, data: Mapping | None = None) -> _RefGenConfV03:
+    def update_tags(
+        self,
+        genome: str,
+        asset: str | None = None,
+        tag: str | None = None,
+        data: Mapping | None = None,
+    ) -> _RefGenConfV03:
         """Update the genomes in RefGenConf object at any level.
 
         If a requested genome-asset-tag mapping is missing, it will be created.
@@ -1366,7 +1426,9 @@ class _RefGenConfV03(yacman.YacAttMap):
                         ][tag].update(data)
         return self
 
-    def update_assets(self, genome: str, asset: str | None = None, data: Mapping | None = None) -> _RefGenConfV03:
+    def update_assets(
+        self, genome: str, asset: str | None = None, data: Mapping | None = None
+    ) -> _RefGenConfV03:
         """Update the genomes in RefGenConf object at any level.
 
         If a requested genome-asset mapping is missing, it will be created.
@@ -1391,7 +1453,13 @@ class _RefGenConfV03(yacman.YacAttMap):
         return self
 
     def remove(
-        self, genome: str, asset: str, tag: str | None = None, relationships: bool = True, files: bool = True, force: bool = False
+        self,
+        genome: str,
+        asset: str,
+        tag: str | None = None,
+        relationships: bool = True,
+        files: bool = True,
+        force: bool = False,
     ) -> _RefGenConfV03 | None:
         """Remove data associated with a specified genome:asset:tag combination.
 
@@ -1479,7 +1547,13 @@ class _RefGenConfV03(yacman.YacAttMap):
             else:
                 self.cfg_remove_assets(genome, asset, tag, relationships)
 
-    def cfg_remove_assets(self, genome: str, asset: str, tag: str | None = None, relationships: bool = True) -> _RefGenConfV03:
+    def cfg_remove_assets(
+        self,
+        genome: str,
+        asset: str,
+        tag: str | None = None,
+        relationships: bool = True,
+    ) -> _RefGenConfV03:
         """Remove data associated with a specified genome:asset:tag combination.
 
         If no tags are specified, the entire asset is removed from the genome.
@@ -1554,7 +1628,9 @@ class _RefGenConfV03(yacman.YacAttMap):
                         self[CFG_GENOMES_KEY] = None
         return self
 
-    def update_genomes(self, genome: str, data: Mapping | None = None) -> _RefGenConfV03:
+    def update_genomes(
+        self, genome: str, data: Mapping | None = None
+    ) -> _RefGenConfV03:
         """Update the genomes in RefGenConf object at any level.
 
         If a requested genome is missing, it will be added.
@@ -1698,7 +1774,9 @@ class _RefGenConfV03(yacman.YacAttMap):
         ][tag]
         return all([r in tag_data for r in REQ_TAG_ATTRS])
 
-    def _invert_genomes(self, order: Callable[..., Any] | None = None) -> dict[str, list[str]]:
+    def _invert_genomes(
+        self, order: Callable[..., Any] | None = None
+    ) -> dict[str, list[str]]:
         """Map each asset type/kind/name to a collection of assemblies.
 
         A configuration file encodes assets by genome, but in some use cases
@@ -1722,7 +1800,9 @@ class _RefGenConfV03(yacman.YacAttMap):
         assets = sorted(genomes.keys(), key=order)
         return dict([(a, sorted(genomes[a], key=order)) for a in assets])
 
-    def _chk_digest_if_avail(self, genome: str, remote_asset_name: str, server_url: str) -> None:
+    def _chk_digest_if_avail(
+        self, genome: str, remote_asset_name: str, server_url: str
+    ) -> None:
         """Check local asset digest against the remote one.
 
         Populate children of the asset with the provided asset:tag. In case the
@@ -1923,7 +2003,9 @@ def _download_json(url: str, params: dict[str, Any] | None = None) -> Any:
     raise DownloadJsonError(resp)
 
 
-def _download_url_progress(url: str, output_path: str, name: str, params: dict[str, Any] | None = None) -> None:
+def _download_url_progress(
+    url: str, output_path: str, name: str, params: dict[str, Any] | None = None
+) -> None:
     """Download asset at given URL to given filepath, show progress along the way.
 
     Args:
@@ -1940,7 +2022,13 @@ def _download_url_progress(url: str, output_path: str, name: str, params: dict[s
 
 
 def _genome_asset_path(
-    genomes: Mapping, gname: str, aname: str, tname: str, seek_key: str | None, enclosing_dir: bool, no_tag: bool = False
+    genomes: Mapping,
+    gname: str,
+    aname: str,
+    tname: str,
+    seek_key: str | None,
+    enclosing_dir: bool,
+    no_tag: bool = False,
 ) -> str:
     """Retrieve the raw path value for a particular asset for a particular genome.
 
@@ -2000,7 +2088,13 @@ def _genome_asset_path(
         return os.path.join(asset_tag_data[CFG_ASSET_PATH_KEY], tname, seek_key_value)
 
 
-def _assert_gat_exists(genomes: Mapping, gname: str, aname: str | None = None, tname: str | None = None, allow_incomplete: bool = False) -> None:
+def _assert_gat_exists(
+    genomes: Mapping,
+    gname: str,
+    aname: str | None = None,
+    tname: str | None = None,
+    allow_incomplete: bool = False,
+) -> None:
     """Ensure the genome/asset:tag combination exists in the provided mapping.
 
     Also checks that seek keys are defined. Seek keys are required for asset
@@ -2086,7 +2180,12 @@ def _is_large_archive(size: str, cutoff: int | float = 10) -> bool:
     return size.endswith("TB") or (size.endswith("GB") and _str2float(size) > cutoff)
 
 
-def _list_remote(url: str, genome: str | list[str] | None, order: Callable[..., Any] | None = None, as_str: bool = True) -> tuple[str, str] | tuple[None, None] | dict[str, list[str]]:
+def _list_remote(
+    url: str,
+    genome: str | list[str] | None,
+    order: Callable[..., Any] | None = None,
+    as_str: bool = True,
+) -> tuple[str, str] | tuple[None, None] | dict[str, list[str]]:
     """List genomes and assets available remotely.
 
     Args:
@@ -2148,7 +2247,9 @@ def _make_genome_assets_line(
     )
 
 
-def _make_asset_tags_product(assets: Mapping, asset_tag_delim: str = ":", asset_sk_delim: str = ".") -> list[str]:
+def _make_asset_tags_product(
+    assets: Mapping, asset_tag_delim: str = ":", asset_sk_delim: str = "."
+) -> list[str]:
     """Make a product of assets and tags available in the provided mapping.
 
     Args:
@@ -2249,7 +2350,9 @@ def _extend_unique(l1: list[Any], l2: list[Any]) -> list[Any]:
     return l1 + list(set(l2) - set(l1))
 
 
-def _select_genomes(genomes: list[str], genome: str | list[str] | None = None, strict: bool = False) -> list[str] | None:
+def _select_genomes(
+    genomes: list[str], genome: str | list[str] | None = None, strict: bool = False
+) -> list[str] | None:
     """Safely select a subset of genomes.
 
     Args:
@@ -2381,7 +2484,12 @@ def _remove(path: str) -> str:
     return path
 
 
-def _entity_dir_removal_log(directory: str, entity_class: str, asset_dict: dict[str, str], removed_entities: list[str]) -> None:
+def _entity_dir_removal_log(
+    directory: str,
+    entity_class: str,
+    asset_dict: dict[str, str],
+    removed_entities: list[str],
+) -> None:
     """Message and save removed entity data.
 
     Args:

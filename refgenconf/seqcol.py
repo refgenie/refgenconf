@@ -67,7 +67,11 @@ class SeqColClient(Henge):
     """Extension of henge that accommodates collections of sequences."""
 
     def __init__(
-        self, database: dict[str, Any], schemas: list[str] | None = None, henges: dict[str, Any] | None = None, checksum_function: Callable[[str], str] = trunc512_digest
+        self,
+        database: dict[str, Any],
+        schemas: list[str] | None = None,
+        henges: dict[str, Any] | None = None,
+        checksum_function: Callable[[str], str] = trunc512_digest,
     ) -> None:
         """A user interface to insert and retrieve decomposable recursive unique identifiers (DRUIDs).
 
@@ -88,7 +92,9 @@ class SeqColClient(Henge):
             checksum_function=checksum_function,
         )
 
-    def load_fasta(self, fa_file: str, skip_seq: bool = False, gzipped: bool = False) -> tuple[str, list[dict[str, Any]]]:
+    def load_fasta(
+        self, fa_file: str, skip_seq: bool = False, gzipped: bool = False
+    ) -> tuple[str, list[dict[str, Any]]]:
         """Load a sequence collection into the database.
 
         Args:
@@ -134,7 +140,11 @@ class SeqColClient(Henge):
         return collection_checksum, aslist
 
     @staticmethod
-    def compare_asds(asdA: list[dict[str, Any]] | dict[str, Any], asdB: list[dict[str, Any]] | dict[str, Any], explain: bool = False) -> int:
+    def compare_asds(
+        asdA: list[dict[str, Any]] | dict[str, Any],
+        asdB: list[dict[str, Any]] | dict[str, Any],
+        explain: bool = False,
+    ) -> int:
         """Compare Annotated Sequence Digests (ASDs) -- digested sequences and metadata.
 
         Args:

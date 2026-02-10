@@ -38,7 +38,13 @@ def md5(seq: str) -> str:
 
 
 class Henge(object):
-    def __init__(self, database: dict[str, Any], schemas: dict[str, Any] | list[str], henges: dict[str, Henge] | None = None, checksum_function: Callable[[str], str] = md5) -> None:
+    def __init__(
+        self,
+        database: dict[str, Any],
+        schemas: dict[str, Any] | list[str],
+        henges: dict[str, Henge] | None = None,
+        checksum_function: Callable[[str], str] = md5,
+    ) -> None:
         """A user interface to insert and retrieve decomposable recursive unique identifiers (DRUIDs).
 
         Args:
@@ -87,7 +93,9 @@ class Henge(object):
                     self.schemas[item_type] = henge.schemas[item_type]
                     self.henges[item_type] = henge
 
-    def retrieve(self, druid: str, reclimit: int | None = None, raw: bool = False) -> Any:
+    def retrieve(
+        self, druid: str, reclimit: int | None = None, raw: bool = False
+    ) -> Any:
         """Retrieve an item given a digest.
 
         Args:
@@ -222,7 +230,9 @@ class Henge(object):
 
         return self._insert_flat(flat_item, item_type)
 
-    def _insert_flat(self, item: list[Any] | dict[str, Any], item_type: str | None = None) -> str | bool:
+    def _insert_flat(
+        self, item: list[Any] | dict[str, Any], item_type: str | None = None
+    ) -> str | bool:
         """Add flattened items (of a specified type) to the database.
 
         Flattened items have removed all levels, so it's only attributes and
@@ -286,7 +296,9 @@ class Henge(object):
         _LOGGER.debug("Loaded {}".format(druid))
         return druid
 
-    def _henge_insert(self, druid: str, string: str, item_type: str, digest_version: str | None = None) -> None:
+    def _henge_insert(
+        self, druid: str, string: str, item_type: str, digest_version: str | None = None
+    ) -> None:
         """Insert an item into the database, with henge-metadata slots for item type and digest version."""
         if not digest_version:
             digest_version = self.digest_version

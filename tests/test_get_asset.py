@@ -1,14 +1,11 @@
 """Tests for RefGenConf.get_asset. These tests depend on successful completion of tests is test_1pull_asset.py"""
 
 import os
-from shutil import rmtree
 
 import pytest
-from yacman.exceptions import UndefinedAliasError
 
 from refgenconf.const import *
 from refgenconf.exceptions import *
-from tests.conftest import CONF_DATA
 
 
 class TestGetAsset:

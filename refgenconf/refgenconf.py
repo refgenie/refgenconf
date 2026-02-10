@@ -10,8 +10,9 @@ import signal
 import sys
 import warnings
 from collections import OrderedDict
-from collections.abc import Iterable, Mapping
+from collections.abc import Mapping
 from functools import partial
+from importlib.metadata import entry_points
 from inspect import getfullargspec as finspect
 from urllib.error import ContentTooShortError, HTTPError
 from urllib.parse import urlencode
@@ -21,15 +22,12 @@ import yacman
 from attmap import AttMap
 from attmap import PathExAttMap as PXAM
 from jsonschema.exceptions import ValidationError
-
-from importlib.metadata import entry_points
 from requests import ConnectionError
 from requests.exceptions import MissingSchema
 from rich.progress import BarColumn, Progress, TextColumn
 from rich.table import Table
-from ubiquerg import checksum, is_url, is_writable
+from ubiquerg import checksum, is_url, is_writable, query_yes_no, untar
 from ubiquerg import parse_registry_path as prp
-from ubiquerg import query_yes_no, untar
 
 from .const import *
 from .exceptions import *
@@ -1661,8 +1659,9 @@ class RefGenConf(yacman.YacAttMap):
                 )
             except HTTPError:
                 _LOGGER.error(
-                    "Asset archive '{}/{}:{}' is missing on the "
-                    "server: {s}".format(*gat, s=server_url)
+                    "Asset archive '{}/{}:{}' is missing on the server: {s}".format(
+                        *gat, s=server_url
+                    )
                 )
                 if server_url == self[CFG_SERVERS_KEY][-1]:
                     # it this was the last server on the list, return
@@ -1951,8 +1950,9 @@ class RefGenConf(yacman.YacAttMap):
         _LOGGER.info("Initializing genome: {}".format(alias))
         if not os.path.isfile(fasta_path):
             raise FileNotFoundError(
-                "Can't initialize genome; FASTA file does "
-                "not exist: {}".format(fasta_path)
+                "Can't initialize genome; FASTA file does not exist: {}".format(
+                    fasta_path
+                )
             )
         ssc = SeqColClient({})
         d, _ = ssc.load_fasta(fasta_path, gzipped=not fasta_unzipped)
@@ -2941,7 +2941,7 @@ def upgrade_config(
                 try:
                     get_json_url(s=server, i=API_ID_ALIAS_DIGEST).format(alias=genome)
                     break
-                except (KeyError, ConnectionError, DownloadJsonError) as e:
+                except (KeyError, ConnectionError, DownloadJsonError):
                     if cnt == len(servers):
                         missing_digest.append(genome)
                     continue
@@ -3293,7 +3293,7 @@ def construct_request_url(server_url, operation_id, api_prefix=API_VERSION):
             server_url
             + _get_server_endpoints_mapping(server_url)[api_prefix + operation_id]
         )
-    except MissingSchema as e:
+    except MissingSchema:
         _LOGGER.error(
             exception_str + f"Could not fetch OpenAPI schema: {server_url}/openapi.json"
         )
@@ -3433,8 +3433,7 @@ def _populate_refgenie_registry_path(rgc, glob, seek_method_name, remote_class=N
             rgpkg = prp(reg_path)
             if not rgpkg:
                 _LOGGER.info(
-                    f"Can't convert non-conforming refgenie registry path:"
-                    f" {reg_path}"
+                    f"Can't convert non-conforming refgenie registry path: {reg_path}"
                 )
                 return glob
             args = dict(

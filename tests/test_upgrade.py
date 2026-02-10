@@ -63,7 +63,7 @@ class TestUpgrade03to04:
             from subprocess import run
 
             run(
-                f"gunzip {target_archive}; " f"mv {target_file} {target_dir}",
+                f"gunzip {target_archive}; mv {target_file} {target_dir}",
                 shell=True,
             )
             old_rgc.add(

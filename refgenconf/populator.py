@@ -64,7 +64,7 @@ def looper_refgenie_populate(namespaces):
                 return default_tag
             except TypeError:
                 default_tag = rgc.get_default_tag(genome=genome, asset=asset)
-                _LOGGER.warning(f"tag_overrides section is malformed. Using default.")
+                _LOGGER.warning("tag_overrides section is malformed. Using default.")
                 return default_tag
 
         # Restructure the seek key paths to make them accessible with

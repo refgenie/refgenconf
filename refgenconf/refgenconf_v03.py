@@ -9,20 +9,18 @@ import signal
 import sys
 import urllib.request
 import warnings
-from collections.abc import Iterable, Mapping
+from collections.abc import Mapping
 from functools import partial
+from importlib.metadata import entry_points
 from inspect import getfullargspec as finspect
 from tempfile import TemporaryDirectory
 from urllib.error import ContentTooShortError, HTTPError
 
 import yacman
 from attmap import PathExAttMap as PXAM
-
-from importlib.metadata import entry_points
 from tqdm import tqdm
-from ubiquerg import checksum, is_url, is_writable
+from ubiquerg import checksum, is_url, is_writable, query_yes_no, untar
 from ubiquerg import parse_registry_path as prp
-from ubiquerg import query_yes_no, untar
 
 from .const import *
 from .exceptions import *
@@ -2191,6 +2189,7 @@ def _safe_setdef(mapping, attr, val):
 
 def _raise_not_mapping(mapping, prefix=""):
     raise GenomeConfigFormatError(
-        prefix + "is not a mapping but '{}'. This is usually a result of "
+        prefix
+        + "is not a mapping but '{}'. This is usually a result of "
         "a previous error".format(type(mapping).__name__)
     )

@@ -1,0 +1,70 @@
+[project]
+name = "refgenconf"
+version = "0.12.3"
+description = "A standardized configuration object for reference genome assemblies"
+readme = "README.md"
+license = "BSD-2-Clause"
+requires-python = ">=3.10"
+authors = [
+    { name = "Nathan Sheffield" },
+    { name = "Vince Reuter" },
+    { name = "Michal Stolarczyk" },
+]
+keywords = ["bioinformatics", "sequencing", "ngs"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+dependencies = [
+    "jsonschema>=3.0.1",
+    "pyfaidx",
+    "pyyaml",
+    "requests",
+    "rich>=9.0.1",
+    "yacman>=0.8.3",
+    "tqdm",
+]
+
+[project.urls]
+Homepage = "https://refgenie.databio.org"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["refgenconf*"]
+
+[tool.setuptools.package-data]
+refgenconf = ["schemas/*"]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-cov",
+    "pytest-remotedata",
+    "mock",
+]
+docs = [
+    "mkdocs-databio",
+]
+
+[tool.pytest.ini_options]
+addopts = "-rfE"
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test* *Test *Tests *Tester"
+python_functions = "test_* test[A-Z]*"
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["refgenconf"]

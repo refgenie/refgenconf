@@ -4,7 +4,6 @@ import mock
 import pytest
 
 from refgenconf import RefGenConf
-from refgenconf.exceptions import MissingGenomeError
 from refgenconf.populator import looper_refgenie_populate
 
 __author__ = "Michal Stolarczyk"
@@ -134,9 +133,9 @@ class TestLooperPlugins:
         rgc = RefGenConf(filepath=cfg_file)
         test_asset = rgc.list_assets_by_genome(genome=genome)[0]
         namespaces["pipeline"]["var_templates"]["refgenie_config"] = cfg_file
-        namespaces["project"]["refgenie"]["path_overrides"][0][
-            "registry_path"
-        ] = f"{genome}/{test_asset}"
+        namespaces["project"]["refgenie"]["path_overrides"][0]["registry_path"] = (
+            f"{genome}/{test_asset}"
+        )
         ret = looper_refgenie_populate(namespaces=namespaces)
         assert "refgenie" in ret
         assert ret["refgenie"][genome][test_asset][test_asset] == "REPLACEMENT"

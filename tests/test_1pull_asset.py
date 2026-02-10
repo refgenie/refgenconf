@@ -9,7 +9,7 @@ import mock
 if sys.version_info.major < 3:
     ConnectionRefusedError = Exception
 else:
-    from urllib.error import HTTPError
+    pass
 
 import pytest
 
@@ -52,9 +52,12 @@ def test_download_interruption(my_rgc, gname, aname, tname, caplog):
     def kill_download(*args, **kwargs):
         os.kill(os.getpid(), signal.SIGINT)
 
-    with mock.patch(DOWNLOAD_FUNCTION, side_effect=kill_download), mock.patch(
-        "refgenconf.refgenconf.query_yes_no", return_value=True
-    ), caplog.at_level(logging.WARNING), pytest.raises(SystemExit):
+    with (
+        mock.patch(DOWNLOAD_FUNCTION, side_effect=kill_download),
+        mock.patch("refgenconf.refgenconf.query_yes_no", return_value=True),
+        caplog.at_level(logging.WARNING),
+        pytest.raises(SystemExit),
+    ):
         my_rgc.pull(gname, aname, tname)
     records = caplog.records
     assert 1 == len(records)

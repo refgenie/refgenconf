@@ -298,7 +298,6 @@ CONF_STRUCTURE = """
     version=CFG_VERSION_KEY,
     assets=CFG_ASSETS_KEY,
     archive=CFG_ARCHIVE_KEY,
-    digest=CFG_CHECKSUM_KEY,
     genomes=CFG_GENOMES_KEY,
     aliases=CFG_ALIASES_KEY,
     desc_genome=CFG_GENOME_DESC_KEY,
@@ -313,6 +312,5 @@ CONF_STRUCTURE = """
     default=CFG_ASSET_DEFAULT_TAG_KEY,
     tags=CFG_ASSET_TAGS_KEY,
     asset_digest=CFG_ASSET_CHECKSUM_KEY,
-    tag_description=CFG_TAG_DESC_KEY,
     v=REQ_CFG_VERSION,
 )

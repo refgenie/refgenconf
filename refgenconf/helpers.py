@@ -146,7 +146,7 @@ def format_config_03_04(rgc, get_json_url):
                         _LOGGER.info(
                             f"Retrieved {genome} digest from the server: {digest}"
                         )
-                    except (KeyError, ConnectionError, DownloadJsonError) as e:
+                    except (KeyError, ConnectionError, DownloadJsonError):
                         if cnt == len(servers):
                             _LOGGER.info(
                                 f"Failed to retrieve the digest for {genome}. "
@@ -255,7 +255,7 @@ def alter_file_tree_03_04(rgc, link_fun):
         del dirs[:]
 
     _LOGGER.info(
-        f"Removing genome assets that have been copied " f"to '{DATA_DIR}' directory."
+        f"Removing genome assets that have been copied to '{DATA_DIR}' directory."
     )
     for genome, genome_v in rgc[CFG_GENOMES_KEY].items():
         d = os.path.join(rgc[CFG_FOLDER_KEY], genome_v[CFG_ALIASES_KEY][0])

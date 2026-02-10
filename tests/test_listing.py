@@ -1,7 +1,5 @@
 """Basic RGC asset tests"""
 
-from collections import OrderedDict
-
 import pytest
 from yacman.exceptions import UndefinedAliasError
 

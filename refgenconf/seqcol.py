@@ -229,7 +229,7 @@ class SeqColClient(Henge):
 
         if typeA != typeB:
             _LOGGER.error(
-                f"Can't compare objects of different types: " f"{typeA} vs {typeB}"
+                f"Can't compare objects of different types: {typeA} vs {typeB}"
             )
 
         asdA = self.retrieve(digestA, reclimit=1)

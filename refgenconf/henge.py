@@ -135,7 +135,7 @@ class Henge(object):
                     print(schema)
                     return string
 
-        if not druid + ITEM_TYPE in self.database:
+        if druid + ITEM_TYPE not in self.database:
             raise NotFoundException(druid)
 
         item_type = self.database[druid + ITEM_TYPE]
@@ -187,8 +187,9 @@ class Henge(object):
 
         if item_type not in self.schemas.keys():
             _LOGGER.error(
-                "I don't know about items of type '{}'. "
-                "I know of: '{}'".format(item_type, list(self.schemas.keys()))
+                "I don't know about items of type '{}'. I know of: '{}'".format(
+                    item_type, list(self.schemas.keys())
+                )
             )
             return False
 
@@ -238,8 +239,9 @@ class Henge(object):
         """
         if item_type not in self.schemas.keys():
             _LOGGER.error(
-                "I don't know about items of type '{}'. "
-                "I know of: '{}'".format(item_type, list(self.schemas.keys()))
+                "I don't know about items of type '{}'. I know of: '{}'".format(
+                    item_type, list(self.schemas.keys())
+                )
             )
             return False
 
@@ -369,9 +371,9 @@ def split_schema(schema, name=None):
                 if schema_copy["properties"][p]["type"] in ["object", "array"]:
                     schema_copy["properties"][p] = {"type": "string"}
                     if hclass:
-                        schema_copy["properties"][p][
-                            "henge_class"
-                        ] = hclass  # schema_copy['properties'][p]['type'] = "string"
+                        schema_copy["properties"][p]["henge_class"] = (
+                            hclass  # schema_copy['properties'][p]['type'] = "string"
+                        )
             # del schema_copy['properties']
             slist[henge_class] = schema_copy
 

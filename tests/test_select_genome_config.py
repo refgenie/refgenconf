@@ -4,13 +4,9 @@ import os
 
 import pytest
 from ubiquerg import TmpEnv
-from veracitools import ExpectContext
 
 from refgenconf import select_genome_config
 from refgenconf.const import CFG_ENV_VARS
-
-__author__ = "Vince Reuter"
-__email__ = "vreuter@virginia.edu"
 
 
 def _touch(p):
@@ -36,21 +32,23 @@ def test_select_null():
 
 
 @pytest.mark.parametrize(
-    ["setup", "expect"],
+    "setup_func, expect_exception",
     [
-        (lambda d: d.join("test-conf.yaml").strpath, lambda _: Exception),
-        (lambda d: _touch(os.path.join(d.strpath, "test-conf")), lambda _: Exception),
-        (lambda d: _touch(d.join("test-conf.yaml").strpath), lambda fp: fp),
+        (lambda d: d.join("test-conf.yaml").strpath, True),
+        (lambda d: _touch(os.path.join(d.strpath, "test-conf")), True),
+        (lambda d: _touch(d.join("test-conf.yaml").strpath), False),
     ],
 )
-def test_select_local_config_file(tmpdir, setup, expect):
-    """Selection of local filepath hinges on its existence as a file"""
+def test_select_local_config_file(tmpdir, setup_func, expect_exception):
+    """Selection of local filepath hinges on its existence as a file."""
     with TmpEnv(overwrite=True, **{ev: "" for ev in CFG_ENV_VARS}):
         _check_no_env_vars()
-        path = setup(tmpdir)
-        print("Path: {}".format(path))
-        with ExpectContext(expect(path), select_genome_config) as ctx:
-            ctx(path)
+        path = setup_func(tmpdir)
+        if expect_exception:
+            with pytest.raises(Exception):
+                select_genome_config(path)
+        else:
+            assert select_genome_config(path) == path
 
 
 @pytest.mark.parametrize("env_var", CFG_ENV_VARS)

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from datetime import timedelta
 
 from rich.progress import ProgressColumn, Task, filesize

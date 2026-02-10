@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from ._version import __version__
 from .const import *
 from .exceptions import *

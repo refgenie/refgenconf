@@ -5,8 +5,6 @@ These values are defined here in refgenconf and use some within this package,
 but they're also integral to both refgenie and to refgenieserver.
 """
 
-from __future__ import annotations
-
 import os
 
 CFG_NAME: str = "genome configuration"

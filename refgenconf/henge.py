@@ -1,7 +1,5 @@
 """An interface to a database back-end for DRUIDs."""
 
-from __future__ import annotations
-
 import copy
 import hashlib
 import logging
@@ -42,7 +40,7 @@ class Henge(object):
         self,
         database: dict[str, Any],
         schemas: dict[str, Any] | list[str],
-        henges: dict[str, Henge] | None = None,
+        henges: "dict[str, Henge] | None" = None,
         checksum_function: Callable[[str], str] = md5,
     ) -> None:
         """A user interface to insert and retrieve decomposable recursive unique identifiers (DRUIDs).

@@ -26,8 +26,8 @@ class TestRemoveAssets:
     def test_asset_removal_after_last_tag_removed(self, my_rgc, gname, aname):
         """The asset is removed when last tag is removed"""
         my_rgc.pull(gname, aname, "default")
-        asset = my_rgc.genomes[gname].assets[aname]
-        for t in asset[CFG_ASSET_TAGS_KEY]:
+        asset = my_rgc[CFG_GENOMES_KEY][gname][CFG_ASSETS_KEY][aname]
+        for t in list(asset[CFG_ASSET_TAGS_KEY]):
             with mock.patch("refgenconf.refgenconf.query_yes_no", return_value=True):
                 my_rgc.remove(gname, aname, t)
         with pytest.raises(MissingAssetError):

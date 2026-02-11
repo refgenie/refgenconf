@@ -3,8 +3,7 @@
 import os
 
 import pytest
-from attmap import PathExAttMap
-from yacman import AliasedYacAttMap
+from yacman import AliasedYAMLConfigManager
 
 from refgenconf import ConfigNotCompliantError, RefGenConf
 from refgenconf.const import (
@@ -21,13 +20,13 @@ __email__ = "vreuter@virginia.edu"
 
 class TestRefGenConf:
     def test_reads_file(self, cfg_file):
-        assert isinstance(RefGenConf(cfg_file), RefGenConf)
+        assert isinstance(RefGenConf.from_yaml_file(cfg_file), RefGenConf)
 
     def test_creation_of_empty_object_sets_req_attrs(self):
         assert all([k in RefGenConf() for k in RGC_REQ_KEYS])
 
     def test_genome_folder_is_pwd_if_no_folder_key_and_raw_entries_passed(self, ro_rgc):
-        data = PathExAttMap({k: v for k, v in ro_rgc.items() if k != CFG_FOLDER_KEY})
+        data = {k: v for k, v in ro_rgc.items() if k != CFG_FOLDER_KEY}
         new_rgc = RefGenConf(entries=data)
         assert os.getcwd() == new_rgc[CFG_FOLDER_KEY]
 
@@ -46,9 +45,9 @@ class TestRefGenConf:
             }
         )
         res = rgc[CFG_GENOMES_KEY]
-        assert isinstance(res, AliasedYacAttMap)
+        assert isinstance(res, AliasedYAMLConfigManager)
         assert 0 == len(res)
 
     def test_errors_on_old_cfg(self, cfg_file_old):
         with pytest.raises(ConfigNotCompliantError):
-            RefGenConf(filepath=cfg_file_old)
+            RefGenConf.from_yaml_file(cfg_file_old)

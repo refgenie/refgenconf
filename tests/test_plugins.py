@@ -52,7 +52,7 @@ class TestPlugins:
             "refgenconf.refgenconf.RefGenConf.plugins", new_callable=mock.PropertyMock
         ) as mock_plugins:
             mock_plugins.return_value = PLUGINS_DICT
-            rgc = RefGenConf(cfg_file, writable=False)
+            rgc = RefGenConf.from_yaml_file(cfg_file)
             rgc.list()
             assert get_flag_pth(rgc)
         os.remove(get_flag_pth(rgc))
@@ -111,7 +111,7 @@ class TestLooperPlugins:
         namespaces["pipeline"]["var_templates"]["refgenie_config"] = cfg_file
         ret = looper_refgenie_populate(namespaces=namespaces)
         assert "refgenie" in ret
-        rgc = RefGenConf(filepath=cfg_file)
+        rgc = RefGenConf.from_yaml_file(cfg_file)
         assert all(
             [
                 asset in ret["refgenie"][genome].keys()
@@ -136,7 +136,7 @@ class TestLooperPlugins:
     )
     @pytest.mark.parametrize("genome", GENOMES_TO_TEST)
     def test_path_overrides(self, namespaces, genome, cfg_file):
-        rgc = RefGenConf(filepath=cfg_file)
+        rgc = RefGenConf.from_yaml_file(cfg_file)
         test_asset = rgc.list_assets_by_genome(genome=genome)[0]
         namespaces["pipeline"]["var_templates"]["refgenie_config"] = cfg_file
         namespaces["project"]["refgenie"]["path_overrides"][0]["registry_path"] = (

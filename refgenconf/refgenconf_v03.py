@@ -21,7 +21,7 @@ from typing import Any
 from urllib.error import ContentTooShortError, HTTPError
 
 import yacman
-from attmap import PathExAttMap as PXAM
+from yacman import write_lock
 from tqdm import tqdm
 from ubiquerg import checksum, is_url, is_writable, query_yes_no, untar
 from ubiquerg import parse_registry_path as prp
@@ -55,27 +55,20 @@ def _handle_sigint(filepath: str) -> Callable[[int, FrameType | None], None]:
     return handle
 
 
-class _RefGenConfV03(yacman.YacAttMap):
+class _RefGenConfV03(yacman.YAMLConfigManager):
     """A sort of oracle of available reference genome assembly assets."""
 
     def __init__(
         self,
-        filepath: str | None = None,
         entries: str | Mapping | None = None,
-        writable: bool = False,
         wait_max: int = 60,
-        skip_read_lock: bool = False,
     ) -> None:
         """Create the config instance by with a filepath or key-value pairs.
 
         Args:
-            filepath: A path to the YAML file to read.
             entries: Config filepath or collection of key-value pairs.
-            writable: Whether to create the object with write capabilities.
             wait_max: How long to wait for creating an object when the
                 file that data will be read from is locked.
-            skip_read_lock: Whether the file should not be locked for
-                reading when object is created in read only mode.
 
         Raises:
             refgenconf.MissingConfigDataError: If a required configuration
@@ -87,23 +80,22 @@ class _RefGenConfV03(yacman.YacAttMap):
             _LOGGER.debug("Config lacks '{}' key. Setting to: {}".format(key, value))
 
         super(_RefGenConfV03, self).__init__(
-            filepath=filepath,
             entries=entries,
-            writable=writable,
             wait_max=wait_max,
-            skip_read_lock=skip_read_lock,
         )
-        genomes = self.setdefault(CFG_GENOMES_KEY, PXAM())
-        if not isinstance(genomes, PXAM):
+        if CFG_GENOMES_KEY not in self:
+            self[CFG_GENOMES_KEY] = {}
+        genomes = self[CFG_GENOMES_KEY]
+        if not isinstance(genomes, dict):
             if genomes:
                 _LOGGER.warning(
                     "'{k}' value is a {t_old}, not a {t_new}; setting to empty {t_new}".format(
                         k=CFG_GENOMES_KEY,
                         t_old=type(genomes).__name__,
-                        t_new=PXAM.__name__,
+                        t_new="dict",
                     )
                 )
-            self[CFG_GENOMES_KEY] = PXAM()
+            self[CFG_GENOMES_KEY] = {}
         if CFG_FOLDER_KEY not in self:
             self[CFG_FOLDER_KEY] = (
                 os.path.dirname(entries) if isinstance(entries, str) else os.getcwd()
@@ -157,6 +149,15 @@ class _RefGenConfV03(yacman.YacAttMap):
             _missing_key_msg(CFG_SERVERS_KEY, str([DEFAULT_SERVER]))
             self[CFG_SERVERS_KEY] = [DEFAULT_SERVER]
 
+    @classmethod
+    def from_yaml_file(cls, filepath, **kwargs):
+        """Create a _RefGenConfV03 from a YAML file path."""
+        ycm = yacman.YAMLConfigManager.from_yaml_file(filepath, **kwargs)
+        obj = cls(entries=dict(ycm.data), wait_max=ycm.wait_max)
+        obj.filepath = ycm.filepath
+        obj.locker = ycm.locker
+        return obj
+
     def __bool__(self) -> bool:
         minkeys = set(self.keys()) == set(RGC_REQ_KEYS)
         return not minkeys or bool(self[CFG_GENOMES_KEY])
@@ -183,7 +184,7 @@ class _RefGenConfV03(yacman.YacAttMap):
         Returns:
             Path to the genome configuration file.
         """
-        return self[yacman.IK][yacman.FILEPATH_KEY]
+        return getattr(self, "filepath", None)
 
     def initialize_config_file(self, filepath: str | None = None) -> str:
         """Initialize genome configuration file on disk.
@@ -214,9 +215,8 @@ class _RefGenConfV03(yacman.YacAttMap):
             _write_fail_err("file exists")
         if not is_writable(filepath, check_exist=False):
             _write_fail_err("insufficient permissions")
-        self.make_writable(filepath)
-        self.write()
-        self.make_readonly()
+        self.write_copy(filepath)
+        self.filepath = os.path.abspath(filepath)
         _LOGGER.info("Initialized genome configuration file: {}".format(filepath))
         return filepath
 
@@ -368,16 +368,17 @@ class _RefGenConfV03(yacman.YacAttMap):
             self.set_default_pointer(genome, asset, tag)
             _LOGGER.info(msg)
             return True
-        with self as rgc:
+        with write_lock(self) as rgc:
             if remove:
                 rgc.cfg_remove_assets(genome, asset, tag)
             rgc.update_tags(genome, asset, tag, tag_data)
             rgc.update_seek_keys(genome, asset, tag, seek_keys or {asset: "."})
             rgc.set_default_pointer(genome, asset, tag)
             _LOGGER.info(msg)
+            rgc.write()
             return True
 
-    def filepath(
+    def asset_filepath(
         self, genome: str, asset: str, tag: str, ext: str = ".tgz", dir: bool = False
     ) -> str:
         """Determine path to a particular asset for a particular genome.
@@ -804,9 +805,10 @@ class _RefGenConfV03(yacman.YacAttMap):
         ori_path = self.seek(genome, asset, tag, enclosing_dir=True, strict_exists=True)
         new_path = os.path.abspath(os.path.join(ori_path, os.pardir, new_tag))
         if self.file_path:
-            with self as r:
+            with write_lock(self) as r:
                 if not r.cfg_tag_asset(genome, asset, tag, new_tag):
                     sys.exit(0)
+                r.write()
         else:
             if not self.cfg_tag_asset(genome, asset, tag, new_tag):
                 sys.exit(0)
@@ -824,8 +826,9 @@ class _RefGenConfV03(yacman.YacAttMap):
             )
         else:
             if self.file_path:
-                with self as r:
+                with write_lock(self) as r:
                     r.cfg_remove_assets(genome, asset, tag, relationships=False)
+                    r.write()
             else:
                 self.cfg_remove_assets(genome, asset, tag, relationships=False)
             _LOGGER.debug(
@@ -1120,7 +1123,7 @@ class _RefGenConfV03(yacman.YacAttMap):
                 archive_data = asciify_json_dict(archive_data)
 
             # local directory that the asset data will be stored in
-            tag_dir = os.path.dirname(self.filepath(*gat))
+            tag_dir = os.path.dirname(self.asset_filepath(*gat))
             # local directory the downloaded archive will be temporarily saved in
             genome_dir_path = os.path.join(self[CFG_FOLDER_KEY], genome)
             # local path to the temporarily saved archive
@@ -1238,7 +1241,7 @@ class _RefGenConfV03(yacman.YacAttMap):
                     os.remove(filepath)
 
             if self.file_path:
-                with self as rgc:
+                with write_lock(self) as rgc:
                     [
                         rgc.chk_digest_update_child(
                             gat[0], x, "{}/{}:{}".format(*gat), server_url
@@ -1255,6 +1258,7 @@ class _RefGenConfV03(yacman.YacAttMap):
                         },
                     )
                     rgc.set_default_pointer(*gat)
+                    rgc.write()
                     rgc.update_genomes(genome=genome, data=genome_archive_data)
             else:
                 [
@@ -1377,7 +1381,7 @@ class _RefGenConfV03(yacman.YacAttMap):
         if _check_insert_data(keys, Mapping, "keys"):
             self.update_tags(genome, asset, tag)
             asset = self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset]
-            _safe_setdef(asset[CFG_ASSET_TAGS_KEY][tag], CFG_SEEK_KEYS_KEY, PXAM())
+            _safe_setdef(asset[CFG_ASSET_TAGS_KEY][tag], CFG_SEEK_KEYS_KEY, {})
             asset[CFG_ASSET_TAGS_KEY][tag][CFG_SEEK_KEYS_KEY].update(keys)
         return self
 
@@ -1402,24 +1406,22 @@ class _RefGenConfV03(yacman.YacAttMap):
             Updated object.
         """
         if _check_insert_data(genome, str, "genome"):
-            _safe_setdef(self[CFG_GENOMES_KEY], genome, PXAM())
+            _safe_setdef(self[CFG_GENOMES_KEY], genome, {})
             if _check_insert_data(asset, str, "asset"):
-                _safe_setdef(self[CFG_GENOMES_KEY][genome], CFG_ASSETS_KEY, PXAM())
-                _safe_setdef(
-                    self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY], asset, PXAM()
-                )
+                _safe_setdef(self[CFG_GENOMES_KEY][genome], CFG_ASSETS_KEY, {})
+                _safe_setdef(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY], asset, {})
                 if _check_insert_data(tag, str, "tag"):
                     _safe_setdef(
                         self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset],
                         CFG_ASSET_TAGS_KEY,
-                        PXAM(),
+                        {},
                     )
                     _safe_setdef(
                         self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][
                             CFG_ASSET_TAGS_KEY
                         ],
                         tag,
-                        PXAM(),
+                        {},
                     )
                     if _check_insert_data(data, Mapping, "data"):
                         self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][
@@ -1443,12 +1445,10 @@ class _RefGenConfV03(yacman.YacAttMap):
             Updated object.
         """
         if _check_insert_data(genome, str, "genome"):
-            _safe_setdef(self[CFG_GENOMES_KEY], genome, PXAM())
+            _safe_setdef(self[CFG_GENOMES_KEY], genome, {})
             if _check_insert_data(asset, str, "asset"):
-                _safe_setdef(self[CFG_GENOMES_KEY][genome], CFG_ASSETS_KEY, PXAM())
-                _safe_setdef(
-                    self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY], asset, PXAM()
-                )
+                _safe_setdef(self[CFG_GENOMES_KEY][genome], CFG_ASSETS_KEY, {})
+                _safe_setdef(self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY], asset, {})
                 if _check_insert_data(data, Mapping, "data"):
                     self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset].update(data)
         return self
@@ -1501,8 +1501,9 @@ class _RefGenConfV03(yacman.YacAttMap):
             if os.path.exists(asset_path):
                 removed.append(_remove(asset_path))
                 if self.file_path:
-                    with self as r:
+                    with write_lock(self) as r:
                         r.cfg_remove_assets(genome, asset, tag, relationships)
+                        r.write()
                 else:
                     self.cfg_remove_assets(genome, asset, tag, relationships)
             else:
@@ -1511,8 +1512,9 @@ class _RefGenConfV03(yacman.YacAttMap):
                     "Removing from genome config.".format(asset_path)
                 )
                 if self.file_path:
-                    with self as r:
+                    with write_lock(self) as r:
                         r.cfg_remove_assets(genome, asset, tag, relationships)
+                        r.write()
                         return
                 else:
                     self.cfg_remove_assets(genome, asset, tag, relationships)
@@ -1531,8 +1533,9 @@ class _RefGenConfV03(yacman.YacAttMap):
                     _entity_dir_removal_log(genome_dir, "genome", req_dict, removed)
                     try:
                         if self.file_path:
-                            with self as r:
+                            with write_lock(self) as r:
                                 del r[CFG_GENOMES_KEY][genome]
+                                r.write()
                         else:
                             del self[CFG_GENOMES_KEY][genome]
                     except (KeyError, TypeError):
@@ -1543,8 +1546,9 @@ class _RefGenConfV03(yacman.YacAttMap):
             _LOGGER.info(f"Successfully removed entities:{block_iter_repr(remove)})")
         else:
             if self.file_path:
-                with self as r:
+                with write_lock(self) as r:
                     r.cfg_remove_assets(genome, asset, tag, relationships)
+                    r.write()
             else:
                 self.cfg_remove_assets(genome, asset, tag, relationships)
 
@@ -1644,7 +1648,7 @@ class _RefGenConfV03(yacman.YacAttMap):
             Updated object.
         """
         if _check_insert_data(genome, str, "genome"):
-            _safe_setdef(self[CFG_GENOMES_KEY], genome, PXAM({CFG_ASSETS_KEY: PXAM()}))
+            _safe_setdef(self[CFG_GENOMES_KEY], genome, {CFG_ASSETS_KEY: {}})
             if _check_insert_data(data, Mapping, "data"):
                 self[CFG_GENOMES_KEY][genome].update(data)
         return self
@@ -1683,8 +1687,9 @@ class _RefGenConfV03(yacman.YacAttMap):
             reset: Whether the current list should be overwritten.
         """
         if self.file_path:
-            with self as r:
+            with write_lock(self) as r:
                 r._update_genome_servers(url=urls, reset=reset)
+                r.write()
         else:
             self._update_genome_servers(url=urls, reset=reset)
         _LOGGER.info("Subscribed to: {}".format(", ".join(urls)))
@@ -1706,8 +1711,9 @@ class _RefGenConfV03(yacman.YacAttMap):
                     "URL '{}' not in genome_servers list: {}".format(s, ori_servers)
                 )
         if self.file_path:
-            with self as r:
+            with write_lock(self) as r:
                 r._update_genome_servers(ori_servers, reset=True)
+                r.write()
         else:
             self._update_genome_servers(ori_servers, reset=True)
         if unsub_list:
@@ -1946,7 +1952,8 @@ class _RefGenConfV03(yacman.YacAttMap):
         automatically.
 
         Args:
-            filepath: A file path to write to.
+            filepath: A file path to write to. If provided, uses write_copy
+                instead of writing to the backing file.
 
         Returns:
             The path to the created file.
@@ -1958,11 +1965,14 @@ class _RefGenConfV03(yacman.YacAttMap):
                 or when writing to a file that is locked by a different
                 object.
             TypeError: When the filepath cannot be determined. This
-                takes place only if YacAttMap initialized with a Mapping
-                as an input, not read from file.
+                takes place only if YAMLConfigManager initialized with a
+                Mapping as an input, not read from file.
         """
         self.run_plugins(PRE_UPDATE_HOOK)
-        path = super(_RefGenConfV03, self).write(filepath=filepath)
+        if filepath:
+            path = self.write_copy(filepath)
+        else:
+            path = super(_RefGenConfV03, self).write()
         self.run_plugins(POST_UPDATE_HOOK)
         return path
 

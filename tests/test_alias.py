@@ -172,7 +172,7 @@ class TestInitializeGenome:
         Save original aliases state, remove all, check that aliases have
         been removed from the object and disk, bring back the original state
         """
-        d, asds = my_rgc.initialize_genome(
+        d = my_rgc.initialize_genome(
             fasta_path=os.path.join(fasta_path, fasta_name),
             alias=fasta_name,
             fasta_unzipped=not fasta_name.endswith(".gz"),

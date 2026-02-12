@@ -2,6 +2,15 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
+## [0.13.0] - 2026-02-10
+
+### Removed
+- Removed `henge.py` and Henge database abstraction (unused)
+- Removed `SeqColClient` class; replaced with standalone `fasta_seqcol_digest()` function
+- Removed `compare()` and `get_asds_path()` methods from `RefGenConf` (no callers)
+- Removed `AnnotatedSequenceDigestList.yaml` and `AnnotatedSequenceList.yaml` schema files
+- Removed `jsonschema` as a direct dependency
+
 ## [0.12.3] - 2026-02-11
 
 ### Changed

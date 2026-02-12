@@ -40,7 +40,7 @@ from .helpers import (
     send_data_request,
 )
 from .progress_bar import _DownloadColumn, _TimeRemainingColumn, _TransferSpeedColumn
-from .seqcol import SeqColClient
+from .seqcol import fasta_seqcol_digest
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -2127,11 +2127,11 @@ class RefGenConf(yacman.YAMLConfigManager):
         alias: str,
         fasta_unzipped: bool = False,
         skip_alias_write: bool = False,
-    ) -> tuple[str, list[Any]]:
+    ) -> str:
         """Initialize a genome.
 
-        Create a JSON file with Annotated Sequence Digests (ASDs)
-        for the FASTA file in the genome directory.
+        Computes a sequence collection digest from the FASTA file and
+        sets a genome alias mapping to that digest.
 
         Args:
             fasta_path: Path to a FASTA file to initialize genome with.
@@ -2141,7 +2141,7 @@ class RefGenConf(yacman.YAMLConfigManager):
                 file.
 
         Returns:
-            A tuple of (genome digest, list of ASDs).
+            The genome digest string.
         """
         _LOGGER.info("Initializing genome: {}".format(alias))
         if not os.path.isfile(fasta_path):
@@ -2150,15 +2150,7 @@ class RefGenConf(yacman.YAMLConfigManager):
                     fasta_path
                 )
             )
-        ssc = SeqColClient({})
-        d, _ = ssc.load_fasta(fasta_path, gzipped=not fasta_unzipped)
-        # retrieve annotated sequence digests list to save in a JSON file
-        asdl = ssc.retrieve(druid=d)
-        pth = self.get_asds_path(d)
-        os.makedirs(os.path.dirname(pth), exist_ok=True)
-        with open(pth, "w") as jfp:
-            json.dump(asdl, jfp)
-        _LOGGER.debug("Saved ASDs to JSON: {}".format(pth))
+        d, _ = fasta_seqcol_digest(fasta_path, gzipped=not fasta_unzipped)
         self.set_genome_alias(
             genome=alias,
             digest=d,
@@ -2166,20 +2158,7 @@ class RefGenConf(yacman.YAMLConfigManager):
             create_genome=True,
             no_write=skip_alias_write,
         )
-        return d, asdl
-
-    def get_asds_path(self, genome: str) -> str:
-        """Get path to the Annotated Sequence Digests JSON file for a given genome.
-
-        Note that the path and/or genome may not exist.
-
-        Args:
-            genome: Genome name.
-
-        Returns:
-            Path to the ASDs JSON file.
-        """
-        return os.path.join(self.data_dir, genome, f"{genome}__ASDs.json")
+        return d
 
     def remove_asset_from_relatives(self, genome: str, asset: str, tag: str) -> None:
         """Remove any relationship links associated with the selected asset.
@@ -2866,54 +2845,6 @@ class RefGenConf(yacman.YAMLConfigManager):
             return a[CFG_ASSET_TAGS_KEY][tag][CFG_ASSET_CHECKSUM_KEY]
         raise MissingConfigDataError(
             "Digest does not exist for: {}/{}:{}".format(genome, asset, tag)
-        )
-
-    def compare(self, genome1: str, genome2: str, explain: bool = False) -> Any:
-        """Check genomes compatibility level.
-
-        Compares Annotated Sequence Digests (ASDs) -- digested sequences and
-        metadata.
-
-        Args:
-            genome1: Name of the first genome to compare.
-            genome2: Name of the second genome to compare.
-            explain: Whether the returned code explanation should be
-                displayed.
-
-        Returns:
-            Compatibility code.
-        """
-
-        def _get_asds_for_genome(rgc: RefGenConf, genome: str) -> list[Any]:
-            """Read JSON file containing ASDs for a specified genome.
-
-            Args:
-                rgc: Object to find the genome for.
-                genome: Genome to find the file for.
-
-            Returns:
-                List of ASDs, ready to compare.
-            """
-            g = rgc.get_genome_alias(genome, fallback=True)
-            error_msg = (
-                f"File containing Annotated Sequence Digests (ASDs) not "
-                f"found for genome: {g}. Must pull or build '{g}/fasta' again to "
-                f"check the compatibility."
-            )
-            try:
-                rgc.seek_src(genome, "fasta", strict_exists=True)
-            except MissingSeekKeyError:
-                raise MissingSeekKeyError(error_msg)
-            json_file = rgc.get_asds_path(genome)
-            if not os.path.exists(json_file):
-                raise OSError(error_msg)
-            with open(json_file, "r") as jfp:
-                return json.load(jfp)
-
-        return SeqColClient({}).compare_asds(
-            _get_asds_for_genome(self, self.get_genome_alias_digest(genome1, True)),
-            _get_asds_for_genome(self, self.get_genome_alias_digest(genome2, True)),
-            explain=explain,
         )
 
     def populate(

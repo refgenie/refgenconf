@@ -1,6 +1,6 @@
 [project]
 name = "refgenconf"
-version = "0.12.3"
+version = "0.13.0"
 description = "A standardized configuration object for reference genome assemblies"
 readme = "README.md"
 license = "BSD-2-Clause"
@@ -21,7 +21,6 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Bio-Informatics",
 ]
 dependencies = [
-    "jsonschema>=3.0.1",
     "pyfaidx",
     "pyyaml",
     "requests",
@@ -39,9 +38,6 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 include = ["refgenconf*"]
-
-[tool.setuptools.package-data]
-refgenconf = ["schemas/*"]
 
 [project.optional-dependencies]
 test = [

@@ -16,7 +16,7 @@ from yacman import select_config
 
 from .const import *
 from .exceptions import DownloadJsonError, MissingAssetError
-from .seqcol import SeqColClient
+from .seqcol import fasta_seqcol_digest
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -129,8 +129,7 @@ def format_config_03_04(rgc: Any, get_json_url: Any) -> None:
             )
             tag = rgc.get_default_tag(genome, "fasta")
             asset_path = rgc.seek(genome, "fasta", tag, "fasta")
-            ssc = SeqColClient({})
-            digest, asdl = ssc.load_fasta(asset_path)
+            digest, asdl = fasta_seqcol_digest(asset_path)
             _LOGGER.info(f"Generated {genome} digest from local fasta file: {digest}")
             # retrieve annotated sequence digests list to save in a JSON file
             pth = os.path.join(rgc[CFG_FOLDER_KEY], genome, genome + "__ASDs.json")

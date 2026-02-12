@@ -3200,7 +3200,7 @@ def upgrade_config(
         )
 
     # prompt the user
-    url = "http://refgenie.databio.org/en/latest/upgrade_config/"
+    url = "http://refgenie.databio.org/en/latest/upgrade-config/"
     if not force and not query_yes_no(
         f"Upgrading config to v{target_version}. Current genome identifiers"
         f" will be replaced with sequence-derived digests and contents of "

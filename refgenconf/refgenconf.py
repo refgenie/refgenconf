@@ -1237,7 +1237,7 @@ class RefGenConf(yacman.YAMLConfigManager):
                 for tag_name in get_asset_tags(asset_mapping):
                     tag_mapping = asset_mapping[CFG_ASSET_TAGS_KEY][tag_name]
                     ret[genome_name][asset_name][tag_name] = {}
-                    for seek_key_name in get_tag_seek_keys(tag_mapping):
+                    for seek_key_name in get_tag_seek_keys(tag_mapping) or []:
                         ret[genome_name][asset_name][tag_name][seek_key_name] = (
                             self.seek(genome_name, asset_name, tag_name, seek_key_name)
                         )

@@ -61,3 +61,49 @@ class ListByGenomeTest:
     def test_exception_on_nonexistent_genome(self, ro_rgc, gname):
         with pytest.raises(UndefinedAliasError):
             ro_rgc.list_assets_by_genome(genome=gname)
+
+
+class ListSeekKeysValuesTest:
+    def test_asset_without_seek_keys(self, ro_rgc):
+        """Verify list_seek_keys_values handles assets without seek_keys gracefully.
+
+        This tests the fix for issue #133 where a child asset's parent may lack
+        the seek_keys field, causing a TypeError when iterating over None.
+        """
+        from refgenconf.const import CFG_ASSETS_KEY, CFG_ASSET_TAGS_KEY
+        from yacman import write_lock
+
+        # Pick a genome and create a test asset without seek_keys
+        genome_digest = list(ro_rgc[CFG_GENOMES_KEY].keys())[0]
+
+        with write_lock(ro_rgc) as r:
+            r[CFG_GENOMES_KEY][genome_digest][CFG_ASSETS_KEY]["no_seek_keys_asset"] = {
+                CFG_ASSET_TAGS_KEY: {
+                    "default": {
+                        "asset_path": "/tmp/test",
+                        "asset_digest": "abc123",
+                        # Note: no seek_keys field here
+                    }
+                },
+                "default_tag": "default",
+            }
+            r.write()
+
+        try:
+            # This should not raise TypeError
+            result = ro_rgc.list_seek_keys_values(
+                genomes=genome_digest, assets="no_seek_keys_asset"
+            )
+
+            # The result should have an empty dict for this asset's tag
+            assert genome_digest in result
+            assert "no_seek_keys_asset" in result[genome_digest]
+            assert "default" in result[genome_digest]["no_seek_keys_asset"]
+            assert result[genome_digest]["no_seek_keys_asset"]["default"] == {}
+        finally:
+            # Clean up
+            with write_lock(ro_rgc) as r:
+                del r[CFG_GENOMES_KEY][genome_digest][CFG_ASSETS_KEY][
+                    "no_seek_keys_asset"
+                ]
+                r.write()

@@ -25,6 +25,7 @@ dependencies = [
     "pyyaml",
     "requests",
     "rich>=9.0.1",
+    "ubiquerg>=0.9.0",
     "yacman>=0.9.5",
     "tqdm",
 ]

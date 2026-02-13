@@ -680,9 +680,7 @@ class RefGenConf(yacman.YAMLConfigManager):
                         new_path = os.path.join(path, appendix, _rpl(file))
                         link_fun(rel, new_path)
                     except FileExistsError:
-                        _LOGGER.debug(
-                            f"Symlink already exists, skipping: {new_path}"
-                        )
+                        _LOGGER.debug(f"Symlink already exists, skipping: {new_path}")
                         continue
             created.append(path)
         if created:

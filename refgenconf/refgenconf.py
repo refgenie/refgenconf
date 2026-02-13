@@ -664,28 +664,27 @@ class RefGenConf(yacman.YAMLConfigManager):
             genome_digest, asset, tag, all_aliases=True
         )
         for alias, path in target_paths_mapping.items():
-            if not os.path.exists(path):
-                os.makedirs(path, exist_ok=True)
-                for root, dirs, files in os.walk(src_path):
-                    appendix = os.path.relpath(root, src_path)
-                    for directory in dirs:
-                        try:
-                            os.makedirs(os.path.join(path, appendix, _rpl(directory)))
-                        except FileExistsError:
-                            continue
-                    for file in files:
-                        try:
-                            rel = os.path.relpath(
-                                os.path.join(root, file), os.path.join(path, appendix)
-                            )
-                            new_path = os.path.join(path, appendix, _rpl(file))
-                            link_fun(rel, new_path)
-                        except FileExistsError:
-                            _LOGGER.warning(
-                                f"Could not create link, file exists: {new_path}"
-                            )
-                            continue
-                created.append(path)
+            os.makedirs(path, exist_ok=True)
+            for root, dirs, files in os.walk(src_path):
+                appendix = os.path.relpath(root, src_path)
+                for directory in dirs:
+                    try:
+                        os.makedirs(os.path.join(path, appendix, _rpl(directory)))
+                    except FileExistsError:
+                        continue
+                for file in files:
+                    try:
+                        rel = os.path.relpath(
+                            os.path.join(root, file), os.path.join(path, appendix)
+                        )
+                        new_path = os.path.join(path, appendix, _rpl(file))
+                        link_fun(rel, new_path)
+                    except FileExistsError:
+                        _LOGGER.debug(
+                            f"Symlink already exists, skipping: {new_path}"
+                        )
+                        continue
+            created.append(path)
         if created:
             _LOGGER.info(f"Created alias directories:{block_iter_repr(created)}")
 

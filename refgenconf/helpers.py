@@ -15,7 +15,7 @@ from ubiquerg import is_command_callable
 from yacman import select_config
 
 from .const import *
-from .exceptions import DownloadJsonError, MissingAssetError
+from .exceptions import DownloadJsonError, MissingAssetError, MissingSeekKeyError
 from .seqcol import fasta_seqcol_digest
 
 _LOGGER = logging.getLogger(__name__)
@@ -137,7 +137,7 @@ def format_config_03_04(rgc: Any, get_json_url: Any) -> None:
             with open(pth, "w") as jfp:
                 json.dump(asdl, jfp)
             _LOGGER.info(f"Saved ASDs to JSON: {pth}")
-        except (MissingAssetError, FileNotFoundError):
+        except (MissingAssetError, MissingSeekKeyError, FileNotFoundError):
             _LOGGER.info(
                 f"No local fasta asset found for {genome}. Retrieving digest from the server."
             )

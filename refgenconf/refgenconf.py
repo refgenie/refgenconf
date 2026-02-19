@@ -3231,7 +3231,7 @@ def upgrade_config(
             asset_path = rgc.seek(genome, "fasta", tag, "fasta")
             if not os.path.exists(asset_path):
                 raise FileNotFoundError
-        except (MissingAssetError, FileNotFoundError):
+        except (MissingAssetError, MissingSeekKeyError, FileNotFoundError):
             cnt = 0
             servers = rgc[CFG_SERVERS_KEY]
             for server in servers:

@@ -86,3 +86,54 @@ class TestUpgrade03to04:
         upgrade_config(filepath=str(cfg_copy), target_version="0.4", force=True)
         rgc = RefGenConf.from_yaml_file(str(cfg_copy))
         assert rgc[CFG_VERSION_KEY] == REQ_CFG_VERSION
+
+    def test_incomplete_asset_does_not_raise_missing_seek_key_error(self, tmp_path):
+        """Test that incomplete assets (no seek_keys) don't crash the upgrade check.
+
+        This reproduces GitHub issue #281 where upgrade fails with MissingSeekKeyError
+        for incomplete assets that were downloaded from remote but never fully built.
+        The fix catches MissingSeekKeyError alongside MissingAssetError during the
+        digest availability checking phase of upgrade_config().
+        """
+        import yaml
+        from refgenconf.refgenconf_v03 import _RefGenConfV03
+
+        # Create a v0.3 config with an incomplete fasta asset (missing seek_keys)
+        incomplete_config = {
+            "config_version": 0.3,
+            "genome_folder": str(tmp_path / "genomes"),
+            "genome_servers": ["http://refgenomes.databio.org"],
+            "genomes": {
+                "test_incomplete_genome": {
+                    "assets": {
+                        "fasta": {
+                            "tags": {
+                                "default": {
+                                    # Only asset_digest, no seek_keys - this is the incomplete state
+                                    "asset_digest": "abc123incomplete",
+                                    "asset_parents": [],
+                                    "asset_path": "fasta",
+                                }
+                            },
+                            "default_tag": "default",
+                        }
+                    },
+                }
+            },
+        }
+
+        cfg_path = tmp_path / "incomplete_config.yaml"
+        (tmp_path / "genomes").mkdir()
+        with open(cfg_path, "w") as f:
+            yaml.dump(incomplete_config, f)
+
+        # Load with v0.3 loader
+        rgc = _RefGenConfV03.from_yaml_file(str(cfg_path))
+
+        # Calling seek on an incomplete asset should raise MissingSeekKeyError
+        with pytest.raises(MissingSeekKeyError):
+            rgc.seek("test_incomplete_genome", "fasta", "default", "fasta")
+
+        # But getting the default tag should work (this is called before seek in upgrade)
+        tag = rgc.get_default_tag("test_incomplete_genome", "fasta")
+        assert tag == "default"

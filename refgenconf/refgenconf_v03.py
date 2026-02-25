@@ -23,7 +23,9 @@ from urllib.error import ContentTooShortError, HTTPError
 import yacman
 from yacman import write_lock
 from tqdm import tqdm
-from ubiquerg import checksum, is_url, is_writable, query_yes_no, untar
+from ubiquerg import checksum, is_url, is_writable, query_yes_no
+
+from .helpers import untar
 from ubiquerg import parse_registry_path as prp
 
 from .const import *

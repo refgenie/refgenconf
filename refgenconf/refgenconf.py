@@ -27,7 +27,9 @@ from requests import ConnectionError
 from requests.exceptions import MissingSchema
 from rich.progress import BarColumn, Progress, TextColumn
 from rich.table import Table
-from ubiquerg import checksum, is_url, is_writable, query_yes_no, untar
+from ubiquerg import checksum, is_url, is_writable, query_yes_no
+
+from .helpers import untar
 from ubiquerg import parse_registry_path as prp
 
 from .const import *

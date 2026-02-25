@@ -4,10 +4,12 @@ import json
 import logging
 import os
 import shutil
+import sys
 from copy import copy
 from functools import partial
 from re import sub
 from collections.abc import Iterable
+from tarfile import open as topen
 from typing import Any
 
 from requests import ConnectionError, get
@@ -20,7 +22,26 @@ from .seqcol import fasta_seqcol_digest
 
 _LOGGER = logging.getLogger(__name__)
 
-__all__ = ["select_genome_config", "get_dir_digest", "block_iter_repr"]
+__all__ = ["select_genome_config", "get_dir_digest", "block_iter_repr", "untar"]
+
+
+def untar(src: str, dst: str) -> None:
+    """Unpack a tar archive to a target folder.
+
+    Uses filter="fully_trusted" on Python 3.12+ to allow archives
+    containing absolute symlinks (refgenie archives use these for
+    child-to-parent asset links). Python 3.14 defaults to filter="data"
+    which rejects absolute symlinks.
+
+    Args:
+        src: path to the archive
+        dst: path to the output folder
+    """
+    with topen(src) as tf:
+        if sys.version_info >= (3, 12):
+            tf.extractall(path=dst, filter="fully_trusted")
+        else:
+            tf.extractall(path=dst)
 
 
 def select_genome_config(

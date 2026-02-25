@@ -1,4 +1,0 @@
-include refgenconf/schemas/*
-include requirements/*
-include README.md
-include LICENSE.txt

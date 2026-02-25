@@ -1,26 +1,23 @@
-""" Tests for updating a configuration object's genomes section """
+"""Tests for updating a configuration object's genomes section"""
 
 import pytest
-from attmap import PathExAttMap
 
-from refgenconf import CFG_FOLDER_KEY, CFG_GENOMES_KEY, CFG_SERVER_KEY, DEFAULT_SERVER
-from refgenconf import RefGenConf as RGC
+from refgenconf import CFG_GENOMES_KEY
 from refgenconf.const import CFG_ASSETS_KEY
-from tests.conftest import CONF_DATA, bind_to_assets, get_conf_genomes
 
 __author__ = "Vince Reuter"
 __email__ = "vreuter@virginia.edu"
 
 
-def _asset_data_is_pxam(a, g, c):
-    return isinstance(c[CFG_GENOMES_KEY][g][CFG_ASSETS_KEY][a], PathExAttMap)
+def _asset_data_is_dict(a, g, c):
+    return isinstance(c[CFG_GENOMES_KEY][g][CFG_ASSETS_KEY][a], dict)
 
 
 @pytest.mark.parametrize("assembly", ["human_repeats", "rCRSd"])
 @pytest.mark.parametrize("asset", ["brand_new_asset", "align_index"])
 @pytest.mark.parametrize(
     "validate",
-    [lambda a, g, c: a in c[CFG_GENOMES_KEY][g][CFG_ASSETS_KEY], _asset_data_is_pxam],
+    [lambda a, g, c: a in c[CFG_GENOMES_KEY][g][CFG_ASSETS_KEY], _asset_data_is_dict],
 )
 def test_new_asset(my_rgc, assembly, asset, validate):
     """update_genomes can insert new asset for existing assembly."""

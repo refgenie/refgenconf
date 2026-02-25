@@ -2,6 +2,36 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
+## [0.13.0] - 2026-02-25
+
+### Changed
+- Modernized packaging to use pyproject.toml with hatchling and uv
+- Updated for yacman v1 compatibility
+
+### Removed
+- Removed `henge.py` and Henge database abstraction (unused)
+- Removed `SeqColClient` class; replaced with standalone `fasta_seqcol_digest()` function
+- Removed `compare()` and `get_asds_path()` methods from `RefGenConf` (no callers)
+- Removed `AnnotatedSequenceDigestList.yaml` and `AnnotatedSequenceList.yaml` schema files
+- Removed `jsonschema` as a direct dependency
+
+### Fixed
+- Handle incomplete assets during config upgrade; [#281](https://github.com/refgenie/refgenconf/issues/281)
+- Handle missing seek keys in asset listing; [#133](https://github.com/refgenie/refgenconf/issues/133)
+- Fixed upgrade config documentation URL; [#138](https://github.com/refgenie/refgenconf/issues/138)
+
+## [0.12.3] - 2026-02-11
+
+### Changed
+- Dropped support for Python < 3.10
+- Added support for Python 3.10-3.13
+- Replaced deprecated `pkg_resources` with `importlib.metadata`
+- Updated GitHub Actions to modern versions
+
+### Fixed
+- Reduced verbosity of refgenie plugin (looper issue #529)
+
+
 ## [0.12.2] - 2021-11-04
 
 ### Fixed

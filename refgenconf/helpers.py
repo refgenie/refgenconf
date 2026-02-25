@@ -1,69 +1,100 @@
-""" Helper functions """
+"""Helper functions"""
 
 import json
 import logging
 import os
 import shutil
+import sys
 from copy import copy
 from functools import partial
 from re import sub
-from typing import Iterable
+from collections.abc import Iterable
+from tarfile import open as topen
+from typing import Any
 
 from requests import ConnectionError, get
 from ubiquerg import is_command_callable
 from yacman import select_config
 
 from .const import *
-from .exceptions import DownloadJsonError, MissingAssetError
-from .seqcol import SeqColClient
+from .exceptions import DownloadJsonError, MissingAssetError, MissingSeekKeyError
+from .seqcol import fasta_seqcol_digest
 
 _LOGGER = logging.getLogger(__name__)
 
-__all__ = ["select_genome_config", "get_dir_digest", "block_iter_repr"]
+__all__ = ["select_genome_config", "get_dir_digest", "block_iter_repr", "untar"]
 
 
-def select_genome_config(filename=None, conf_env_vars=CFG_ENV_VARS, **kwargs):
+def untar(src: str, dst: str) -> None:
+    """Unpack a tar archive to a target folder.
+
+    Uses filter="fully_trusted" on Python 3.12+ to allow archives
+    containing absolute symlinks (refgenie archives use these for
+    child-to-parent asset links). Python 3.14 defaults to filter="data"
+    which rejects absolute symlinks.
+
+    Args:
+        src: path to the archive
+        dst: path to the output folder
     """
-    Get path to genome configuration file.
+    with topen(src) as tf:
+        if sys.version_info >= (3, 12):
+            tf.extractall(path=dst, filter="fully_trusted")
+        else:
+            tf.extractall(path=dst)
 
-    :param str filename: name/path of genome configuration file
-    :param Iterable[str] conf_env_vars: names of environment variables to
-        consider; basically, a prioritized search list
-    :return str: path to genome configuration file
+
+def select_genome_config(
+    filename: str | None = None,
+    conf_env_vars: Iterable[str] = CFG_ENV_VARS,
+    **kwargs: Any,
+) -> str | None:
+    """Get path to genome configuration file.
+
+    Args:
+        filename: Name/path of genome configuration file.
+        conf_env_vars: Names of environment variables to consider;
+            basically, a prioritized search list.
+
+    Returns:
+        Path to genome configuration file.
     """
     return select_config(filename, conf_env_vars, **kwargs)
 
 
-def unbound_env_vars(path):
-    """
-    Return collection of path parts that appear to be unbound env. vars.
+def unbound_env_vars(path: str) -> list[str]:
+    """Return collection of path parts that appear to be unbound env. vars.
 
     The given path is split on the active operating system's path delimiter;
     each resulting chunk is then deemed env.-var.-like if it begins with a
     dollar sign, and then os.getenv is queried to determine if it's bound.
 
-    :param str path: Path to examine for unbound environment variables
-    :return Iterable[str]: collection of path parts that appear to be unbound env. vars.
+    Args:
+        path: Path to examine for unbound environment variables.
+
+    Returns:
+        Collection of path parts that appear to be unbound env. vars.
     """
     parts = path.split(os.path.sep)
     return [p for p in parts if p.startswith("$") and not os.getenv(p)]
 
 
-def asciify_json_dict(json_dict):
+def asciify_json_dict(json_dict: dict[str, Any]) -> dict[str, Any]:
     from ubiquerg.collection import asciify_dict
 
     return asciify_dict(json_dict)
 
 
-def get_dir_digest(path, pm=None):
-    """
-    Generate a MD5 digest that reflects just the contents of the
-    files in the selected directory.
+def get_dir_digest(path: str, pm: Any = None) -> str | None:
+    """Generate a MD5 digest that reflects just the contents of the files in the selected directory.
 
-    :param str path: path to the directory to digest
-    :param pypiper.PipelineManager pm: a pipeline object, optional.
-    The subprocess module will be used if not provided
-    :return str: a digest, e.g. a3c46f201a3ce7831d85cf4a125aa334
+    Args:
+        path: Path to the directory to digest.
+        pm: A pipeline object, optional. The subprocess module will
+            be used if not provided.
+
+    Returns:
+        A digest, e.g. a3c46f201a3ce7831d85cf4a125aa334.
     """
     if not is_command_callable("md5sum"):
         raise OSError(
@@ -75,7 +106,7 @@ def get_dir_digest(path, pm=None):
     cmd = (
         "cd {}; find . -type f -not -path './"
         + BUILD_STATS_DIR
-        + "*' -exec md5sum {{}} \; | sort -k 2 | awk '{{print $1}}' | md5sum"
+        + r"*' -exec md5sum {{}} \; | sort -k 2 | awk '{{print $1}}' | md5sum"
     )
     try:
         x = pm.checkprint(cmd.format(path))
@@ -94,18 +125,18 @@ def get_dir_digest(path, pm=None):
     return str(sub(r"\W+", "", x))  # strips non-alphanumeric
 
 
-def format_config_03_04(rgc, get_json_url):
-    """
-    upgrade the v0.3 config file format to v0.4 format:
-    get genome digests from the server or local fasta assets,
-    use the genome digests as primary key,
-    add 'aliases' section to the config,
-    remove 'genome_digests' section from the config
-    replace all aliases in keys/asset names with genome digests
+def format_config_03_04(rgc: Any, get_json_url: Any) -> None:
+    """Upgrade the v0.3 config file format to v0.4 format.
 
-    :param obj rgc: RefGenConfV03 obj
-    :param function(str, str) -> str get_json_url: how to build URL from
-            genome server URL base, genome, and asset
+    Gets genome digests from the server or local fasta assets,
+    uses the genome digests as primary key, adds 'aliases' section
+    to the config, removes 'genome_digests' section from the config,
+    and replaces all aliases in keys/asset names with genome digests.
+
+    Args:
+        rgc: RefGenConfV03 object.
+        get_json_url: How to build URL from genome server URL base,
+            genome, and asset.
     """
 
     _LOGGER.info("Upgrading v0.3 config file format to v0.4.")
@@ -119,8 +150,7 @@ def format_config_03_04(rgc, get_json_url):
             )
             tag = rgc.get_default_tag(genome, "fasta")
             asset_path = rgc.seek(genome, "fasta", tag, "fasta")
-            ssc = SeqColClient({})
-            digest, asdl = ssc.load_fasta(asset_path)
+            digest, asdl = fasta_seqcol_digest(asset_path)
             _LOGGER.info(f"Generated {genome} digest from local fasta file: {digest}")
             # retrieve annotated sequence digests list to save in a JSON file
             pth = os.path.join(rgc[CFG_FOLDER_KEY], genome, genome + "__ASDs.json")
@@ -128,7 +158,7 @@ def format_config_03_04(rgc, get_json_url):
             with open(pth, "w") as jfp:
                 json.dump(asdl, jfp)
             _LOGGER.info(f"Saved ASDs to JSON: {pth}")
-        except (MissingAssetError, FileNotFoundError):
+        except (MissingAssetError, MissingSeekKeyError, FileNotFoundError):
             _LOGGER.info(
                 f"No local fasta asset found for {genome}. Retrieving digest from the server."
             )
@@ -146,7 +176,7 @@ def format_config_03_04(rgc, get_json_url):
                         _LOGGER.info(
                             f"Retrieved {genome} digest from the server: {digest}"
                         )
-                    except (KeyError, ConnectionError, DownloadJsonError) as e:
+                    except (KeyError, ConnectionError, DownloadJsonError):
                         if cnt == len(servers):
                             _LOGGER.info(
                                 f"Failed to retrieve the digest for {genome}. "
@@ -168,16 +198,17 @@ def format_config_03_04(rgc, get_json_url):
             del rgc[CFG_GENOMES_KEY][genome]
 
 
-def alter_file_tree_03_04(rgc, link_fun):
-    """
-    update file structure inside genome_folder:
-    Drop genomes for which genome_digest is not available
-    on any of the servers and do not have a fasta asset locally.
-    contents inside genome_folder will be replaced by 'alias' and 'data' dir
+def alter_file_tree_03_04(rgc: Any, link_fun: Any) -> None:
+    """Update file structure inside genome_folder.
 
-    :param obj rgc: RefGenConfV03 obj
-    :param callable link_fun: function to use to link files, e.g os.symlink
-        or os.link
+    Drops genomes for which genome_digest is not available on any of
+    the servers and do not have a fasta asset locally. Contents inside
+    genome_folder will be replaced by 'alias' and 'data' directories.
+
+    Args:
+        rgc: RefGenConfV03 object.
+        link_fun: Function to use to link files, e.g. os.symlink
+            or os.link.
     """
     my_genome = {}
     for k, v in rgc[CFG_GENOMES_KEY].items():
@@ -255,22 +286,23 @@ def alter_file_tree_03_04(rgc, link_fun):
         del dirs[:]
 
     _LOGGER.info(
-        f"Removing genome assets that have been copied " f"to '{DATA_DIR}' directory."
+        f"Removing genome assets that have been copied to '{DATA_DIR}' directory."
     )
     for genome, genome_v in rgc[CFG_GENOMES_KEY].items():
         d = os.path.join(rgc[CFG_FOLDER_KEY], genome_v[CFG_ALIASES_KEY][0])
         shutil.rmtree(d)
 
 
-def swap_names_in_tree(top, new_name, old_name):
-    """
-    Rename all files and directories within a directory tree and the
-    directory itself
+def swap_names_in_tree(top: str, new_name: str, old_name: str) -> bool:
+    """Rename all files and directories within a directory tree and the directory itself.
 
-    :param str top: path to the top of the tree to be renamed
-    :param str new_name: new name
-    :param str old_name: old name
-    :return bool: whether the renaming has been carried out
+    Args:
+        top: Path to the top of the tree to be renamed.
+        new_name: New name.
+        old_name: Old name.
+
+    Returns:
+        Whether the renaming has been carried out.
     """
 
     def _rename(x, rt):
@@ -289,13 +321,15 @@ def swap_names_in_tree(top, new_name, old_name):
     return True
 
 
-def send_data_request(url, params=None):
-    """
-    Safely connect to the provided API endpoint and download the returned data.
+def send_data_request(url: str, params: dict[str, Any] | None = None) -> Any:
+    """Safely connect to the provided API endpoint and download the returned data.
 
-    :param str url: server API endpoint
-    :param dict params: query parameters
-    :return dict: served data
+    Args:
+        url: Server API endpoint.
+        params: Query parameters.
+
+    Returns:
+        Served data.
     """
     _LOGGER.debug(f"Downloading JSON data; querying URL: {url}")
     resp = get(url, params=params)
@@ -310,14 +344,16 @@ def send_data_request(url, params=None):
     raise DownloadJsonError(resp)
 
 
-def replace_str_in_obj(object, x, y):
-    """
-    Replace strings in an object
+def replace_str_in_obj(object: Any, x: str, y: str) -> Any:
+    """Replace strings in an object.
 
-    :param any object: object to replace strings in
-    :param str x: string to replace
-    :param str y: replacement
-    :return any: object with strings replaced
+    Args:
+        object: Object to replace strings in.
+        x: String to replace.
+        y: Replacement.
+
+    Returns:
+        Object with strings replaced.
     """
     _replace = partial(replace_str_in_obj, x=x, y=y)
     obj = copy(object)
@@ -331,13 +367,17 @@ def replace_str_in_obj(object, x, y):
     return obj
 
 
-def block_iter_repr(input_obj, numbered=False):
-    """
-    Create a human readable string representation of an iterable. Either as a bulleted or numbered list.
+def block_iter_repr(input_obj: Iterable[str], numbered: bool = False) -> str:
+    """Create a human readable string representation of an iterable.
 
-    :param Iterable input_obj: object to create a representation for
-    :param bool numbered: whether a numbered list should be created
-    :param str: the representation
+    Either as a bulleted or numbered list.
+
+    Args:
+        input_obj: Object to create a representation for.
+        numbered: Whether a numbered list should be created.
+
+    Returns:
+        The representation.
     """
     if isinstance(input_obj, str):
         input_obj = [input_obj]

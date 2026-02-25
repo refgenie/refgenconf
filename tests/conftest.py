@@ -1,4 +1,5 @@
-""" Test suite shared objects and setup """
+"""Test suite shared objects and setup"""
+
 import os
 import random
 import shutil
@@ -6,10 +7,7 @@ import string
 
 import pytest
 import yaml
-from attmap import PathExAttMap
-
 from refgenconf import RefGenConf
-from refgenconf import __version__ as package_version
 from refgenconf.const import *
 from refgenconf.exceptions import *
 
@@ -58,7 +56,7 @@ def lift_into_path_pair(name):
 
 
 CONF_DATA = [
-    (g, {CFG_ASSETS_KEY: PathExAttMap(_bind_to_path(data))})
+    (g, {CFG_ASSETS_KEY: dict(_bind_to_path(data))})
     for g, data in [("hg38", HG38_DATA), ("mm10", MM10_DATA), ("rCRSd", MITO_DATA)]
 ]
 
@@ -76,19 +74,27 @@ def get_conf_genomes():
     return list(list(zip(*CONF_DATA))[0])
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def data_path():
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 
 
-@pytest.fixture
-def cfg_file(data_path):
-    return os.path.join(data_path, "genomes.yaml")
+@pytest.fixture(scope="session")
+def cfg_file(data_path, tmp_path_factory):
+    """Return a session-scoped temp copy so writes don't pollute the original."""
+    src = os.path.join(data_path, "genomes.yaml")
+    dst = str(tmp_path_factory.mktemp("config") / "genomes.yaml")
+    shutil.copy(src, dst)
+    return dst
 
 
-@pytest.fixture
-def cfg_file_old(data_path):
-    return os.path.join(data_path, "genomes_v3.yaml")
+@pytest.fixture(scope="session")
+def cfg_file_old(data_path, tmp_path_factory):
+    """Return a session-scoped temp copy so writes don't pollute the original."""
+    src = os.path.join(data_path, "genomes_v3.yaml")
+    dst = str(tmp_path_factory.mktemp("config_old") / "genomes_v3.yaml")
+    shutil.copy(src, dst)
+    return dst
 
 
 @pytest.fixture
@@ -146,7 +152,8 @@ def made_genome_config_file(temp_genome_config_file):
         "{}: {}".format(CFG_VERSION_KEY, REQ_CFG_VERSION),
         "{}:".format(CFG_GENOMES_KEY),
     ]
-    gen_data_lines = PathExAttMap(CONF_DATA).get_yaml_lines()
+    gen_data = dict(CONF_DATA)
+    gen_data_lines = yaml.dump(gen_data, default_flow_style=False).strip().split("\n")
     fp = temp_genome_config_file
     with open(fp, "w") as f:
         f.write("\n".join(extra_kv_lines + ["  " + l for l in gen_data_lines]))
@@ -162,12 +169,12 @@ def rgc(made_genome_config_file):
 
 @pytest.fixture
 def my_rgc(cfg_file):
-    return RefGenConf(filepath=cfg_file)
+    return RefGenConf.from_yaml_file(cfg_file)
 
 
 @pytest.fixture
 def ro_rgc(cfg_file):
-    return RefGenConf(filepath=cfg_file, writable=False)
+    return RefGenConf.from_yaml_file(cfg_file)
 
 
 @pytest.fixture

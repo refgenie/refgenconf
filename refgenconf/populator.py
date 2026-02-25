@@ -2,8 +2,8 @@
 
 import logging
 from collections.abc import Mapping
+from typing import Any
 
-from attmap import AttMap
 from ubiquerg import parse_registry_path as prp
 
 import refgenconf
@@ -11,25 +11,31 @@ import refgenconf
 _LOGGER = logging.getLogger(__name__)
 
 
-def looper_refgenie_populate(namespaces):
-    """
-    A looper plugin that populates refgenie references in a PEP from
-    refgenie://genome/asset:tag registry paths. This can be used to convert
-    all refgenie references into their local paths at the looper stage, so the
-    final paths are passed to the workflow. This way the workflow does not
-    need to depend on refgenie to resolve the paths.
-    This is useful for example for CWL pipelines, which are built to have
-    paths resolved outside the workflow.
+def looper_refgenie_populate(namespaces: Mapping[str, Any]) -> dict[str, Any]:
+    """Populate refgenie references in a PEP from registry paths.
+
+    A looper plugin that converts refgenie://genome/asset:tag registry
+    paths into their local paths at the looper stage, so the final paths
+    are passed to the workflow. This way the workflow does not need to
+    depend on refgenie to resolve the paths. This is useful for example
+    for CWL pipelines, which are built to have paths resolved outside
+    the workflow.
 
     The namespaces structure required to run the plugin is:
-    `namespaces["pipeline"]["var_templates"]["refgenie_config"]`
+    ``namespaces["pipeline"]["var_templates"]["refgenie_config"]``
 
-    :param Mapping namespaces: a nested variable namespaces dict
-    :return dict: sample namespace dict
-    :raises TypeError: if the input namespaces is not a mapping
-    :raises KeyError: if the namespaces mapping does not include 'pipeline'
-    :raises NotImplementedError: if 'var_templates' key is missing in the 'pipeline' namespace or
-        'refgenie_config' is missing in 'var_templates' section.
+    Args:
+        namespaces: A nested variable namespaces dict.
+
+    Returns:
+        Sample namespace dict.
+
+    Raises:
+        TypeError: If the input namespaces is not a mapping.
+        KeyError: If the namespaces mapping does not include 'pipeline'.
+        NotImplementedError: If 'var_templates' key is missing in the
+            'pipeline' namespace or 'refgenie_config' is missing in
+            'var_templates' section.
     """
     if not isinstance(namespaces, Mapping):
         raise TypeError("Namespaces must be a Mapping")
@@ -42,7 +48,7 @@ def looper_refgenie_populate(namespaces):
         and "refgenie_config" in namespaces["pipeline"]["var_templates"]
     ):
         rgc_path = namespaces["pipeline"]["var_templates"]["refgenie_config"]
-        rgc = refgenconf.RefGenConf(rgc_path)
+        rgc = refgenconf.RefGenConf.from_yaml_file(rgc_path)
 
         complete_sk_dict = rgc.list_seek_keys_values()
         paths_dict = {}
@@ -57,14 +63,14 @@ def looper_refgenie_populate(namespaces):
                 return namespaces["project"]["refgenie"]["tag_overrides"][genome][asset]
             except KeyError:
                 default_tag = rgc.get_default_tag(genome=genome, asset=asset)
-                _LOGGER.info(
+                _LOGGER.debug(
                     f"Refgenie asset ({genome}/{asset}) tag not specified in `refgenie.tag_overrides` section. "
                     f"Using the default tag: {default_tag}"
                 )
                 return default_tag
             except TypeError:
                 default_tag = rgc.get_default_tag(genome=genome, asset=asset)
-                _LOGGER.warn(f"tag_overrides section is malformed. Using default.")
+                _LOGGER.warning("tag_overrides section is malformed. Using default.")
                 return default_tag
 
         # Restructure the seek key paths to make them accessible with
@@ -78,7 +84,7 @@ def looper_refgenie_populate(namespaces):
                 try:
                     paths_dict[g][k] = v[tag]
                 except KeyError:
-                    _LOGGER.warn(
+                    _LOGGER.warning(
                         f"Can't find tag '{tag}' for asset '{g}/{k}', as specified in your project config. Using default."
                     )
                     paths_dict[g][k] = v[rgc.get_default_tag(genome=g, asset=k)]
@@ -97,11 +103,11 @@ def looper_refgenie_populate(namespaces):
             except KeyError:
                 _LOGGER.debug("Did not find path_overrides section")
             except TypeError:
-                _LOGGER.warn("Warning: path_overrides is not iterable")
+                _LOGGER.warning("Warning: path_overrides is not iterable")
 
         # print(paths_dict)
         # Provide these values under the 'refgenie' namespace
-        namespaces["refgenie"] = AttMap(paths_dict)
+        namespaces["refgenie"] = paths_dict
         return rgc.populate(namespaces)
     else:
         msg = """

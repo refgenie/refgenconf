@@ -5,20 +5,14 @@ These values are defined here in refgenconf and use some within this package,
 but they're also integral to both refgenie and to refgenieserver.
 """
 
-import os
-
-CFG_NAME = "genome configuration"
-CFG_ENV_VARS = ["REFGENIE"]
-CFG_CONST = ["CFG_NAME", "CFG_ENV_VARS"]
-DEFAULT_SERVER = "http://refgenomes.databio.org"  # "http://rg.databio.org"
-TAG_NAME_BANNED_CHARS = [":", "/"]
-API_VERSION = "v3"
-API_VERSION_2 = "v2"
-DEFAULT_TAG = "default"
-DEFAULT_CONFIG_SCHEMA = os.path.join(
-    os.path.dirname(__file__), "schemas", "genome_config_schema.yaml"
-)
-
+CFG_NAME: str = "genome configuration"
+CFG_ENV_VARS: list[str] = ["REFGENIE"]
+CFG_CONST: list[str] = ["CFG_NAME", "CFG_ENV_VARS"]
+DEFAULT_SERVER: str = "http://refgenomes.databio.org"  # "http://rg.databio.org"
+TAG_NAME_BANNED_CHARS: list[str] = [":", "/"]
+API_VERSION: str = "v3"
+API_VERSION_2: str = "v2"
+DEFAULT_TAG: str = "default"
 # file or dir names
 TEMPLATE_RECIPE_JSON = "build_recipe_{}__{}.json"
 TEMPLATE_TARGET = "{}_{}__{}.flag"
@@ -31,7 +25,7 @@ BUILD_MAP_CFG = "_map_build.yaml"
 ALIAS_DIR = "alias"
 DATA_DIR = "data"
 
-FILE_DIR_NAMES = [
+FILE_DIR_NAMES: list[str] = [
     "TEMPLATE_RECIPE_JSON",
     "TEMPLATE_TARGET",
     "TEMPLATE_LOG",
@@ -90,7 +84,7 @@ OPERATION_IDS = {
     },
 }
 
-API_IDS = [
+API_IDS: list[str] = [
     "API_ID_ASSETS",
     "API_ID_ARCHIVE",
     "API_ID_DEFAULT_TAG",
@@ -139,9 +133,9 @@ CFG_ASSET_TAGS_KEY = "tags"
 CFG_ASSET_CHECKSUM_KEY = "asset_digest"
 CFG_TAG_DESC_KEY = "tag_description"
 
-CFG_ASSET_RELATIVES_KEYS = [CFG_ASSET_CHILDREN_KEY, CFG_ASSET_PARENTS_KEY]
+CFG_ASSET_RELATIVES_KEYS: list[str] = [CFG_ASSET_CHILDREN_KEY, CFG_ASSET_PARENTS_KEY]
 
-CFG_TOP_LEVEL_KEYS = [
+CFG_TOP_LEVEL_KEYS: list[str] = [
     CFG_FOLDER_KEY,
     CFG_SERVER_KEY,
     CFG_SERVERS_KEY,
@@ -153,9 +147,9 @@ CFG_TOP_LEVEL_KEYS = [
     CFG_ARCHIVE_KEY_OLD,
     CFG_REMOTE_URL_BASE_KEY,
 ]
-CFG_GENOME_KEYS = [CFG_GENOME_DESC_KEY, CFG_ASSETS_KEY, CFG_CHECKSUM_KEY]
-CFG_GENOME_ATTRS_KEYS = [CFG_GENOME_DESC_KEY, CFG_CHECKSUM_KEY]
-CFG_SINGLE_ASSET_SECTION_KEYS = [
+CFG_GENOME_KEYS: list[str] = [CFG_GENOME_DESC_KEY, CFG_ASSETS_KEY, CFG_CHECKSUM_KEY]
+CFG_GENOME_ATTRS_KEYS: list[str] = [CFG_GENOME_DESC_KEY, CFG_CHECKSUM_KEY]
+CFG_SINGLE_ASSET_SECTION_KEYS: list[str] = [
     CFG_ASSET_PATH_KEY,
     CFG_ASSET_DESC_KEY,
     CFG_ASSET_SIZE_KEY,
@@ -165,9 +159,14 @@ CFG_SINGLE_ASSET_SECTION_KEYS = [
     CFG_GENOME_MASK_KEY,
 ]
 
-RGC_REQ_KEYS = [CFG_SERVERS_KEY, CFG_FOLDER_KEY, CFG_GENOMES_KEY, CFG_VERSION_KEY]
+RGC_REQ_KEYS: list[str] = [
+    CFG_SERVERS_KEY,
+    CFG_FOLDER_KEY,
+    CFG_GENOMES_KEY,
+    CFG_VERSION_KEY,
+]
 
-CFG_KEY_NAMES = [
+CFG_KEY_NAMES: list[str] = [
     "CFG_FOLDER_KEY",
     "CFG_SERVER_KEY",
     "CFG_SERVERS_KEY",
@@ -204,7 +203,7 @@ POST_TAG_HOOK = "post_tag"
 PRE_LIST_HOOK = "pre_list"
 POST_LIST_HOOK = "post_list"
 # HOOKS is a list of all available plugin entry points
-HOOK_NAMES = [
+HOOK_NAMES: list[str] = [
     "PRE_LIST_HOOK",
     "PRE_PULL_HOOK",
     "PRE_TAG_HOOK",
@@ -214,13 +213,13 @@ HOOK_NAMES = [
     "POST_PULL_HOOK",
     "POST_UPDATE_HOOK",
 ]
-HOOKS = [eval(x) for x in HOOK_NAMES]
+HOOKS: list[str] = [eval(x) for x in HOOK_NAMES]
 
 # other consts
-REQ_CFG_VERSION = 0.4
-REFGENIE_BY_CFG = {"0.4": "0.10.0", "0.3": "0.7.0", "0.2": "0.6.0"}
-CFG_UPGRADE = {"0.3": ["0.4"]}
-ATTRS_COPY_PULL = [
+REQ_CFG_VERSION: float = 0.4
+REFGENIE_BY_CFG: dict[str, str] = {"0.4": "0.10.0", "0.3": "0.7.0", "0.2": "0.6.0"}
+CFG_UPGRADE: dict[str, list[str]] = {"0.3": ["0.4"]}
+ATTRS_COPY_PULL: list[str] = [
     CFG_ASSET_DESC_KEY,
     CFG_SEEK_KEYS_KEY,
     CFG_ASSET_PARENTS_KEY,
@@ -228,8 +227,8 @@ ATTRS_COPY_PULL = [
     CFG_ASSET_CHECKSUM_KEY,
     CFG_TAG_DESC_KEY,
 ]
-REQ_TAG_ATTRS = [CFG_ASSET_PATH_KEY, CFG_SEEK_KEYS_KEY]
-CUSTOM_BAR_FMT = "{desc}{percentage:3.0f}%|{bar}| {n_fmt} [{elapsed}<{remaining} {rate_fmt}{postfix}]"
+REQ_TAG_ATTRS: list[str] = [CFG_ASSET_PATH_KEY, CFG_SEEK_KEYS_KEY]
+CUSTOM_BAR_FMT: str = "{desc}{percentage:3.0f}%|{bar}| {n_fmt} [{elapsed}<{remaining} {rate_fmt}{postfix}]"
 
 __all__ = (
     [
@@ -255,7 +254,6 @@ __all__ = (
         "CUSTOM_PFX",
         "PRIVATE_API",
         "HOOKS",
-        "DEFAULT_CONFIG_SCHEMA",
     ]
     + FILE_DIR_NAMES
     + CFG_CONST
@@ -298,7 +296,6 @@ CONF_STRUCTURE = """
     version=CFG_VERSION_KEY,
     assets=CFG_ASSETS_KEY,
     archive=CFG_ARCHIVE_KEY,
-    digest=CFG_CHECKSUM_KEY,
     genomes=CFG_GENOMES_KEY,
     aliases=CFG_ALIASES_KEY,
     desc_genome=CFG_GENOME_DESC_KEY,
@@ -313,6 +310,5 @@ CONF_STRUCTURE = """
     default=CFG_ASSET_DEFAULT_TAG_KEY,
     tags=CFG_ASSET_TAGS_KEY,
     asset_digest=CFG_ASSET_CHECKSUM_KEY,
-    tag_description=CFG_TAG_DESC_KEY,
     v=REQ_CFG_VERSION,
 )

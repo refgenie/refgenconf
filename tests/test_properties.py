@@ -1,4 +1,4 @@
-""" RGC properties tests """
+"""RGC properties tests"""
 
 import os
 

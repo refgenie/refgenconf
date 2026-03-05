@@ -573,9 +573,11 @@ class _RefGenConfV03(yacman.YAMLConfigManager):
             ]
         except KeyError:
             alt = (
-                self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][
-                    CFG_ASSET_TAGS_KEY
-                ].keys()[0]
+                next(iter(
+                    self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][
+                        CFG_ASSET_TAGS_KEY
+                    ]
+                ))
                 if use_existing
                 else DEFAULT_TAG
             )

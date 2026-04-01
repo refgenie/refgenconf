@@ -2941,7 +2941,7 @@ class RefGenConf(yacman.YAMLConfigManager):
         if filepath:
             path = self.write_copy(filepath)
         else:
-            path = super(RefGenConf, self).write(exclude_case=True)
+            path = super(RefGenConf, self).write()
         self.run_plugins(POST_UPDATE_HOOK)
         return path
 

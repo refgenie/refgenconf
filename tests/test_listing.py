@@ -70,8 +70,9 @@ class ListSeekKeysValuesTest:
         This tests the fix for issue #133 where a child asset's parent may lack
         the seek_keys field, causing a TypeError when iterating over None.
         """
-        from refgenconf.const import CFG_ASSETS_KEY, CFG_ASSET_TAGS_KEY
         from yacman import write_lock
+
+        from refgenconf.const import CFG_ASSET_TAGS_KEY, CFG_ASSETS_KEY
 
         # Pick a genome and create a test asset without seek_keys
         genome_digest = list(ro_rgc[CFG_GENOMES_KEY].keys())[0]

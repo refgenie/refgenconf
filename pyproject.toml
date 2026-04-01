@@ -1,6 +1,6 @@
 [project]
 name = "refgenconf"
-version = "0.13.0"
+version = "0.13.1"
 description = "A standardized configuration object for reference genome assemblies"
 readme = "README.md"
 license = "BSD-2-Clause"

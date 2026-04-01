@@ -7,6 +7,7 @@ import string
 
 import pytest
 import yaml
+
 from refgenconf import RefGenConf
 from refgenconf.const import *
 from refgenconf.exceptions import *

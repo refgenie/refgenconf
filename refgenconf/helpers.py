@@ -5,10 +5,10 @@ import logging
 import os
 import shutil
 import sys
+from collections.abc import Iterable
 from copy import copy
 from functools import partial
 from re import sub
-from collections.abc import Iterable
 from tarfile import open as topen
 from typing import Any
 

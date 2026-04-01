@@ -21,12 +21,10 @@ from typing import Any
 from urllib.error import ContentTooShortError, HTTPError
 
 import yacman
-from yacman import write_lock
 from tqdm import tqdm
 from ubiquerg import checksum, is_url, is_writable, query_yes_no
-
-from .helpers import untar
 from ubiquerg import parse_registry_path as prp
+from yacman import write_lock
 
 from .const import *
 from .exceptions import *
@@ -36,6 +34,7 @@ from .helpers import (
     get_dir_digest,
     select_genome_config,
     unbound_env_vars,
+    untar,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -573,9 +572,13 @@ class _RefGenConfV03(yacman.YAMLConfigManager):
             ]
         except KeyError:
             alt = (
-                self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][
-                    CFG_ASSET_TAGS_KEY
-                ].keys()[0]
+                next(
+                    iter(
+                        self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][
+                            CFG_ASSET_TAGS_KEY
+                        ]
+                    )
+                )
                 if use_existing
                 else DEFAULT_TAG
             )

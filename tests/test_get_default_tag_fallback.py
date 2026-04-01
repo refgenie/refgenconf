@@ -5,6 +5,7 @@ import shutil
 
 import pytest
 import yaml
+
 from refgenconf import RefGenConf
 
 

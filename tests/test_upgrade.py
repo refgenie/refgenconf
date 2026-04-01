@@ -41,6 +41,7 @@ class TestUpgrade03to04:
         """Test config upgrade from v0.3 to v0.4 when a mix of genomes in terms of
         remote digest availability is defined in the old config."""
         import shutil
+
         import yaml
 
         # Copy config to tmp_path so we don't mutate the shared test fixture
@@ -96,6 +97,7 @@ class TestUpgrade03to04:
         digest availability checking phase of upgrade_config().
         """
         import yaml
+
         from refgenconf.refgenconf_v03 import _RefGenConfV03
 
         # Create a v0.3 config with an incomplete fasta asset (missing seek_keys)

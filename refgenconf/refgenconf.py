@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import itertools
-import json
 import logging
 import os
 import re
@@ -13,24 +12,22 @@ import sys
 import warnings
 from collections import OrderedDict
 from collections.abc import Callable, Mapping
-from typing import Any
 from functools import partial
 from importlib.metadata import entry_points
 from inspect import getfullargspec as finspect
+from typing import Any
 from urllib.error import ContentTooShortError, HTTPError
 from urllib.parse import urlencode
 from urllib.request import urlopen, urlretrieve
 
 import yacman
-from yacman import write_lock
 from requests import ConnectionError
 from requests.exceptions import MissingSchema
 from rich.progress import BarColumn, Progress, TextColumn
 from rich.table import Table
 from ubiquerg import checksum, is_url, is_writable, query_yes_no
-
-from .helpers import untar
 from ubiquerg import parse_registry_path as prp
+from yacman import write_lock
 
 from .const import *
 from .exceptions import *
@@ -40,6 +37,7 @@ from .helpers import (
     get_dir_digest,
     select_genome_config,
     send_data_request,
+    untar,
 )
 from .progress_bar import _DownloadColumn, _TimeRemainingColumn, _TransferSpeedColumn
 from .seqcol import fasta_seqcol_digest
@@ -1063,11 +1061,13 @@ class RefGenConf(yacman.YAMLConfigManager):
             ]
         except KeyError:
             alt = (
-                next(iter(
-                    self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][
-                        CFG_ASSET_TAGS_KEY
-                    ]
-                ))
+                next(
+                    iter(
+                        self[CFG_GENOMES_KEY][genome][CFG_ASSETS_KEY][asset][
+                            CFG_ASSET_TAGS_KEY
+                        ]
+                    )
+                )
                 if use_existing
                 else DEFAULT_TAG
             )
@@ -2914,6 +2914,7 @@ class RefGenConf(yacman.YAMLConfigManager):
             YAML text representation of this instance.
         """
         import copy
+
         import yaml as _yaml
 
         data = copy.copy(self.data)

@@ -157,7 +157,7 @@ def made_genome_config_file(temp_genome_config_file):
     gen_data_lines = yaml.dump(gen_data, default_flow_style=False).strip().split("\n")
     fp = temp_genome_config_file
     with open(fp, "w") as f:
-        f.write("\n".join(extra_kv_lines + ["  " + l for l in gen_data_lines]))
+        f.write("\n".join(extra_kv_lines + ["  " + line for line in gen_data_lines]))
     return fp
 
 

@@ -9,7 +9,9 @@ from .refgenconf import RefGenConf, upgrade_config
 
 __all__ = (
     [
+        "__version__",
         "RefGenConf",
+        "upgrade_config",
         "select_genome_config",
         "get_dir_digest",
         "GenomeConfigFormatError",

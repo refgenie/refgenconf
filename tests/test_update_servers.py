@@ -24,7 +24,7 @@ class TestUpdateServers:
         assert urls[0] in my_rgc[CFG_SERVERS_KEY] and urls[1] in my_rgc[CFG_SERVERS_KEY]
 
     @pytest.mark.parametrize("urls", [["www.new_url.com", "www.new_url.com"]])
-    def test_reset(self, my_rgc, urls):
+    def test_reset_duplicate_urls(self, my_rgc, urls):
         my_rgc.subscribe(urls=urls, reset=True)
         assert len(my_rgc[CFG_SERVERS_KEY]) == 1
 
